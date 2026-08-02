@@ -1,0 +1,25 @@
+{
+  "name": "@repo/i18n",
+  "private": true,
+  "scripts": {
+    "test": "vitest run --passWithNoTests"
+  },
+  "exports": {
+    "./routing": "./src/routing.ts",
+    "./navigation": "./src/navigation.ts",
+    "./request": "./src/request.ts",
+    "./messages": "./src/messages.ts",
+    "./messages/*": "./messages/*"
+  },
+  "dependencies": {
+    "next-intl": "^4.9.0"
+  },
+  "devDependencies": {
+    "@formatjs/icu-messageformat-parser": "^3.5.3",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "next": ">=16.0.0",
+    "react": ">=19.0.0"
+  }
+}

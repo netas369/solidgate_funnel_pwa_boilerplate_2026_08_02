@@ -1,0 +1,197 @@
+{
+  "payment": {
+    "savedMethodDisclosure": "Your payment method is securely stored by our payment provider so you can authorize optional future purchases with one tap. You are charged only when you select a purchase."
+  },
+  "offline": {
+    "title": "You're offline",
+    "message": "Check your connection and try again."
+  },
+  "topnav": {
+    "brand": "Acme",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "nav": {
+    "home": "Home",
+    "library": "Library",
+    "profile": "Profile"
+  },
+  "screens": {
+    "home": "Home",
+    "library": "Library",
+    "profile": "Profile"
+  },
+  "menu": {
+    "navigateLabel": "Navigate",
+    "settingsLabel": "Settings",
+    "accountLabel": "Account",
+    "signedIn": "signed in",
+    "tagline": "Tagline goes here.",
+    "version": "Acme · v0.1",
+    "signOut": "Sign out",
+    "items": {
+      "home": {
+        "label": "Home",
+        "sub": "Subtitle goes here"
+      },
+      "library": {
+        "label": "Library",
+        "sub": "Subtitle goes here"
+      },
+      "profile": {
+        "label": "Profile",
+        "sub": "Subtitle goes here"
+      }
+    }
+  },
+  "settings": {
+    "language": "Language"
+  },
+  "tabs": {
+    "home": {
+      "kicker": "Placeholder tab",
+      "title": "Home headline goes here",
+      "body": "Body copy goes here. Replace this tab with the product's main surface.",
+      "blockOne": "Placeholder block one",
+      "blockTwo": "Placeholder block two",
+      "signedInAs": "Signed in as {email}"
+    },
+    "library": {
+      "kicker": "Placeholder tab",
+      "title": "Library headline goes here",
+      "body": "Body copy goes here. This tab demonstrates the entitlement gate and a one-time purchase.",
+      "freeItem": "Included with every plan",
+      "premiumItem": "Unlocked by your subscription",
+      "lockedLabel": "Subscribers only",
+      "lockedBody": "Locked content description goes here.",
+      "unlockCta": "Unlock",
+      "oneTimeLabel": "Buy once",
+      "buyCta": "Buy"
+    },
+    "profile": {
+      "kicker": "Account",
+      "title": "Your account",
+      "body": "Body copy goes here.",
+      "emailLabel": "Email",
+      "planLabel": "Plan",
+      "planPremium": "Subscribed",
+      "planFree": "No subscription",
+      "upgradeCta": "Upgrade",
+      "signOut": "Sign out"
+    }
+  },
+  "onboarding": {
+    "dialogLabel": "A guide to the member area",
+    "skip": "Skip",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Get started",
+    "replay": "How it works",
+    "replayDescription": "Replay the introduction.",
+    "progress": "Step {current} of {total}",
+    "statusPreparing": "Preparing your account",
+    "statusReady": "Your account is ready",
+    "steps": {
+      "welcome": {
+        "kicker": "Welcome kicker goes here",
+        "title": "Welcome headline goes here",
+        "body": "Body copy goes here. Say what the member just got access to."
+      },
+      "explore": {
+        "kicker": "Three places to return to",
+        "title": "Explore headline goes here",
+        "body": "Body copy goes here.",
+        "items": {
+          "home": "Description goes here.",
+          "library": "Description goes here.",
+          "profile": "Description goes here."
+        }
+      },
+      "learn": {
+        "kicker": "Learn kicker goes here",
+        "title": "Learn headline goes here",
+        "body": "Body copy goes here."
+      },
+      "preparing": {
+        "kicker": "A note about preparation",
+        "title": "Preparing headline goes here",
+        "body": "Body copy goes here. Explain any first-visit work that takes a moment.",
+        "keepBrowsing": "You do not need to wait on one screen."
+      }
+    }
+  },
+  "upsell": {
+    "kicker": "Upsell kicker goes here",
+    "title": "Upsell headline goes here",
+    "subtitle": "Subtitle goes here. Say what the subscription adds.",
+    "features": [
+      {
+        "title": "Benefit one goes here",
+        "sub": "Supporting line goes here."
+      },
+      {
+        "title": "Benefit two goes here",
+        "sub": "Supporting line goes here."
+      },
+      {
+        "title": "Benefit three goes here",
+        "sub": "Supporting line goes here."
+      },
+      {
+        "title": "Cancel anytime",
+        "sub": "No commitment. Cancel from your account."
+      }
+    ],
+    "cadence": "/ week",
+    "billedNow": "Billed today. Renews weekly. Cancel anytime.",
+    "subscribeCta": "Subscribe",
+    "useNewCard": "Use a different card",
+    "processing": "Processing…",
+    "fineprint": "Recurring weekly subscription. Cancel anytime from your account.",
+    "later": "Maybe later",
+    "error": "Something went wrong. Please try again or contact support.",
+    "pendingActivation": "Activating your subscription… refreshing in a moment."
+  },
+  "purchase": {
+    "kicker": "One-time purchase",
+    "subtitle": "Product description goes here.",
+    "cta": "Buy now",
+    "processing": "Processing…",
+    "fineprint": "One-time payment. No subscription.",
+    "later": "Maybe later",
+    "error": "Something went wrong. Please try again or contact support."
+  },
+  "login": {
+    "kicker": "Sign in",
+    "titleEmail": "Welcome back",
+    "titleOtp": "A code is on its way",
+    "emailHelper": "Use the same email you signed up with.",
+    "otpHelper": "We sent a 6 digit code to {email}. It expires in 10 minutes.",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "codeLabel": "Six digits",
+    "sendCode": "Send code",
+    "sending": "Sending…",
+    "waitSeconds": "Wait ({seconds}s)",
+    "verifyCode": "Verify",
+    "verifying": "Verifying…",
+    "resend": "Resend code",
+    "resendIn": "Resend in {seconds}s",
+    "changeEmail": "Use a different email",
+    "sendFailed": "Could not send a code right now.",
+    "verifyFailed": "Could not verify that code right now.",
+    "invalidEmail": "Enter a valid email address.",
+    "invalidCode": "Enter the 6 digit code.",
+    "invalidOrExpiredCode": "That code is invalid or expired. Try again.",
+    "tooManyRequests": "Too many requests. Try again in {seconds}s.",
+    "tooManyAttempts": "Too many failed attempts. Try again in {minutes} min.",
+    "footnote": "Footnote goes here"
+  },
+  "subscriptionEnded": {
+    "title": "Your subscription has ended",
+    "body": "Your subscription is no longer active, so the member area is locked. If this is unexpected — or you'd like to come back — write to us and we'll help.",
+    "support": "Contact support",
+    "signOut": "Sign out"
+  }
+}

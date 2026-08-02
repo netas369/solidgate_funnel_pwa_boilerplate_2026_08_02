@@ -1,0 +1,122 @@
+{
+  "trial1": {
+    "product_id": "",
+    "prices": {
+      "eur": "",
+      "usd": "",
+      "czk": "",
+      "huf": "",
+      "ron": "",
+      "twd": "",
+      "ils": "",
+      "pln": "",
+      "dkk": "",
+      "jpy": ""
+    }
+  },
+  "trial2": {
+    "product_id": "",
+    "prices": {
+      "eur": "",
+      "usd": "",
+      "czk": "",
+      "huf": "",
+      "ron": "",
+      "twd": "",
+      "ils": "",
+      "pln": "",
+      "dkk": "",
+      "jpy": ""
+    }
+  },
+  "trial3": {
+    "product_id": "",
+    "prices": {
+      "eur": "",
+      "usd": "",
+      "czk": "",
+      "huf": "",
+      "ron": "",
+      "twd": "",
+      "ils": "",
+      "pln": "",
+      "dkk": "",
+      "jpy": ""
+    }
+  },
+  "trial4": {
+    "product_id": "",
+    "prices": {
+      "eur": "",
+      "usd": "",
+      "czk": "",
+      "huf": "",
+      "ron": "",
+      "twd": "",
+      "ils": "",
+      "pln": "",
+      "dkk": "",
+      "jpy": ""
+    }
+  },
+  "special_1eur": {
+    "product_id": "",
+    "prices": {
+      "eur": "",
+      "usd": "",
+      "czk": "",
+      "huf": "",
+      "ron": "",
+      "twd": "",
+      "ils": "",
+      "pln": "",
+      "dkk": "",
+      "jpy": ""
+    }
+  },
+  "special_free": {
+    "product_id": "",
+    "prices": {
+      "eur": "",
+      "usd": "",
+      "czk": "",
+      "huf": "",
+      "ron": "",
+      "twd": "",
+      "ils": "",
+      "pln": "",
+      "dkk": "",
+      "jpy": ""
+    }
+  },
+  "addon_trial": {
+    "product_id": "",
+    "prices": {
+      "eur": "",
+      "usd": "",
+      "czk": "",
+      "huf": "",
+      "ron": "",
+      "twd": "",
+      "ils": "",
+      "pln": "",
+      "dkk": "",
+      "jpy": ""
+    }
+  },
+  "addon_direct": {
+    "product_id": "",
+    "prices": {
+      "eur": "",
+      "usd": "",
+      "czk": "",
+      "huf": "",
+      "ron": "",
+      "twd": "",
+      "ils": "",
+      "pln": "",
+      "dkk": "",
+      "jpy": ""
+    }
+  }
+}

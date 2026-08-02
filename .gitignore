@@ -1,0 +1,67 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# turborepo
+.turbo
+
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+# NOTE: unanchored on purpose. A leading slash here only matches the repo root,
+# which is how apps/*/coverage and packages/*/coverage got committed before.
+coverage/
+
+# next.js
+.next/
+/out/
+
+# serwist generated service worker
+apps/pwa/public/sw.js
+apps/pwa/public/sw.js.map
+
+# production
+/build
+
+# scratch + generated output
+.tmp/
+scripts/out/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+.env*.local
+*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# AI assistant tooling
+.codex/
+/.agents/
+/skills/
+/skills-lock.json
+.claude/
+.planning/
+.impeccable/
+.playwright-mcp/

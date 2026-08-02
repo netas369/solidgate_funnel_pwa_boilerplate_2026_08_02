@@ -1,0 +1,92 @@
+{
+  "_locale": "en",
+  "_status": "source",
+  "meta": {
+    "title": "Order complete"
+  },
+  "header": {
+    "eyebrow": "Order confirmed",
+    "headline": "Thank you - your order is confirmed",
+    "subheadline": "Your account, receipt and next steps are below."
+  },
+  "recovery": {
+    "finalizingPayment": "Finalizing your payment",
+    "linkingOrder": "We are linking your order and account so your full summary can load.",
+    "noSessionError": "We could not restore your payment session. Please return to the offer page.",
+    "grantFailed": "Failed to finalize your payment."
+  },
+  "entitlements": {
+    "heading": "Your products",
+    "trial": "Trial",
+    "active": "Active"
+  },
+  "products": {
+    "BRAND_000000_SUB": "Main Subscription",
+    "BRANDLIFETIME_000000_SUB": "Lifetime Access",
+    "BRANDADDON_000000_SUB": "Weekly Add-on",
+    "BRANDBUNDLE_000000_PDF": "Bundle (all)",
+    "BRANDBUNDLE1_000000_PDF": "Bundle 1",
+    "BRANDBUNDLE2_000000_PDF": "Bundle 2",
+    "BRANDBUNDLE3_000000_PDF": "Bundle 3",
+    "BRANDPDF4_000000_PDF": "Digital Product 4",
+    "BRANDPDF5_000000_PDF": "Digital Product 5",
+    "BRANDPDF6_000000_PDF": "Digital Product 6",
+    "BRANDPDF7_000000_PDF": "Digital Product 7"
+  },
+  "orderProducts": {
+    "trial1": "Main Subscription",
+    "trial2": "Main Subscription",
+    "trial3": "Main Subscription",
+    "trial4": "Main Subscription",
+    "trial_monthly": "Main Subscription",
+    "special_1eur": "Main Subscription",
+    "special_free": "Main Subscription",
+    "oto1_lifetime": "Lifetime Access",
+    "oto2_addon_weekly": "Weekly Add-on",
+    "oto3_bundle_all": "Bundle (all)",
+    "oto3_bundle_1": "Bundle 1",
+    "oto3_bundle_2": "Bundle 2",
+    "oto3_bundle_3": "Bundle 3",
+    "oto4_pdf": "Digital Product 4",
+    "oto5_pdf": "Digital Product 5",
+    "oto6_pdf": "Digital Product 6",
+    "oto7_pdf": "Digital Product 7"
+  },
+  "onboarding": {
+    "heading": "Your next steps",
+    "subtitle": "Start with these three steps.",
+    "step1Title": "Check your email",
+    "step1Description": "We sent your login details and receipt to your inbox. This can take a few minutes.",
+    "step2Title": "Open the member area",
+    "step2Description": "Your dashboard is where your purchases and account settings live.",
+    "step3Title": "Get started",
+    "step3Description": "Open your dashboard and take the first step."
+  },
+  "guarantee": {
+    "headline": "Money-back guarantee headline goes here",
+    "body": "TODO(new product): describe your actual refund policy here, and keep it identical to the Money-Back Policy legal page.",
+    "riskFree": "Your purchase is protected."
+  },
+  "account": {
+    "heading": "Your account is ready",
+    "description": "We created an account for {email}. To log in next time, enter your email and use the 6-digit code we send you. No password needed."
+  },
+  "order": {
+    "heading": "Order summary",
+    "loading": "Your order details are loading. If this takes more than 10 seconds, please contact support.",
+    "totalPaid": "Total paid"
+  },
+  "dashboard": {
+    "buttonText": "Go to my dashboard",
+    "redirecting": "Redirecting…",
+    "ssl": "256-bit SSL encryption",
+    "instantAccess": "Instant access"
+  },
+  "footer": {
+    "brand": "Acme",
+    "copyright": "© Acme. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "support": "Support"
+  }
+}

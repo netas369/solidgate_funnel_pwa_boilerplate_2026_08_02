@@ -1,0 +1,214 @@
+{
+  "_locale": "en",
+  "_status": "source",
+  "meta": {
+    "title": "One-time offer"
+  },
+  "common": {
+    "paymentPending": "Your payment is still being confirmed. If your card was charged, your access is on its way - check your email in a few minutes before trying again.",
+    "paymentError": "Payment failed. Please try again or use a different card.",
+    "acceptedDeclined": "We couldn’t complete your “{product}” purchase — your card was not charged.",
+    "acceptedDeclinedDismiss": "Dismiss",
+    "products": {
+      "oto1_lifetime": "Lifetime Access",
+      "oto2_addon_weekly": "Weekly Add-on",
+      "oto3_bundle_all": "Bundle (all)",
+      "oto3_bundle_1": "Bundle 1",
+      "oto3_bundle_2": "Bundle 2",
+      "oto3_bundle_3": "Bundle 3",
+      "oto4_pdf": "Digital Product 4",
+      "oto5_pdf": "Digital Product 5",
+      "oto6_pdf": "Digital Product 6",
+      "oto7_pdf": "Digital Product 7"
+    }
+  },
+  "oto1": {
+    "eyebrow": "ONE-TIME OFFER 1",
+    "headline": "Offer 1 headline goes here",
+    "subheadline": "Subheadline goes here. Explain in one or two sentences what this one-click add-on gives the buyer.",
+    "benefits": [
+      "Benefit one goes here.",
+      "Benefit two goes here.",
+      "Benefit three goes here."
+    ],
+    "priceNote": "One-time payment. No renewal.",
+    "anchorNote": "Compare with {anchor} per month.",
+    "savedCard": "Paying with your saved {brand} card ending {last4}.",
+    "savedCardLoading": "Checking your saved payment method...",
+    "savedCardMissing": "We could not find a saved payment method yet. Try again in a moment.",
+    "cta": "ADD THIS TO MY ORDER",
+    "ctaProcessing": "PROCESSING...",
+    "ctaDecline": "No thanks, continue without this",
+    "paymentError": "Payment failed. Please try again or use a different card.",
+    "disclaimer": "TODO(new product): replace this with your own pre-purchase disclosure. By continuing you agree to be charged {price} on the payment method you used at checkout."
+  },
+  "oto2": {
+    "eyebrow": "ONE-TIME OFFER 2",
+    "headline": "Offer 2 headline goes here",
+    "subheadline": "Subheadline goes here. Explain in one or two sentences what this one-click add-on gives the buyer.",
+    "benefits": [
+      "Benefit one goes here.",
+      "Benefit two goes here.",
+      "Benefit three goes here."
+    ],
+    "priceNote": "Then {recurring} per week until you cancel.",
+    "cta": "ADD THIS TO MY ORDER",
+    "ctaProcessing": "PROCESSING...",
+    "ctaDecline": "No thanks, continue without this",
+    "paymentError": "Payment failed. Please try again or use a different card.",
+    "disclaimer": "TODO(new product): replace this with your own pre-purchase disclosure. By continuing you agree to be charged {price} on the payment method you used at checkout."
+  },
+  "oto3": {
+    "eyebrow": "ONE-TIME OFFER 3",
+    "headline": "Offer 3 headline goes here",
+    "subheadline": "Subheadline goes here. Explain in one or two sentences what this one-click add-on gives the buyer.",
+    "benefits": [
+      "Benefit one goes here.",
+      "Benefit two goes here.",
+      "Benefit three goes here."
+    ],
+    "items": {
+      "bundleAll": {
+        "title": "Bundle (all) - title goes here",
+        "description": "Short description of the complete bundle goes here."
+      },
+      "bundle1": {
+        "title": "Bundle 1 - title goes here",
+        "description": "Short description of bundle 1 goes here."
+      },
+      "bundle2": {
+        "title": "Bundle 2 - title goes here",
+        "description": "Short description of bundle 2 goes here."
+      },
+      "bundle3": {
+        "title": "Bundle 3 - title goes here",
+        "description": "Short description of bundle 3 goes here."
+      }
+    },
+    "cta": "ADD THIS TO MY ORDER",
+    "ctaProcessing": "PROCESSING...",
+    "ctaDecline": "No thanks, continue without this",
+    "paymentError": "Payment failed. Please try again or use a different card.",
+    "disclaimer": "TODO(new product): replace this with your own pre-purchase disclosure. By continuing you agree to be charged {price} on the payment method you used at checkout."
+  },
+  "oto4": {
+    "eyebrow": "ONE-TIME OFFER 4",
+    "headline": "Offer 4 headline goes here",
+    "subheadline": "Subheadline goes here. Explain in one or two sentences what this one-click add-on gives the buyer.",
+    "benefits": [
+      "Benefit one goes here.",
+      "Benefit two goes here.",
+      "Benefit three goes here."
+    ],
+    "priceNote": "One-time payment. Instant access in your account.",
+    "cta": "ADD THIS TO MY ORDER",
+    "ctaProcessing": "PROCESSING...",
+    "ctaDecline": "No thanks, continue without this",
+    "paymentError": "Payment failed. Please try again or use a different card.",
+    "disclaimer": "TODO(new product): replace this with your own pre-purchase disclosure. By continuing you agree to be charged {price} on the payment method you used at checkout."
+  },
+  "oto5": {
+    "eyebrow": "ONE-TIME OFFER 5",
+    "headline": "Offer 5 headline goes here",
+    "subheadline": "Subheadline goes here. Explain in one or two sentences what this one-click add-on gives the buyer.",
+    "benefits": [
+      "Benefit one goes here.",
+      "Benefit two goes here.",
+      "Benefit three goes here."
+    ],
+    "priceNote": "One-time payment. Instant access in your account.",
+    "cta": "ADD THIS TO MY ORDER",
+    "ctaProcessing": "PROCESSING...",
+    "ctaDecline": "No thanks, continue without this",
+    "paymentError": "Payment failed. Please try again or use a different card.",
+    "disclaimer": "TODO(new product): replace this with your own pre-purchase disclosure. By continuing you agree to be charged {price} on the payment method you used at checkout."
+  },
+  "oto6": {
+    "eyebrow": "ONE-TIME OFFER 6",
+    "headline": "Offer 6 headline goes here",
+    "subheadline": "Subheadline goes here. Explain in one or two sentences what this one-click add-on gives the buyer.",
+    "benefits": [
+      "Benefit one goes here.",
+      "Benefit two goes here.",
+      "Benefit three goes here."
+    ],
+    "priceNote": "One-time payment. Instant access in your account.",
+    "cta": "ADD THIS TO MY ORDER",
+    "ctaProcessing": "PROCESSING...",
+    "ctaDecline": "No thanks, continue without this",
+    "paymentError": "Payment failed. Please try again or use a different card.",
+    "disclaimer": "TODO(new product): replace this with your own pre-purchase disclosure. By continuing you agree to be charged {price} on the payment method you used at checkout."
+  },
+  "oto7": {
+    "eyebrow": "ONE-TIME OFFER 7",
+    "headline": "Offer 7 headline goes here",
+    "subheadline": "Subheadline goes here. Explain in one or two sentences what this one-click add-on gives the buyer.",
+    "benefits": [
+      "Benefit one goes here.",
+      "Benefit two goes here.",
+      "Benefit three goes here."
+    ],
+    "priceNote": "One-time payment. Instant access in your account.",
+    "cta": "ADD THIS TO MY ORDER",
+    "ctaProcessing": "PROCESSING...",
+    "ctaDecline": "No thanks, continue without this",
+    "paymentError": "Payment failed. Please try again or use a different card.",
+    "disclaimer": "TODO(new product): replace this with your own pre-purchase disclosure. By continuing you agree to be charged {price} on the payment method you used at checkout."
+  },
+  "oto8Summary": {
+    "letterEyebrow": "YOU'RE ALL SET",
+    "title": "Welcome aboard",
+    "subtitle": "Everything you unlocked is listed below. Next, add the app to your home screen.",
+    "purchasesHeading": "WHAT YOU UNLOCKED",
+    "loading": "Loading your purchases…",
+    "emptyPurchases": "Your purchases will appear here once your order is confirmed.",
+    "items": {
+      "subscription": "Main Subscription",
+      "lifetime": "Lifetime Access",
+      "addon": "Weekly Add-on",
+      "bundleAll": "Bundle (all)",
+      "bundle1": "Bundle 1",
+      "bundle2": "Bundle 2",
+      "bundle3": "Bundle 3",
+      "pdf4": "Digital Product 4",
+      "pdf5": "Digital Product 5",
+      "pdf6": "Digital Product 6",
+      "pdf7": "Digital Product 7",
+      "unknown": "Purchase"
+    },
+    "recurringNote": "Recurring subscription - cancel anytime",
+    "onboardingHeading": "Add the app to your home screen",
+    "onboardingSubtitle": "Install it like a native app so it is one tap away. No app store needed.",
+    "platform": {
+      "ios": {
+        "heading": "ON IPHONE & IPAD (SAFARI)",
+        "steps": [
+          "Tap the Share button at the bottom of Safari (the square with an arrow).",
+          "Scroll down and tap “Add to Home Screen”.",
+          "Tap “Add” in the top-right corner.",
+          "Open the app from your home screen, just like any other app."
+        ]
+      },
+      "android": {
+        "heading": "ON ANDROID (CHROME)",
+        "steps": [
+          "Tap the three-dot menu in the top-right of Chrome.",
+          "Tap “Add to Home screen” (or “Install app”).",
+          "Tap “Add” to confirm.",
+          "Open the app from your home screen, just like any other app."
+        ]
+      },
+      "desktop": {
+        "heading": "ON YOUR COMPUTER",
+        "steps": [
+          "Open the app using the button below.",
+          "In the address bar, click the install icon (or your browser’s menu → “Install”).",
+          "For the best experience, open this page on your phone instead."
+        ]
+      }
+    },
+    "cta": "Open my app",
+    "opening": "Opening…",
+    "ctaHint": "You’ll be signed in automatically, no password needed."
+  }
+}

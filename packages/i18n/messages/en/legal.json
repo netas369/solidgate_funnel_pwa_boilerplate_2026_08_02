@@ -1,0 +1,1101 @@
+{
+  "meta": {
+    "title": "Legal",
+    "back": "Back"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "metaTitle": "Privacy Policy | Acme",
+    "metaDescription": "How Acme collects, uses, and protects your personal data under GDPR.",
+    "lastUpdated": "Last updated: {date}",
+    "controllerIntro": "(“we”, “us”, “our”) is the data controller responsible for your personal data.",
+    "address": "Address: {address}",
+    "email": "Email: {email}",
+    "tableHeaders": {
+      "category": "Category",
+      "fields": "Fields",
+      "purpose": "Purpose",
+      "legalBasis": "Legal Basis",
+      "retention": "Retention",
+      "service": "Service",
+      "role": "Role",
+      "dataShared": "Data Shared",
+      "location": "Location",
+      "transferMechanism": "Transfer Mechanism"
+    },
+    "relatedPolicies": "Related Policies",
+    "cookiePolicyLink": "Cookie Policy",
+    "termsLink": "Terms of Service",
+    "contactLink": "Contact Us"
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "metaTitle": "Terms of Service | Acme",
+    "metaDescription": "Acme Terms of Service agreement, payment, renewals, disclaimers, and dispute resolution.",
+    "lastUpdated": "Last updated: {date}",
+    "relatedPolicies": "Related Policies",
+    "privacyLink": "Privacy Policy",
+    "cookiePolicyLink": "Cookie Policy",
+    "contactLink": "Contact Us"
+  },
+  "subscription": {
+    "title": "Subscription Terms",
+    "metaTitle": "Subscription Terms | Acme",
+    "metaDescription": "Acme subscription terms, cancellation and refund policy.",
+    "lastUpdated": "Last updated: {date}",
+    "relatedPolicies": "Related policies",
+    "termsLink": "Terms of Service",
+    "privacyLink": "Privacy Policy",
+    "contactLink": "Contact Us"
+  },
+  "moneyBack": {
+    "title": "Money-Back Policy",
+    "metaTitle": "Money-Back Policy | Acme",
+    "metaDescription": "Acme Money-Back Policy: eligibility, refund conditions, exclusions, and EU/UK consumer rights.",
+    "lastUpdated": "Last updated: {date}",
+    "relatedPolicies": "Related policies",
+    "subscriptionLink": "Subscription Terms",
+    "termsLink": "Terms of Service",
+    "contactLink": "Contact Us"
+  },
+  "cookies": {
+    "title": "Cookie Policy",
+    "metaTitle": "Cookie Policy | Acme",
+    "metaDescription": "Information about cookies and local storage used by Acme.",
+    "lastUpdated": "Last updated: {date}",
+    "intro": "This Cookie Policy explains what cookies and local storage technologies we use, why we use them, and how you can control them.",
+    "cookiesWeUse": "Cookies We Use",
+    "strictlyNecessary": "Strictly Necessary",
+    "strictlyNecessaryDesc": "These cookies are required for the Service to function and cannot be disabled.",
+    "analyticsFunctional": "Analytics & Functional",
+    "analyticsFunctionalDesc": "These cookies are only activated after you provide consent through our cookie banner.",
+    "tableHeaders": {
+      "name": "Name / Identifier",
+      "provider": "Provider",
+      "purpose": "Purpose",
+      "type": "Type",
+      "essential": "Essential",
+      "duration": "Duration"
+    },
+    "yes": "Yes",
+    "no": "No",
+    "changesToPolicy": "Changes to This Policy",
+    "changesToPolicyContent": "We may update this Cookie Policy from time to time to reflect changes in the cookies we use or for operational, legal, or regulatory reasons. We encourage you to review this page periodically to stay informed about our cookie practices.",
+    "contactHeading": "Contact",
+    "contactContent": "If you have any questions about this Cookie Policy, please visit our {contactLink}."
+  },
+  "contact": {
+    "title": "Contact Us",
+    "metaTitle": "Contact Us | Acme",
+    "metaDescription": "Contact Acme for general inquiries or data protection requests.",
+    "companyInfo": "Company Information",
+    "generalInquiries": "General Inquiries",
+    "emailLabel": "Email: {email}",
+    "privacyRequests": "Privacy & Data Protection Requests",
+    "privacyRequestsIntro": "For requests related to your personal data (access, correction, deletion, or any other privacy rights under GDPR), please contact us at:",
+    "gdprResponse": "We will respond to your request within 30 days as required by GDPR Article 12.",
+    "supervisoryAuthority": "Supervisory Authority",
+    "supervisoryAuthorityIntro": "If you are not satisfied with our response to your data protection request, you have the right to lodge a complaint with your local data protection authority.",
+    "findAuthority": "Find your national data protection authority (EDPB members list)",
+    "relatedPages": "Related Pages"
+  },
+  "documents": {
+    "privacyPolicyData": {
+      "lastUpdated": "April 29, 2026",
+      "controllerIdentity": {
+        "name": "Your Company Ltd (COMPANY NO: 00000000)",
+        "address": "1 Example Street, Example City, EX1 2AB, Example Country",
+        "email": "support@example.com"
+      },
+      "dataInventory": [
+        {
+          "category": "Email address",
+          "fields": "email",
+          "purpose": "Create your account, deliver quiz results, send transactional emails",
+          "legalBasis": "Consent, Art. 6(1)(a)",
+          "retention": "Active account or 90 days for abandoned sessions"
+        },
+        {
+          "category": "Quiz answers",
+          "fields": "quiz_answers",
+          "purpose": "Generate personalized insights and recommendations",
+          "legalBasis": "Explicit consent, Art. 9(2)(a)",
+          "retention": "Active account or 90 days"
+        },
+        {
+          "category": "Personalized result",
+          "fields": "result_segment",
+          "purpose": "Tailor recommendations and content",
+          "legalBasis": "Legitimate interest / Consent",
+          "retention": "Active account or 90 days"
+        },
+        {
+          "category": "Payment identifiers",
+          "fields": "solidgate_order_id, subscription_id, card_token",
+          "purpose": "Process payments, subscriptions, and refunds",
+          "legalBasis": "Contract, Art. 6(1)(b)",
+          "retention": "7 years"
+        },
+        {
+          "category": "Order history",
+          "fields": "amount, currency, product, status",
+          "purpose": "Accounting and purchase history",
+          "legalBasis": "Contract + Legal obligation",
+          "retention": "7 years"
+        },
+        {
+          "category": "Progress data",
+          "fields": "completed lessons, progress status, completed steps, plan activity",
+          "purpose": "Resume user progress and improve experience",
+          "legalBasis": "Contract",
+          "retention": "Duration of account"
+        },
+        {
+          "category": "Login security",
+          "fields": "email, IP address, login attempts",
+          "purpose": "Fraud prevention and security",
+          "legalBasis": "Legitimate interest",
+          "retention": "30 days"
+        },
+        {
+          "category": "Usage analytics",
+          "fields": "events, pages visited, metadata",
+          "purpose": "Product improvement and analytics",
+          "legalBasis": "Consent",
+          "retention": "Up to 2 years"
+        },
+        {
+          "category": "Subscription access",
+          "fields": "subscription status, access level",
+          "purpose": "Grant access to purchased content",
+          "legalBasis": "Contract",
+          "retention": "Duration of account"
+        }
+      ],
+      "thirdParties": [
+        {
+          "name": "Solidgate",
+          "role": "Payment processor",
+          "dataShared": "Payment identifiers, email, purchase information",
+          "location": "Cyprus (EU)",
+          "transferMechanism": "Processing within the EU/EEA"
+        },
+        {
+          "name": "Google Analytics / Google Ads",
+          "role": "Analytics",
+          "dataShared": "Analytics identifiers, usage information",
+          "location": "USA",
+          "transferMechanism": "EU-US Data Privacy Framework"
+        },
+        {
+          "name": "Meta Pixel",
+          "role": "Advertising",
+          "dataShared": "Hashed email, events",
+          "location": "USA",
+          "transferMechanism": "EU-US Data Privacy Framework"
+        },
+        {
+          "name": "ActiveCampaign",
+          "role": "Email delivery",
+          "dataShared": "Email address, subscription status",
+          "location": "USA",
+          "transferMechanism": "Standard Contractual Clauses"
+        },
+        {
+          "name": "PostHog",
+          "role": "Analytics",
+          "dataShared": "Session information, product events",
+          "location": "EU",
+          "transferMechanism": "EU Data Residency"
+        },
+        {
+          "name": "Supabase",
+          "role": "Database hosting",
+          "dataShared": "User accounts, subscriptions, product data",
+          "location": "Project region",
+          "transferMechanism": "Appropriate safeguards"
+        },
+        {
+          "name": "Cloudflare",
+          "role": "Security",
+          "dataShared": "Technical request information",
+          "location": "Global",
+          "transferMechanism": "Standard safeguards"
+        }
+      ],
+      "sections": [
+        {
+          "id": "data-controller",
+          "title": "1. DATA CONTROLLER",
+          "content": [
+            "Your Company Ltd (COMPANY NO: 00000000) is the data controller responsible for your personal data."
+          ]
+        },
+        {
+          "id": "data-collected",
+          "title": "2. WHAT CATEGORIES OF PERSONAL DATA DO WE COLLECT?",
+          "content": [
+            "We collect both data you voluntarily provide, for example, your email address or name, and data generated automatically when you use the Product, for example, your IP address or device information.",
+            "2.1 Data You Provide",
+            "You provide personal data when you: register or create an account; complete quizzes, questionnaires, or profile inputs; purchase a ACME Plan; contact Customer Support; respond to our emails; submit feedback; or report a technical issue.",
+            "2.2 Automatically Collected Data",
+            "How You Found Us: We collect information about how you arrived at our Product, including referral websites, advertising campaigns, or marketing links.",
+            "Cookies and Similar Technologies: We use cookies, local storage, and similar technologies to improve your experience. For more information, please see our Cookie Policy.",
+            "Browser and Device Information: We automatically collect technical information including your IP address, browser type, operating system, device model, language, time zone, referring URLs, and usage information.",
+            "Payment Information: Payments are processed by our third-party payment providers. We do not store your complete payment card details.",
+            "Personal Data We Process"
+          ]
+        },
+        {
+          "id": "purpose-of-processing",
+          "title": "3. FOR WHAT PURPOSES DO WE PROCESS YOUR PERSONAL DATA?",
+          "content": [
+            "We process your personal data for the following purposes."
+          ],
+          "list": [
+            "3.1 Service Provision — To provide access to the ACME platform, digital content, subscription plans, personalized recommendations and content features.",
+            "3.2 Product Personalization — To generate personalized insights and recommendations, and improve your overall experience.",
+            "3.3 Research and Analytics — To understand how users interact with the Product and improve functionality.",
+            "3.4 Payment Processing — To process purchases, subscriptions, renewals, and refunds.",
+            "3.5 Fraud Prevention and Security — To detect unauthorized access, abuse, fraud, or other security incidents.",
+            "3.6 Communication — To send transactional emails, account notifications, customer support responses, and service-related communications.",
+            "3.7 Marketing — With your consent where required, we may send newsletters, promotional offers, product updates and educational materials.",
+            "3.8 Customer Support — To respond to questions, complaints, refund requests, and technical issues.",
+            "3.9 Advertising — To measure advertising performance and personalize marketing campaigns.",
+            "3.10 Legal Obligations — Where required by law, we may disclose information to governmental authorities or regulatory bodies."
+          ]
+        },
+        {
+          "id": "data-storage-transfer",
+          "title": "4. DATA STORAGE AND TRANSFER",
+          "content": [
+            "We retain your personal data only for as long as necessary to fulfill the purposes described in this Privacy Policy or as required by applicable law.",
+            "Where necessary, your personal data may be transferred outside the European Economic Area using appropriate safeguards, including Standard Contractual Clauses or other legally recognized transfer mechanisms."
+          ]
+        },
+        {
+          "id": "data-recipients",
+          "title": "5. THIRD-PARTY DATA RECIPIENTS",
+          "content": [
+            "We share personal data only with service providers that help us operate our Product. They process personal data solely on our behalf and according to our instructions.",
+            "We never sell your personal data."
+          ]
+        },
+        {
+          "id": "your-rights",
+          "title": "6. YOUR RIGHTS",
+          "content": [
+            "Subject to applicable law, you have the right to:"
+          ],
+          "list": [
+            "access your personal data;",
+            "correct inaccurate information;",
+            "request deletion of your personal data;",
+            "restrict processing;",
+            "object to certain processing activities;",
+            "withdraw consent at any time where processing is based on consent;",
+            "receive your personal data in a structured, commonly used format;",
+            "lodge a complaint with your local supervisory authority."
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "7. CONTACT INFORMATION",
+          "content": [
+            "If you have any questions regarding this Privacy Policy or the processing of your personal data, please contact us:",
+            "support@example.com"
+          ]
+        }
+      ]
+    },
+    "termsData": {
+      "lastUpdated": "April 29, 2026",
+      "sections": [
+        {
+          "id": "agreement-and-acceptance",
+          "title": "1. Agreement and Acceptance",
+          "content": [
+            "These Terms of Service (the “Terms” or “Agreement”) constitute a legal agreement between Your Company Ltd (COMPANY NO: 00000000), with registered address at 1 Example Street, Example City, EX1 2AB, Example Country (“Your Company Ltd”, “ACME”, the “Service”, the “Site”, “App”, “we”, “us”, or “our”), and any person who accesses, browses, uses, purchases, subscribes to, or otherwise interacts with the ACME website, mobile application, digital content, digital services, member platform, or related features (the “User” or “you”).",
+            "By accessing, browsing, using, purchasing, subscribing to, or otherwise interacting with the Service, you agree to be bound by these Terms.",
+            "If you do not agree to these Terms, you must immediately stop using the Service.",
+            "1.1 Incorporated Policies",
+            "The following policies form an integral part of this Agreement and are incorporated by reference:"
+          ],
+          "list": [
+            "Subscription Terms",
+            "Money-Back Policy",
+            "Privacy Policy",
+            "Cookie Policy"
+          ]
+        },
+        {
+          "id": "service",
+          "title": "2. Service",
+          "content": [
+            "ACME provides access to digital content, personalized recommendations, educational materials, member-only content, subscription-based features, AI-powered tools where available, and related digital services.",
+            "While your membership remains active, you may access content available through the ACME platform, including personalized content, educational resources, digital programs and interactive tools, and any future content or features that may be added.",
+            "Some parts of the Service may be accessible without creating an account, while other parts may require registration, member access, login credentials, purchase confirmation, or email-based delivery.",
+            "We may modify, update, suspend, discontinue, or remove any part of the Service at any time, subject to applicable law."
+          ]
+        },
+        {
+          "id": "license-and-restrictions",
+          "title": "3. License and Use Restrictions",
+          "content": [
+            "3.1 Limited License",
+            "Subject to these Terms, we grant you a limited, non-exclusive, non-transferable, non-sublicensable, revocable license to access and use the Service solely for your personal, non-commercial use.",
+            "3.2 Restrictions",
+            "Except as expressly permitted by these Terms, you may not:"
+          ],
+          "list": [
+            "copy, reproduce, distribute, transmit, publish, resell, rent, lease, sublicense, or commercially exploit any part of the Service;",
+            "modify, adapt, translate, reverse engineer, decompile, or create derivative works from the Service except where prohibited by applicable law;",
+            "use robots, scrapers, crawlers, automation tools, AI extraction tools, or similar methods to access or interact with the Service;",
+            "interfere with or disrupt the Service, servers, systems, or networks connected to the Service;",
+            "circumvent or attempt to circumvent security, access, anti-copying, or subscription protection measures;",
+            "share, transfer, resell, or otherwise provide account access or subscription access to third parties."
+          ]
+        },
+        {
+          "id": "intellectual-property",
+          "title": "4. Intellectual Property",
+          "content": [
+            "4.1 Ownership",
+            "The Service is licensed, not sold.",
+            "We and our licensors retain all right, title, and interest in and to the Service, including all content, educational materials, digital programs, AI-generated content, software, materials, trademarks, logos, branding, design elements, and intellectual property rights.",
+            "4.2 Content",
+            "All text, educational materials, digital programs, graphics, software, audio, video, visual elements, downloadable materials, AI-generated content, branding, and other materials made available through the Service are owned by us and/or our licensors and are protected by applicable intellectual property laws.",
+            "4.3 Personal Use Only",
+            "All content is provided solely for personal, non-commercial use.",
+            "You may not copy, republish, redistribute, reproduce, train AI models on, scrape, extract, exploit, or otherwise use any content except as expressly permitted by these Terms.",
+            "4.4 Enforcement",
+            "We reserve the right to take action under applicable law in relation to unauthorized use of the Service or infringement of our rights."
+          ]
+        },
+        {
+          "id": "payment-subscriptions-renewals",
+          "title": "5. Payment, Subscriptions, and Renewals",
+          "content": [
+            "5.1 Paid Services",
+            "Certain features of the Service are available only through a paid subscription or other paid access model.",
+            "5.2 Plan-Specific Charges",
+            "By purchasing a subscription, you agree to the initial and recurring charges applicable to the selected ACME Plan at checkout, including any trial period, introductory price, renewal price, and billing interval disclosed at checkout, purchase confirmation, and Subscription Terms.",
+            "5.3 Automatic Renewal",
+            "If you purchase a recurring subscription, you authorize us and/or our third-party payment processor to automatically charge your selected payment method for each recurring billing period until cancellation.",
+            "5.4 Cancellation",
+            "You may cancel your subscription through available account settings or by contacting support@example.com.",
+            "To avoid the next recurring charge, you must cancel before your next billing date, including before the end of any applicable trial period.",
+            "Because renewal processing may begin shortly before the next billing date, we strongly recommend completing cancellation at least 24 hours before the applicable trial period or billing period ends.",
+            "5.5 Access After Cancellation",
+            "If you cancel, access will remain active until the end of the then-current paid trial period or billing period, after which the subscription will terminate automatically unless otherwise stated in the Subscription Terms.",
+            "5.6 Refunds and Money-Back",
+            "Refund eligibility is governed exclusively by the Money-Back Policy, Subscription Terms, and applicable law.",
+            "5.7 Review Period for Refund Requests",
+            "Where a refund, reimbursement, charge dispute, or similar request is submitted, we may take up to twenty (20) business days from receipt of all required information to:"
+          ],
+          "list": [
+            "review the request;",
+            "analyze supporting evidence;",
+            "verify account activity;",
+            "verify usage data;",
+            "perform internal investigations;",
+            "determine eligibility for approval or denial."
+          ],
+          "postList": [
+            "You agree to cooperate with any reasonable request for additional information.",
+            "5.8 Failed Payments and Suspension",
+            "If your payment method cannot be charged, we may retry the charge, suspend access, cancel the subscription, or take other reasonable actions permitted by law.",
+            "5.9 Outstanding Amounts",
+            "You remain responsible for all validly accrued charges, fees, taxes, and payment obligations incurred before effective cancellation, suspension, or termination."
+          ]
+        },
+        {
+          "id": "privacy",
+          "title": "6. Privacy",
+          "content": [
+            "We process personal data in accordance with our Privacy Policy.",
+            "By using the Service, you acknowledge that personal data submitted through the Service may be processed as described in the Privacy Policy."
+          ]
+        },
+        {
+          "id": "account-termination",
+          "title": "7. Account, Access, Suspension, and Termination",
+          "content": [
+            "7.1 User Responsibility",
+            "You are responsible for maintaining the confidentiality of your login credentials and for all activities carried out through your account.",
+            "7.2 Suspension or Termination by Us",
+            "We may suspend, restrict, or terminate your account and/or access to the Service if we reasonably believe that:"
+          ],
+          "list": [
+            "you violated these Terms or any incorporated policy;",
+            "payment failed or was reversed;",
+            "subscription access is being shared, transferred, or resold;",
+            "the Service is being misused or accessed fraudulently;",
+            "prolonged inactivity applies;",
+            "suspension or termination is necessary for legal, operational, abuse-prevention, or security reasons."
+          ],
+          "postList": [
+            "7.3 Account Deletion",
+            "Where applicable, termination may result in deletion of account-related data stored on our systems, subject to legal retention obligations and our Privacy Policy."
+          ]
+        },
+        {
+          "id": "copyright-policy",
+          "title": "8. Copyright and Intellectual Property Complaints",
+          "content": [
+            "If you believe that any content available through the Service infringes your intellectual property rights, please send a notice to support@example.com with sufficient information for us to investigate the claim.",
+            "We reserve the right to investigate and take appropriate action."
+          ]
+        },
+        {
+          "id": "disclaimers",
+          "title": "9. Disclaimers",
+          "content": [
+            "9.1 “As Is” and “As Available”",
+            "To the maximum extent permitted by law, the Service is provided on an “as is” and “as available” basis without warranties of any kind.",
+            "9.2 No Guarantee of Results",
+            "We do not guarantee that use of the Service will produce any particular outcome, insight, life change, personal transformation, emotional result, relationship result, educational achievement, or other result.",
+            "9.3 AI Features Disclaimer",
+            "Certain features of the Service may use artificial intelligence technologies, including AI-generated recommendations, personalized content, responses, educational guidance, personalized insights, or other outputs.",
+            "AI-generated outputs may contain inaccuracies, incomplete information, fictional information, or content generated automatically without human review.",
+            "AI-generated content is provided for informational and educational purposes only and should not be relied upon as medical, psychological, therapeutic, legal, financial, relationship, spiritual, or other professional advice.",
+            "9.4 Content Disclaimer",
+            "The Service provides educational and informational content only.",
+            "Nothing available through the Service constitutes professional advice, including medical, psychological, therapeutic, legal, financial, relationship, or other regulated professional advice.",
+            "Digital content, AI-generated insights, recommendations and other materials are provided for educational and informational purposes only.",
+            "You are solely responsible for your decisions, actions, interpretations, and reliance on any information provided through the Service.",
+            "9.5 No Warranty",
+            "To the maximum extent permitted by law, we do not warrant that:"
+          ],
+          "list": [
+            "the Service will meet your expectations;",
+            "the Service will be uninterrupted, timely, secure, or error-free;",
+            "content, recommendations, educational materials, or AI-generated outputs will be accurate, complete, or reliable;",
+            "defects will always be corrected."
+          ]
+        },
+        {
+          "id": "limitation-of-liability",
+          "title": "10. Limitation of Liability",
+          "content": [
+            "To the maximum extent permitted by applicable law, Your Company Ltd shall not be liable for any indirect, incidental, consequential, special, exemplary, or punitive damages, or for any loss of profits, revenue, goodwill, business, opportunity, or data arising out of or related to:"
+          ],
+          "list": [
+            "your use of or inability to use the Service;",
+            "your purchase of or reliance upon the Service;",
+            "interruption, suspension, termination, or modification of the Service;",
+            "unauthorized access to or alteration of your data;",
+            "third-party conduct, payment processors, or services;",
+            "AI-generated outputs, recommendations, educational content, or other materials;",
+            "failure to cancel before the next billing date."
+          ]
+        },
+        {
+          "id": "indemnification",
+          "title": "11. Indemnification",
+          "content": [
+            "To the maximum extent permitted by law, you agree to indemnify, defend, and hold harmless Your Company Ltd, its affiliates, directors, officers, employees, contractors, licensors, and agents from and against any claims, liabilities, losses, damages, costs, or expenses arising from:"
+          ],
+          "list": [
+            "your breach of these Terms;",
+            "misuse of the Service;",
+            "violation of applicable law;",
+            "infringement of third-party rights."
+          ]
+        },
+        {
+          "id": "dispute-resolution",
+          "title": "12. Dispute Resolution",
+          "content": [
+            "12.1 Arbitration",
+            "To the maximum extent permitted by law, any dispute, claim, or controversy arising from or relating to these Terms or the Service shall be resolved by binding arbitration administered under the LCIA Rules.",
+            "12.2 Individual Basis Only",
+            "Arbitration shall be conducted solely on an individual basis.",
+            "Class actions, collective actions, representative actions, and similar proceedings are not permitted.",
+            "12.3 Opt-Out",
+            "You may opt out of arbitration by emailing support@example.com within thirty (30) days of first accepting these Terms.",
+            "12.4 Non-Arbitrable Matters",
+            "If a dispute is found not to be arbitrable, or the arbitration provision is found unenforceable, the dispute shall be resolved exclusively by the competent courts of Example City, Example Country, unless mandatory consumer law provides otherwise.",
+            "12.5 Interim Relief",
+            "Nothing in this section prevents either party from seeking injunctive, protective, or interim relief from a court of competent jurisdiction where necessary."
+          ]
+        },
+        {
+          "id": "notices",
+          "title": "13. Notices",
+          "content": [
+            "13.1 Methods of Notice",
+            "We may provide notices by:"
+          ],
+          "list": [
+            "email;",
+            "account notification;",
+            "posting on the Service;",
+            "other reasonable communication methods."
+          ],
+          "postList": [
+            "13.2 Deemed Receipt",
+            "Subject to applicable law, email notice is deemed received when sent, even if filtered into spam, promotions, junk, or similar folders.",
+            "13.3 Your Responsibility",
+            "You should keep your contact details current and regularly monitor your email communications."
+          ]
+        },
+        {
+          "id": "term-and-survival",
+          "title": "14. Term and Survival",
+          "content": [
+            "These Terms take effect when you first access or use the Service and remain in effect until terminated.",
+            "Any provisions that by their nature should survive termination shall survive, including Sections 4 through 17."
+          ]
+        },
+        {
+          "id": "electronic-signature",
+          "title": "15. Electronic Signatures and Communications",
+          "content": [
+            "By clicking buttons such as:"
+          ],
+          "list": [
+            "CONTINUE",
+            "GET MY PLAN",
+            "START",
+            "SUBSCRIBE",
+            "BUY NOW",
+            "GET ACCESS"
+          ],
+          "postList": [
+            "or by otherwise completing a purchase or digital action through the Service, you provide a legally binding electronic signature to the extent permitted by law.",
+            "You consent to the use of electronic signatures, records, notices, contracts, and communications delivered electronically."
+          ]
+        },
+        {
+          "id": "other-provisions",
+          "title": "16. Miscellaneous",
+          "content": [
+            "16.1 Governing Law",
+            "These Terms and your use of the Service shall be governed by the laws of the Example Country, excluding conflict-of-laws principles, subject to any mandatory consumer protection laws applicable to you that cannot be contractually excluded.",
+            "16.2 Entire Agreement",
+            "These Terms, together with all incorporated policies, constitute the entire agreement between you and us regarding the Service.",
+            "16.3 Severability",
+            "If any provision is found invalid or unenforceable, the remaining provisions shall remain in full force and effect.",
+            "16.4 No Waiver",
+            "Failure to enforce any provision shall not constitute a waiver of that provision.",
+            "16.5 Assignment",
+            "We may assign or transfer our rights and obligations under these Terms to another entity, affiliate, successor, purchaser, or as part of a business transfer.",
+            "16.6 Force Majeure",
+            "We shall not be liable for delays or failures caused by events beyond our reasonable control, including internet outages, cyber incidents, hosting failures, payment processor issues, natural disasters, governmental actions, labor disputes, riots, wars, terrorism, or infrastructure disruptions."
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "17. Contact Information",
+          "content": [
+            "If you have questions regarding these Terms, Subscription Terms, Money-Back Policy, or other legal documents, please contact:",
+            "support@example.com",
+            "ACME",
+            "Your Company Ltd",
+            "I have read and agree to The ACME Terms of Service and all policies listed below.",
+            "Related Policies"
+          ],
+          "list": [
+            "Subscription Terms",
+            "Money-Back Policy",
+            "Privacy Policy",
+            "Cookie Policy"
+          ]
+        }
+      ]
+    },
+    "subscriptionData": {
+      "lastUpdated": "April 29, 2026",
+      "sections": [
+        {
+          "id": "subscription-access",
+          "title": "1. Subscription Access",
+          "content": [
+            "ACME provides access to digital content, personalized recommendations, educational resources, AI-powered features where available, and related digital services on a subscription basis.",
+            "The subscription is for personal use only and may not be transferred to third parties, shared, resold, or used for commercial purposes.",
+            "By purchasing a ACME Plan, you receive access to all digital content currently available within your selected subscription plan, as well as any new content, readings, educational materials, or digital features added during your active subscription period.",
+            "Your access remains available only while your subscription is active and in good standing.",
+            "ACME may add, remove, update, replace, or modify readings, educational materials, recommendations, AI-powered features, and other content available through the Service at any time. Your subscription provides access to the content available during your active subscription period but does not guarantee that any specific content will remain available permanently.",
+            "Your subscription grants access to digital content only. It does not transfer ownership of any digital content, recommendations, software, AI-generated content, documents, images, intellectual property, or other materials available through the ACME platform."
+          ]
+        },
+        {
+          "id": "purchase-agreement",
+          "title": "2. By Purchasing a Subscription, You Agree to the Following Terms",
+          "content": [
+            "2.1 Recurring Payment",
+            "You authorize recurring payments according to your selected ACME Plan’s billing schedule.",
+            "Depending on the subscription plan selected at checkout, your subscription may include a discounted introductory period, trial offer, or promotional access period followed by recurring billing every 30 days.",
+            "2.2 Payment Responsibility",
+            "You are fully responsible for all payments unless you cancel or modify your subscription as outlined in the cancellation policy below.",
+            "2.3 Subscription Access",
+            "Subscription access is provided through the ACME member platform, account dashboard, or member area.",
+            "While your subscription is active, you receive access to all digital content included in your selected subscription plan, including:"
+          ],
+          "list": [
+            "personalized recommendations;",
+            "personalized content;",
+            "educational materials;",
+            "digital resources;",
+            "downloadable files;",
+            "AI-powered features, where available;",
+            "any future content made available during your active subscription period."
+          ],
+          "postList": [
+            "2.4 Continuous Access",
+            "Your subscription will continue until you cancel it, your payment method fails, or ACME terminates your access according to these Subscription Terms, the Terms of Service, or other applicable policies."
+          ]
+        },
+        {
+          "id": "becoming-subscriber",
+          "title": "3. Becoming a Subscriber",
+          "content": [
+            "3.1 The subscription begins upon purchasing a ACME Plan.",
+            "The customer receives access to the ACME member platform, account dashboard, or member area, where they can use the digital content included in the selected subscription plan.",
+            "This may include access to:"
+          ],
+          "list": [
+            "personalized recommendations;",
+            "personalized insights;",
+            "educational materials;",
+            "educational resources;",
+            "digital tools and content;",
+            "AI-powered tools and recommendations, where available;",
+            "any new content added during the active subscription period."
+          ],
+          "postList": [
+            "3.2 The customer agrees that ACME may offer a discounted introductory period before the regular subscription begins.",
+            "By purchasing a ACME Plan, you are enrolling in a recurring subscription service.",
+            "Trial pricing, one-time initial payment: $5, $9, $13, or $17.67.",
+            "After the trial period, the monthly ACME subscription is $59 every 30 days.",
+            "The exact price, billing cycle, trial period, renewal terms, and cancellation terms will be shown at checkout before payment is completed.",
+            "Your payment may appear on your bank statement as “ACME” or a similar descriptor provided by our payment processor; one-time purchases may additionally show a product code such as “LIFETIME” or “BUNDLE.”"
+          ]
+        },
+        {
+          "id": "content-delivery",
+          "title": "4. Content Delivery",
+          "content": [
+            "Subscription content is delivered through the ACME member platform, account dashboard, member area, and, where applicable, through the email address provided during registration or purchase.",
+            "The ACME Plan provides access to digital content and related services, including:"
+          ],
+          "list": [
+            "personalized recommendations;",
+            "personalized content;",
+            "educational materials;",
+            "downloadable documents and resources;",
+            "AI-powered features, where available;",
+            "other digital content or platform features made available to active subscribers."
+          ],
+          "postList": [
+            "The subscriber is responsible for ensuring that their account details, email address, login credentials, and payment information are accurate and up to date."
+          ]
+        },
+        {
+          "id": "changes-and-cancellation",
+          "title": "5. Subscription Changes and Cancellation",
+          "content": [
+            "You can cancel your subscription at any time through your account settings, if available, or by contacting us at support@example.com.",
+            "To avoid being charged for the next billing period, you must cancel before the next renewal date.",
+            "If you do not cancel before the trial period, introductory period, or current billing period ends, your subscription will automatically continue at the applicable recurring subscription price until cancelled.",
+            "If the subscription is cancelled after renewal, no refunds will be issued for unused portions of the current billing period, unless otherwise required by applicable law or approved under the applicable Money-Back Policy.",
+            "You can cancel your subscription by:"
+          ],
+          "list": [
+            "Account settings: Log in to your ACME account and follow the cancellation instructions, if available;",
+            "Email: Contact us at support@example.com;",
+            "App Store or third-party platform: If you purchased your subscription through the Apple App Store, Google Play, or another third-party platform, you must cancel your subscription through that platform’s subscription settings."
+          ],
+          "postList": [
+            "ACME cannot cancel subscriptions purchased through third-party platforms on your behalf unless the applicable third-party platform allows us to do so."
+          ]
+        },
+        {
+          "id": "automatic-renewal",
+          "title": "6. Automatic Renewal",
+          "content": [
+            "Upon purchasing a ACME Plan, ACME or its payment processor will automatically activate your subscription.",
+            "Subscription payments will recur according to the billing plan selected during checkout.",
+            "For introductory subscription offers, the customer pays the price displayed at checkout for the introductory period. If the customer does not cancel before the introductory period ends, the subscription will automatically renew at the regular subscription price disclosed during checkout and continue until cancelled.",
+            "The exact renewal amount, billing interval, and subscription terms are displayed before completing your purchase and may also be confirmed in your purchase confirmation, email receipt, account dashboard, or payment confirmation."
+          ]
+        },
+        {
+          "id": "refund-policy",
+          "title": "7. Refund Policy",
+          "content": [
+            "ACME provides immediate access to digital content through a subscription service. Because digital content becomes available immediately after purchase or activation, subscription fees are generally non-refundable unless required by applicable law or approved under the applicable Money-Back Policy.",
+            "7.1 Subscription Cancellation",
+            "Customers may cancel their subscription at any time, but will retain access to subscription content until the end of the current paid billing period, unless otherwise stated or required by applicable law.",
+            "After the subscription ends, access to digital content, educational resources, AI-powered features, and other materials included in the subscription will no longer be available.",
+            "7.2 Refunds",
+            "If a customer is dissatisfied with the selected ACME Plan, they may request a refund review by contacting support@example.com."
+          ]
+        },
+        {
+          "id": "refund-conditions",
+          "title": "Refund Conditions",
+          "content": [
+            "In addition to any refund rights provided by applicable law, you may be eligible for a refund only if all of the following conditions are met:"
+          ],
+          "list": [
+            "You purchased directly through our website;",
+            "A money-back guarantee was expressly offered to you at checkout for your selected ACME Plan;",
+            "Your request relates to the initial purchase of the selected ACME Plan and not to renewal charges, recurring rebills, subsequent subscription periods, or charges processed because you did not cancel before the applicable renewal date;",
+            "You contact us by email at support@example.com within the applicable refund period after your initial purchase;",
+            "You followed the selected ACME Plan for at least 7 consecutive days;",
+            "You provide sufficient evidence that you followed the plan in accordance with the requirements described in the Money-Back Policy;",
+            "Your refund request is sent from the same email address used to purchase the plan, or you otherwise provide sufficient information for us to verify your account."
+          ],
+          "postList": [
+            "We may ask you to provide: proof of purchase; the email address associated with your ACME account; screenshots from your ACME account, dashboard, or member area; details about the issue experienced while accessing the ACME platform or subscription content; and any additional information reasonably necessary to verify your refund request, account activity, plan usage, purchase details, or eligibility.",
+            "We will review your request and notify you by email whether your request has been approved.",
+            "If approved, your refund will be processed to the original payment method, unless otherwise required by the payment processor or applicable law."
+          ]
+        },
+        {
+          "id": "how-to-prove",
+          "title": "How to Show You Followed the ACME Plan",
+          "content": [
+            "To help us review your refund request, you may be asked to provide evidence showing that you followed the selected ACME Plan for at least 7 consecutive days.",
+            "You can demonstrate that you followed the ACME Plan only if:"
+          ],
+          "list": [
+            "You send us screenshots from your ACME account, dashboard, or member area showing that you followed the plan for at least 7 consecutive days and completed all required lessons, steps, sessions, readings, or plan activities during that period.",
+            "Evidence must be sent by email to support@example.com from the email address associated with your purchase."
+          ]
+        },
+        {
+          "id": "important",
+          "title": "IMPORTANT",
+          "content": [
+            "Please note that only fulfilling the above requirements may entitle you to a refund under the applicable Money-Back Policy.",
+            "For clarity, the refund policy does not apply in situations including, but not limited to:"
+          ],
+          "list": [
+            "you forgot to cancel before your subscription renewed;",
+            "you changed your mind;",
+            "you purchased the wrong plan by mistake;",
+            "you do not have enough time to follow or use the Service;",
+            "you find the ACME Plan too difficult or too easy;",
+            "you expected different content, features, readings, or results;",
+            "you no longer wish to continue using the Service;",
+            "you have previously received a refund under this policy;",
+            "you fail to follow the Money-Back Policy procedure;",
+            "you fail to provide sufficient supporting evidence;",
+            "you refuse to comply with reasonable instructions from our Customer Support team;",
+            "you purchased based on incorrect assumptions;",
+            "you simply changed your mind for non-technical reasons;",
+            "you failed to read the offer details, Subscription Terms, Terms of Service, or checkout disclosures before purchasing;",
+            "you expected that no further charges would apply after the initial purchase;",
+            "you believed that the subscription would not automatically renew;",
+            "you believed that the subscription would terminate automatically without cancellation;",
+            "you failed to cancel before the end of the applicable trial period or before the next renewal charge;",
+            "your request relates to a renewal payment rather than the initial purchase."
+          ],
+          "postList": [
+            "Refunds will not be issued if the customer fails to follow the refund procedure, refuses to comply with Customer Support instructions, or does not read the applicable Terms, checkout disclosures, or legal policies before purchasing a subscription that does not meet their needs.",
+            "Refunds will also not be provided for subscriptions purchased by mistake, based on incorrect assumptions, or if the customer simply changes their mind for non-technical reasons.",
+            "Financial reasons for a refund are not accepted merely because the customer misunderstood, overlooked, or failed to review the subscription, trial, renewal, billing, or cancellation terms disclosed at checkout and in the applicable legal policies.",
+            "If the customer does not meet the above refund conditions, all paid subscription fees are non-refundable and non-transferable, unless otherwise stated or required by applicable law.",
+            "No refunds, credits, partial reimbursements, or prorated refunds will be issued for unused time, unused content, lack of results, cancellation during an active trial period or billing period, or any unused portion of a subscription term, unless otherwise required by applicable law."
+          ]
+        },
+        {
+          "id": "eu-uk-notice",
+          "title": "EU/UK Notice",
+          "content": [
+            "If you are a resident of the European Union or the United Kingdom, you may have certain mandatory consumer rights under applicable law.",
+            "By completing your purchase, you expressly request immediate access to digital content and digital services and acknowledge that, once performance has begun and access has been granted, your statutory withdrawal or cancellation right may be lost to the extent permitted by applicable law.",
+            "Nothing in these Subscription Terms or the Money-Back Policy limits any mandatory consumer rights that cannot legally be excluded or restricted, including rights that may apply where digital content or digital services are defective, not as described, or not provided in conformity with applicable law."
+          ]
+        },
+        {
+          "id": "complaints-and-disputes",
+          "title": "Complaints and Disputes",
+          "content": [
+            "All complaints and disputes regarding the subscription will be reviewed as soon as reasonably possible."
+          ]
+        },
+        {
+          "id": "changes-to-policy",
+          "title": "8. Changes to Subscription Terms",
+          "content": [
+            "ACME reserves the right to modify these Subscription Terms at any time.",
+            "Customers may be informed of significant changes by email, an in-platform notification, updated website notice, or another appropriate communication method.",
+            "Continued use of ACME after changes become effective will be considered acceptance of the updated Subscription Terms."
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "Contact",
+          "content": [
+            "If you have any questions regarding these Subscription Terms, please contact us at:",
+            "support@example.com",
+            "© 2021–2026 ACME Plan."
+          ]
+        }
+      ]
+    },
+    "moneyBackData": {
+      "lastUpdated": "April 29, 2026",
+      "sections": [
+        {
+          "id": "applicability",
+          "title": "Refund Conditions",
+          "content": [
+            "This Money-Back Policy applies only if:",
+            "(a) you purchased directly through our website; and",
+            "(b) a money-back guarantee was expressly offered to you at checkout for your selected ACME Plan.",
+            "This Money-Back Policy applies only to the initial purchase of the selected ACME Plan. It does not apply to renewal charges, recurring rebills, subsequent subscription periods, or charges processed because you did not cancel before the applicable renewal date.",
+            "Apart from any refund rights granted by applicable law, you may be eligible for a refund only if all of the following conditions are met:"
+          ],
+          "list": [
+            "You contacted us by email at support@example.com within the applicable refund period after your initial purchase of access to the selected ACME Plan.",
+            "You followed the selected ACME Plan for at least 7 consecutive days.",
+            "You provide sufficient evidence that you followed the plan in accordance with the requirements described below in the section “How to Show You Followed the ACME Plan.”",
+            "Your refund request is sent from the same email address used to purchase the plan, or you otherwise provide sufficient information for us to verify your account."
+          ],
+          "postList": [
+            "We will review your request and inform you by email whether your request has been approved. If approved, your refund will be processed to the original payment method, unless otherwise required by the payment processor or applicable law.",
+            "If you fail to meet any of the above conditions, your refund request may be denied."
+          ]
+        },
+        {
+          "id": "how-to-prove",
+          "title": "How to Show You Followed the ACME Plan",
+          "content": [
+            "You can demonstrate that you followed the ACME Plan only if:"
+          ],
+          "list": [
+            "You send us screenshots from your ACME account, dashboard, or member area showing that you followed the plan for at least 7 consecutive days and completed all required lessons, steps, sessions, or plan activities during that period.",
+            "Evidence must be sent by email to support@example.com from the email address associated with your purchase.",
+            "We may request additional information reasonably necessary to verify your refund request, account activity, plan usage, purchase details, or eligibility under this Money-Back Policy."
+          ]
+        },
+        {
+          "id": "important",
+          "title": "IMPORTANT",
+          "content": [
+            "Please note that only fulfilling the requirements listed above may entitle you to a refund under this Money-Back Policy.",
+            "For clarity, this Money-Back Policy does not apply in circumstances including, but not limited to, the following:"
+          ],
+          "list": [
+            "You believe you do not have enough time to follow the ACME Plan;",
+            "You find the ACME Plan too difficult or too easy;",
+            "You have previously received a refund under this policy;",
+            "You fail to follow the Money-Back Policy procedure;",
+            "You fail to provide sufficient supporting evidence;",
+            "You refuse to comply with reasonable instructions from our Customer Support team;",
+            "You purchased the wrong plan by mistake;",
+            "You purchased based on incorrect assumptions;",
+            "You simply changed your mind for non-technical reasons;",
+            "You failed to read the offer details, Subscription Terms, Terms of Service, or checkout disclosures before purchasing;",
+            "You expected that no further charges would apply after the initial purchase;",
+            "You believed that the subscription would not automatically renew;",
+            "You believed that the subscription would terminate automatically without cancellation;",
+            "You failed to cancel before the end of the applicable trial period or before the next renewal charge;",
+            "Your request relates to a renewal payment rather than the initial purchase."
+          ]
+        },
+        {
+          "id": "financial-reasons",
+          "title": "Financial Reasons for Refunds Are Also Not Accepted",
+          "content": [
+            "Financial reasons for a refund are not accepted merely because you misunderstood, overlooked, or failed to review the subscription, trial, renewal, billing, or cancellation terms disclosed at checkout and in the applicable legal policies.",
+            "If you do not meet the above Money-Back Policy conditions, all paid subscription fees are non-refundable and non-transferable, unless otherwise specified or required by applicable law.",
+            "No refunds, credits, partial reimbursements, or prorated refunds will be issued for unused time, unused content, lack of results, cancellation during an active trial period or billing period, or any unused portion of a subscription term."
+          ]
+        },
+        {
+          "id": "eu-uk-notice",
+          "title": "EU/UK Notice",
+          "content": [
+            "If you are a resident of the European Union or the United Kingdom, you may have certain mandatory consumer rights under applicable law.",
+            "By completing your purchase, you expressly request immediate access to digital content and digital services and acknowledge that, once performance has begun and access has been granted, your statutory withdrawal or cancellation right may be lost to the extent permitted by applicable law.",
+            "Nothing in this Money-Back Policy limits any mandatory consumer rights that cannot legally be excluded or restricted, including rights that may apply where digital content or digital services are defective, not as described, or not provided in conformity with applicable law."
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "Contact",
+          "content": [
+            "Have questions? Contact us at:",
+            "support@example.com",
+            "© 2021–2026 ACME Plan."
+          ]
+        }
+      ]
+    },
+    "cookiePolicyData": {
+      "lastUpdated": "April 29, 2026",
+      "cookies": [
+        {
+          "name": "payment_access",
+          "provider": "ACME",
+          "purpose": "Payment flow authentication, HMAC signed token binding payment intent to session",
+          "type": "HTTP cookie",
+          "essential": true,
+          "duration": "90 minutes"
+        },
+        {
+          "name": "Supabase auth cookies",
+          "provider": "Supabase",
+          "purpose": "User authentication and session management",
+          "type": "HTTP cookie",
+          "essential": true,
+          "duration": "Session"
+        },
+        {
+          "name": "acme_onboarding_complete",
+          "provider": "ACME",
+          "purpose": "Tracks whether onboarding has been completed",
+          "type": "localStorage",
+          "essential": true,
+          "duration": "Persistent"
+        },
+        {
+          "name": "PostHog cookies",
+          "provider": "PostHog",
+          "purpose": "Analytics, session replay, user identification",
+          "type": "JS cookie",
+          "essential": false,
+          "duration": "Up to 1 year"
+        },
+        {
+          "name": "quiz_store",
+          "provider": "ACME",
+          "purpose": "Stores quiz answers and allows recovery of unfinished sessions",
+          "type": "localStorage",
+          "essential": false,
+          "duration": "Persistent"
+        },
+        {
+          "name": "funnel_pending_leads",
+          "provider": "ACME",
+          "purpose": "Stores email and quiz data for retry mechanisms",
+          "type": "localStorage",
+          "essential": false,
+          "duration": "Persistent"
+        },
+        {
+          "name": "_fbp, _fbc",
+          "provider": "Meta",
+          "purpose": "Advertising and conversion attribution",
+          "type": "HTTP cookie",
+          "essential": false,
+          "duration": "90 days / 7 days"
+        },
+        {
+          "name": "_ga, _gid, _gcl_au",
+          "provider": "Google",
+          "purpose": "Analytics and conversion attribution",
+          "type": "HTTP cookie",
+          "essential": false,
+          "duration": "Standard Google retention periods"
+        }
+      ],
+      "sections": [
+        {
+          "id": "introduction",
+          "title": "1. INTRODUCTION",
+          "content": [
+            "This Cookie Policy (“Policy”) explains what cookies are, what types of cookies are used on our website, how they may be stored on your device, and how we use them. This Policy also covers the use of similar technologies, such as web beacons.",
+            "This Cookie Policy does not address the processing of your personal data in general. To learn more about how we handle personal data, please refer to our Privacy Policy."
+          ]
+        },
+        {
+          "id": "what-are-cookies",
+          "title": "2. WHAT ARE COOKIES?",
+          "content": [
+            "Cookies are small text files that are sent to your web browser or stored in your device’s memory. A cookie typically includes the domain, web location, it came from, its expiration time, and a randomly generated unique identification number or other similar identifier.",
+            "A cookie may also contain information about your device, such as user settings, browsing history, and actions taken while using our website."
+          ]
+        },
+        {
+          "id": "types-of-cookies",
+          "title": "3. TYPES OF COOKIES",
+          "content": [
+            "3.1 Session Cookies",
+            "Session cookies expire when you close your browser window. ACME, Your Company Ltd uses these cookies to help you use our website more efficiently.",
+            "3.2 Persistent Cookies",
+            "Persistent cookies remain on your device after the browser is closed and help us remember your preferences and improve analytics.",
+            "3.3 First-Party Cookies",
+            "These cookies are set directly by ACME.",
+            "3.4 Third-Party Cookies",
+            "Third-party cookies are placed by our service providers. They include:"
+          ],
+          "list": [
+            "Security cookies",
+            "Analytics cookies",
+            "Advertising cookies"
+          ]
+        },
+        {
+          "id": "third-party-examples",
+          "title": "4. EXAMPLES OF THIRD-PARTY COOKIES",
+          "content": [
+            "Google Analytics helps us understand website usage.",
+            "Microsoft cookies help evaluate advertising performance.",
+            "Zendesk cookies support customer service functionality.",
+            "Cloudflare cookies protect the website against malicious traffic.",
+            "We do not allow these providers to use your personal data for their own purposes."
+          ]
+        },
+        {
+          "id": "similar-technologies",
+          "title": "5. SIMILAR TECHNOLOGIES",
+          "content": [
+            "Web Beacons",
+            "Web beacons, also known as pixel tags, help us understand when users visit pages or open emails.",
+            "Software Development Kits (SDKs)",
+            "SDKs are small pieces of code embedded in applications that function similarly to cookies.",
+            "Snap Pixel helps measure advertising effectiveness on Snapchat."
+          ]
+        },
+        {
+          "id": "why-cookies",
+          "title": "6. WHY DO WE USE COOKIES?",
+          "content": [
+            "We use cookies and similar technologies to improve website functionality, enhance security, analyze usage, remember preferences, and measure the effectiveness of our marketing campaigns."
+          ]
+        },
+        {
+          "id": "managing-cookies",
+          "title": "7. HOW CAN YOU MANAGE COOKIES?",
+          "content": [
+            "Most browsers allow you to manage cookies through browser settings.",
+            "Disabling cookies may affect the functionality of some parts of the Service.",
+            "Browser help pages:"
+          ],
+          "list": [
+            "Chrome",
+            "Microsoft Edge / Internet Explorer",
+            "Safari",
+            "Firefox",
+            "Opera"
+          ]
+        },
+        {
+          "id": "questions-contact",
+          "title": "8. QUESTIONS AND CONTACT",
+          "content": [
+            "If you have any questions about this Cookie Policy, please contact us:",
+            "support@example.com"
+          ]
+        }
+      ]
+    },
+    "contactData": {
+      "companyName": "Your Company Ltd (COMPANY NO: 00000000)",
+      "address": "1 Example Street, Example City, EX1 2AB, Example Country",
+      "email": "support@example.com",
+      "privacyEmail": "support@example.com",
+      "supervisoryAuthority": {
+        "name": "European Data Protection Board (EDPB)",
+        "website": "https://edpb.europa.eu/about-edpb/about-edpb/members_en"
+      }
+    }
+  }
+}

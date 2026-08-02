@@ -1,0 +1,5 @@
+.vercel
+coverage/
+.turbo/
+dist/
+*.tsbuildinfo

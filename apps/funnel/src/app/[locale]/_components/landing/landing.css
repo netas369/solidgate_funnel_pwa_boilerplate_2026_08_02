@@ -1,0 +1,317 @@
+/* Landing / offer / OTO shell  -  neutral paper-ink theme.
+   Scoped entirely under .lmRoot so it cannot leak into the admin dashboard or
+   the Tailwind layers in globals.css.
+   TODO(new product): retune the custom properties below to your palette. */
+
+.lmRoot {
+  --paper: #ffffff;
+  --paper-soft: #fafaf7;
+  --ink: #111111;
+  --ink-soft: #1a1a1a;
+  --accent: #0a0a0a;
+  --accent-ink: #ffffff;
+  --hairline: rgba(0, 0, 0, 0.12);
+  --hairline-strong: rgba(0, 0, 0, 0.18);
+  --scrim: rgba(0, 0, 0, 0.55);
+  /* Sans typeface. .otoType / .quizType below are the per-surface overrides. */
+  --lm-sans: var(--font-sans), -apple-system, system-ui, sans-serif;
+
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-family: var(--lm-sans);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* OTO surfaces may want a different sans from the landing page. */
+.lmRoot.otoType {
+  --lm-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* Quiz funnel: no display serif. Remapping the variable makes every `.serif` /
+   `.serif-it` class and every inline serif style render in the sans, in ONE
+   place — while the landing, offer and OTO pages keep the display face. */
+.lmRoot.quizType {
+  --font-display: var(--font-sans);
+}
+.lmRoot.quizType .serif-it {
+  font-style: normal;
+}
+
+.lmRoot * {
+  box-sizing: border-box;
+}
+
+.lmRoot .serif {
+  font-family: var(--font-display), "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.lmRoot .serif-it {
+  font-family: var(--font-display), "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 500;
+}
+.lmRoot .text-accent {
+  color: #b58430;
+  font-style: italic;
+}
+.lmRoot .handwritten-name {
+  color: #b58430;
+  font-style: italic;
+  display: inline-block;
+  padding-bottom: 0.18em;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12' preserveAspectRatio='none'><path d='M2 7 C 30 2 60 10 100 6 S 160 2 198 7' stroke='%23c89538' stroke-width='2.4' stroke-linecap='round' fill='none' opacity='0.95'/></svg>");
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 0.36em;
+}
+.lmRoot .mono-up {
+  font-family: var(--lm-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  font-weight: 600;
+}
+.lmRoot .body-sans {
+  font-family: var(--lm-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.lmRoot .ornDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+}
+.lmRoot .ornDivider .line {
+  flex: 1;
+  height: 1px;
+  background: var(--ink);
+  opacity: 0.85;
+}
+.lmRoot .ornDivider .dot {
+  width: 5px;
+  height: 5px;
+  background: var(--ink);
+  transform: rotate(45deg);
+}
+
+.lmRoot .tap {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Image placeholder  -  editorial framed box */
+.lmRoot .imgPh {
+  position: relative;
+  width: 100%;
+  background: var(--paper-soft);
+  border: 1px solid var(--ink);
+  overflow: hidden;
+}
+.lmRoot .imgPh::before,
+.lmRoot .imgPh::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.lmRoot .imgPh::before {
+  background-image:
+    linear-gradient(135deg, transparent calc(50% - 0.5px), var(--hairline) calc(50% - 0.5px), var(--hairline) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(45deg, transparent calc(50% - 0.5px), var(--hairline) calc(50% - 0.5px), var(--hairline) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+}
+.lmRoot .imgPh > .label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  opacity: 0.55;
+}
+.lmRoot .imgPh.has-image::before,
+.lmRoot .imgPh.has-image::after {
+  display: none;
+}
+.lmRoot .imgPh.has-image {
+  background: transparent;
+  border: none;
+}
+.lmRoot .imgPh > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lmRoot .star {
+  position: absolute;
+  background: var(--ink);
+  border-radius: 50%;
+}
+
+.lmRoot .star.shine {
+  box-shadow:
+    0 0 4px rgba(255, 255, 255, 0.85),
+    0 0 10px rgba(255, 255, 255, 0.55),
+    0 0 20px rgba(255, 255, 255, 0.25);
+}
+
+@keyframes lmTwinkle {
+  0%, 100% { opacity: 0.2; }
+  50%      { opacity: 0.85; }
+}
+
+@keyframes lmShine {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+.lmRoot .skyField .star {
+  animation: lmTwinkle 3.6s ease-in-out infinite;
+}
+
+.lmRoot .skyField .star.shine {
+  animation: lmShine 2.8s ease-in-out infinite;
+}
+
+/* Shooting stars  -  occasional falling streak (mostly vertical) */
+.lmRoot .skyField .shootingStar {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--accent-ink);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transform-origin: 50% 50%;
+}
+/* Tail extends UP from the star (behind motion direction) */
+.lmRoot .skyField .shootingStar::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 1px;
+  height: 110px;
+  transform: translateX(-50%);
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+  filter: blur(0.4px);
+}
+
+/* Each keyframe locks a rotation so the trail (which extends up in local space)
+   visually trails BEHIND the falling motion. Movement is mostly down with a slight lean. */
+@keyframes lmShoot {
+  0%    { transform: rotate(12deg) translate3d(0, -20vh, 0);  opacity: 0; }
+  4%    { opacity: 1; }
+  16%   { transform: rotate(12deg) translate3d(0, 120vh, 0);  opacity: 0; }
+  100%  { transform: rotate(12deg) translate3d(0, 120vh, 0);  opacity: 0; }
+}
+@keyframes lmShoot2 {
+  0%    { transform: rotate(-8deg) translate3d(0, -20vh, 0);  opacity: 0; }
+  4%    { opacity: 0.95; }
+  18%   { transform: rotate(-8deg) translate3d(0, 120vh, 0);  opacity: 0; }
+  100%  { transform: rotate(-8deg) translate3d(0, 120vh, 0);  opacity: 0; }
+}
+@keyframes lmShoot3 {
+  0%    { transform: rotate(20deg) translate3d(0, -20vh, 0);  opacity: 0; }
+  3%    { opacity: 1; }
+  15%   { transform: rotate(20deg) translate3d(0, 120vh, 0);  opacity: 0; }
+  100%  { transform: rotate(20deg) translate3d(0, 120vh, 0);  opacity: 0; }
+}
+
+.lmRoot .skyField .shootingStar-1 {
+  top: 0;
+  left: 18%;
+  animation: lmShoot 11s ease-in 2s infinite;
+}
+.lmRoot .skyField .shootingStar-2 {
+  top: 0;
+  left: 68%;
+  animation: lmShoot2 17s ease-in 7s infinite;
+}
+.lmRoot .skyField .shootingStar-3 {
+  top: 0;
+  left: 42%;
+  animation: lmShoot3 23s ease-in 13s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lmRoot .skyField .shootingStar { display: none; }
+}
+
+/* Features marquee  -  infinite right-to-left scroll */
+.lmRoot .featuresMarquee {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.lmRoot .featuresTrack {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  align-items: center;
+  animation: lmMarquee 42s linear infinite;
+}
+.lmRoot .featuresMarquee:hover .featuresTrack {
+  animation-play-state: paused;
+}
+.lmRoot .featuresItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 28px;
+  padding-right: 28px;
+  font-size: 19px;
+  color: var(--ink);
+  opacity: 0.82;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.lmRoot .featuresDot {
+  opacity: 0.4;
+  font-size: 18px;
+}
+
+@keyframes lmMarquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lmRoot .featuresTrack { animation: none; }
+}
+
+/* Hero animations */
+@keyframes lmFadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes lmFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.lmRoot .heroFade {
+  opacity: 0;
+  animation: lmFadeUp 700ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+.lmRoot .heroFade-1 { animation-delay: 80ms; }
+.lmRoot .heroFade-2 { animation-delay: 200ms; }
+.lmRoot .heroFade-3 { animation-delay: 320ms; }
+.lmRoot .heroFade-4 { animation-delay: 440ms; }
+.lmRoot .heroFade-5 { animation-delay: 560ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lmRoot .heroFade { opacity: 1; animation: none; }
+}

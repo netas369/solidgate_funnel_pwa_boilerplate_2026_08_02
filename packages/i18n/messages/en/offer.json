@@ -1,0 +1,147 @@
+{
+  "_locale": "en",
+  "_status": "source",
+  "meta": {
+    "title": "Your offer"
+  },
+  "nav": {
+    "tagline": "Tagline goes here"
+  },
+  "pricePicker": {
+    "headline": "Choose your starting price",
+    "block1": {
+      "eyebrow": "PLACEHOLDER EYEBROW",
+      "body": "Body copy goes here. Explain why the buyer gets to pick their price."
+    },
+    "block2": {
+      "eyebrow": "PLACEHOLDER EYEBROW",
+      "body": "Body copy goes here. Reference the anchor amount of {anchor} if useful."
+    },
+    "anchorHint": "Hint copy goes here. The anchor amount is {anchor}.",
+    "cta": "Continue"
+  },
+  "salesBody": {
+    "eyebrow": "PRODUCT CATEGORY",
+    "headline": "Headline goes here",
+    "subheadline": "Subheadline goes here. One or two sentences describing what the buyer gets.",
+    "includedLabel": "WHAT'S INCLUDED",
+    "bullets": [
+      "Included item one goes here.",
+      "Included item two goes here.",
+      "Included item three goes here.",
+      "Included item four goes here."
+    ]
+  },
+  "pricing": {
+    "heading": {
+      "eyebrow": "TOTAL DUE TODAY",
+      "title": "Pricing heading goes here",
+      "subtitle": "Pricing subheading goes here."
+    },
+    "card": {
+      "note": "Then {rebill} per month until you cancel. Cancel anytime.",
+      "cta": "GET STARTED"
+    },
+    "disclaimer": "TODO(new product): replace with your own pre-purchase disclosure, reviewed for your market. It must state the amount charged today, the renewal amount and interval, and how to cancel.",
+    "trust": {
+      "secure": "Secure checkout"
+    },
+    "tiers": {
+      "default": {
+        "name": "Plan name goes here",
+        "duration": "Duration goes here",
+        "monthlyPrice": "Monthly price note goes here",
+        "totalNote": "Total note goes here",
+        "originalTotal": "Original total note goes here",
+        "discountedTotal": "Discounted total note goes here",
+        "billingCadence": "Billing cadence note goes here",
+        "ctaText": "Continue",
+        "badge": "Selected for you"
+      }
+    }
+  },
+  "guarantee": {
+    "headline": "Money-back guarantee headline goes here",
+    "description": "TODO(new product): describe your actual refund policy here, and keep it identical to the Money-Back Policy legal page.",
+    "sealAriaLabel": "Money-back guarantee",
+    "sealTopText": "MONEY BACK GUARANTEE",
+    "sealDaysValue": "30",
+    "sealDays": "DAYS"
+  },
+  "faqSection": {
+    "sectionLabel": "FREQUENTLY ASKED QUESTIONS"
+  },
+  "faq": [
+    {
+      "question": "Question one goes here?",
+      "answer": "Answer one goes here."
+    },
+    {
+      "question": "Question two goes here?",
+      "answer": "Answer two goes here."
+    },
+    {
+      "question": "Question three goes here?",
+      "answer": "Answer three goes here."
+    },
+    {
+      "question": "Question four goes here?",
+      "answer": "Answer four goes here."
+    }
+  ],
+  "stickyCta": {
+    "text": "GET STARTED"
+  },
+  "checkoutModal": {
+    "title": "Complete your order",
+    "closeLabel": "Close checkout",
+    "priceCaption": "Total today: {total}",
+    "payButton": "Pay {total}",
+    "processing": "Processing…",
+    "paymentPending": "Your payment is still being confirmed. If your card was charged, your access is on its way - check your email in a few minutes before trying again.",
+    "confirmingPayment": "Confirming your payment. Please don’t close this page.",
+    "loadingPaymentForm": "Loading payment form",
+    "loadingNewPaymentForm": "Loading new payment form",
+    "verifyingPayment": "Verifying payment",
+    "completingVerification": "Completing verification...",
+    "additionalVerification": "Additional verification required",
+    "threeDsFailed": "3DS verification failed",
+    "verificationFailed": "Verification failed. Please try a different card.",
+    "paymentVerifiedGrantFailed": "Payment verified but access could not be granted. Please contact support.",
+    "secureCheckout": "Secure checkout",
+    "orPayWithCard": "or pay with card",
+    "savedCardDisclosure": "Your payment method is securely stored by our payment provider so you can authorize optional future purchases with one tap. You are charged only when you select a purchase.",
+    "errors": {
+      "generic": "We couldn’t open the payment form. Please try again in a moment.",
+      "EMAIL_REQUIRED": "We need your email address before you can pay. Please go back and enter it.",
+      "INTRO_OFFER_IN_PROGRESS": "A payment for this email is already being processed. If that was you, check your inbox in a moment for your access email.",
+      "INTRO_OFFER_ALREADY_USED": "This email has already used the introductory offer. Log in to your account to manage your subscription.",
+      "payment_failed": "That card was declined. Please try a different card.",
+      "decline_insufficient_funds": "Insufficient funds on this card. Please use a different card.",
+      "decline_expired_card": "This card has expired or the expiry date is incorrect. Please use a different card.",
+      "decline_invalid_card_data": "The card number or security code looks incorrect. Please check the card details and try again.",
+      "decline_card_blocked": "This card is blocked or closed. Please use a different card.",
+      "decline_contact_bank": "Your bank declined this payment. Please contact your bank or try a different card.",
+      "decline_limit_exceeded": "This payment exceeds the card's limit. Please try a different card.",
+      "decline_card_not_supported": "This card type isn't supported. Please try a different card.",
+      "decline_verification_failed": "Your bank's verification didn't complete. Please try again.",
+      "payment_error": "Something went wrong with that payment. Please try again or use a different card.",
+      "checkout_unavailable": "Checkout is temporarily unavailable. Please try again in a moment."
+    }
+  },
+  "specialEmailGate": {
+    "title": "Unlock your offer",
+    "titleFree": "Start your free trial",
+    "subtitle": "Enter your email to continue.",
+    "emailPlaceholder": "Your email address",
+    "submitButton": "Continue",
+    "submitting": "Saving...",
+    "invalidEmail": "Please enter a valid email address.",
+    "tryAgain": "Something went wrong. Please try again.",
+    "alreadySubscribed": {
+      "kicker": "Already a member",
+      "body": "An account with this email already has an active plan. Sign in to access your dashboard.",
+      "loginCta": "Sign in"
+    }
+  }
+}

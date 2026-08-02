@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "home": "Home",
+    "quiz": "Take Quiz",
+    "contact": "Contact",
+    "memberArea": "Sign In",
+    "startQuiz": "Start Quiz"
+  },
+  "buttons": {
+    "continue": "Continue",
+    "back": "Back",
+    "submit": "Submit",
+    "close": "Close",
+    "tryAgain": "Try again",
+    "gotIt": "Got It",
+    "processingPayment": "Processing payment..."
+  },
+  "footer": {
+    "copyright": "All rights reserved.",
+    "brandName": "Acme",
+    "brandSuffix": "",
+    "copyrightFull": "{year} Acme. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "subscription": "Subscription",
+    "cookies": "Cookie Policy",
+    "contact": "Contact"
+  },
+  "landing": {
+    "hero": {
+      "eyebrow": "Eyebrow goes here",
+      "headline": "Headline goes here",
+      "subheadline": "Subheadline goes here.",
+      "body": "Body copy goes here. Describe what the product does for the visitor in one short paragraph.",
+      "ctaPrimary": "Start the quiz",
+      "ctaSecondary": "How it works",
+      "note": "Supporting note goes here",
+      "imageCaption": "Image caption goes here",
+      "figureLabel": "Figure",
+      "figureNumber": "I."
+    },
+    "features": {
+      "heading": "Features heading goes here",
+      "f1": "Feature 1 goes here",
+      "f2": "Feature 2 goes here",
+      "f3": "Feature 3 goes here",
+      "f4": "Feature 4 goes here",
+      "f5": "Feature 5 goes here",
+      "f6": "Feature 6 goes here",
+      "f7": "Feature 7 goes here",
+      "f8": "Feature 8 goes here",
+      "f9": "Feature 9 goes here",
+      "f10": "Feature 10 goes here"
+    },
+    "howItWorks": {
+      "eyebrow": "How it works",
+      "heading": "Section heading goes here",
+      "subheading": "Section subheading goes here.",
+      "illustration": "Illustration",
+      "step1Title": "Step one title goes here",
+      "step1Description": "Step one description goes here.",
+      "step2Title": "Step two title goes here",
+      "step2Description": "Step two description goes here.",
+      "step3Title": "Step three title goes here",
+      "step3Description": "Step three description goes here.",
+      "ctaButton": "Start the quiz",
+      "ctaSubtext": "CTA subtext goes here"
+    },
+    "benefits": {
+      "eyebrow": "Benefits eyebrow goes here",
+      "heading": "Benefits heading goes here",
+      "subheading": "Benefits subheading goes here.",
+      "personalTitle": "Benefit one title goes here",
+      "personalDescription": "Benefit one description goes here.",
+      "personalCaption": "Benefit one caption goes here",
+      "timeTitle": "Benefit two title goes here",
+      "timeDescription": "Benefit two description goes here.",
+      "timeCaption": "Benefit two caption goes here",
+      "supportTitle": "Benefit three title goes here",
+      "supportDescription": "Benefit three description goes here.",
+      "supportCaption": "Benefit three caption goes here"
+    },
+    "trust": {
+      "eyebrow": "Trust eyebrow goes here",
+      "heading": "Trust heading goes here",
+      "subheading": "Trust subheading goes here.",
+      "check1": "Trust point one goes here",
+      "check2": "Trust point two goes here",
+      "check3": "Trust point three goes here",
+      "check4": "Trust point four goes here",
+      "satisfaction": "Metric label goes here",
+      "satisfactionPercent": "—",
+      "imageAlt": "Describe the image here"
+    },
+    "cta": {
+      "eyebrow": "CTA eyebrow goes here",
+      "heading": "CTA heading goes here",
+      "subheading": "CTA subheading goes here.",
+      "button": "Start the quiz",
+      "disclaimer": "CTA disclaimer goes here"
+    },
+    "footer": {
+      "tagline": "Tagline goes here.",
+      "copyright": "{year} Acme. All rights reserved.",
+      "rights": "Acme. All rights reserved.",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "subscription": "Subscription",
+      "moneyBack": "Money Back",
+      "contact": "Contact"
+    }
+  },
+  "checkout": {
+    "title": "Checkout",
+    "payingWith": "Paying with {brand} ····{last4}",
+    "loadingPaymentMethod": "Loading payment method",
+    "digitalPdfDelivery": "This digital PDF book is available instantly in your app library, ready to explore right away.",
+    "instantDigitalDelivery": "Instant Digital PDF Delivery",
+    "declineNotInterested": "Thanks, but I'm not interested in this service. I'd like to move to the next step.",
+    "specialPrice": "Special Price",
+    "specialAddOnPrice": "Special Add On Price",
+    "limitedTimeAddition": "Limited Time Addition",
+    "limitedTimeOffer": "Limited Time Offer",
+    "limitedOneTimeOffer": "Limited One Time Offer",
+    "digitalPdfEdition": "Digital PDF Edition",
+    "chargeDisclaimer": "By proceeding, you agree to be charged {price} for the selected add on. Payment will be processed automatically based on the billing information you provided earlier.",
+    "verifyAndPay": "Verify and pay",
+    "processing": "Processing...",
+    "completingVerification": "Completing verification...",
+    "additionalVerification": "Additional verification required",
+    "verificationFailed": "Verification failed. Please try a different card.",
+    "paymentVerifiedGrantFailed": "Payment verified but access grant failed. Please contact support.",
+    "paymentSucceededGrantFailed": "Payment succeeded but access grant failed. Please contact support.",
+    "threeDsFailed": "3DS verification failed",
+    "paymentFailed": "Payment failed",
+    "loadingNewPaymentForm": "Loading new payment form",
+    "pleaseTryDifferentCard": "Please try a different card."
+  },
+  "ui": {
+    "selectLanguage": "Select language",
+    "loadingContent": "Loading content",
+    "loadingEllipsis": "Loading..."
+  },
+  "results": {
+    "navLabel": "Results",
+    "continueToOffer": "Continue to Offer",
+    "statsEyebrow": "Section eyebrow"
+  }
+}

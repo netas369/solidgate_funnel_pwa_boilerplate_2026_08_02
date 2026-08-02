@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Tailwind must scan the shared package too — the login page, the payment form
+   and the grace banner all live there and use Tailwind classes. */
+@source "../../../../packages/shared/src";
+
+@theme {
+  /* `--font-family-sans` is emitted by next/font in [locale]/layout.tsx.
+     The member-area theme (dashboard/_components/theme.css) reads
+     var(--font-sans) directly, so this is the single font seam for both. */
+  --font-sans: var(--font-family-sans), ui-sans-serif, system-ui, sans-serif;
+}

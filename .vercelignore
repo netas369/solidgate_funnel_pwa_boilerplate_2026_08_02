@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+**/.turbo
+.claude
+.git
+.codex
+.agents
+.planning
+.playwright-mcp
+coverage
+audio_hipnosis
+audio_samples
+.env*
+!.env.example

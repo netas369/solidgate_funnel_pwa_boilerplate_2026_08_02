@@ -1,0 +1,28 @@
+{
+  "name": "funnel-pwa-boilerplate",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@10.9.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "dev:funnel": "turbo run dev --filter=@repo/funnel",
+    "dev:pwa": "turbo run dev --filter=@repo/pwa",
+    "clean": "rm -rf .turbo/cache apps/*/.next",
+    "clean:all": "rm -rf .turbo/cache apps/*/.next apps/*/.turbo node_modules/.cache",
+    "test:ci": "turbo run test",
+    "test:coverage:payments": "npm --prefix apps/funnel run test:payments"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2",
+    "sharp": "^0.34.5",
+    "tsx": "^4.21.0",
+    "turbo": "^2.9.5"
+  }
+}

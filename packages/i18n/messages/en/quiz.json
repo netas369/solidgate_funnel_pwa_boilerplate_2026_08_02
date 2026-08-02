@@ -1,0 +1,138 @@
+{
+  "meta": {
+    "title": "Quiz title goes here"
+  },
+  "phases": {
+    "start": "Getting started",
+    "about": "About you",
+    "account": "Your account"
+  },
+  "common": {
+    "continue": "Continue",
+    "skip": "Skip for now",
+    "next": "Next"
+  },
+  "steps": {
+    "step1": {
+      "question": "Placeholder question one goes here",
+      "subtitle": "Placeholder supporting line goes here.",
+      "options": {
+        "female": { "label": "Option A label" },
+        "male": { "label": "Option B label" }
+      }
+    },
+    "step2": {
+      "question": "Placeholder question two goes here",
+      "subtitle": "This question branches: option C skips the next screen.",
+      "options": {
+        "a": { "label": "Branch option A label" },
+        "b": { "label": "Branch option B label" },
+        "c": { "label": "Branch option C label" }
+      }
+    },
+    "step3": {
+      "question": "Placeholder multi-select question goes here",
+      "options": {
+        "o1": { "label": "Multi option one" },
+        "o2": { "label": "Multi option two" },
+        "o3": { "label": "Multi option three" },
+        "o4": { "label": "Multi option four" }
+      }
+    },
+    "step3b": {
+      "title": "Placeholder interstitial title",
+      "subtitle": "Placeholder interstitial body copy goes here. This screen advances on its own."
+    },
+    "step4": {
+      "a": {
+        "title": "Placeholder reveal title for branch A",
+        "subtitle": "Placeholder reveal body copy for branch A goes here.",
+        "labels": {
+          "l1": "Label one",
+          "l2": "Label two",
+          "l3": "Label three"
+        }
+      },
+      "b": {
+        "title": "Placeholder reveal title for branch B",
+        "subtitle": "Placeholder reveal body copy for branch B goes here.",
+        "labels": {
+          "l1": "Label four",
+          "l2": "Label five",
+          "l3": "Label six"
+        }
+      },
+      "c": {
+        "title": "Placeholder reveal title for branch C",
+        "subtitle": "Placeholder reveal body copy for branch C goes here.",
+        "labels": {
+          "l1": "Label seven",
+          "l2": "Label eight",
+          "l3": "Label nine"
+        }
+      }
+    },
+    "step5": {
+      "question": "Placeholder name question goes here",
+      "subtext": "Placeholder explanation of why the name is asked.",
+      "nameLabel": "Field label goes here",
+      "namePlaceholder": {
+        "female": "e.g. Placeholder A",
+        "male": "e.g. Placeholder B"
+      }
+    },
+    "step6": {
+      "title": "Placeholder email question goes here",
+      "button": "Primary button label"
+    },
+    "step7": {
+      "brand": "BRAND",
+      "phrases": {
+        "p1": {
+          "title": "Placeholder loading line one",
+          "subtitle": "Placeholder loading subtitle one."
+        },
+        "p2": {
+          "title": "Placeholder loading line two",
+          "subtitle": "Placeholder loading subtitle two."
+        },
+        "p3": {
+          "title": "Placeholder loading line three",
+          "subtitle": "Placeholder loading subtitle three."
+        }
+      }
+    }
+  },
+  "ui": {
+    "back": "Back",
+    "continue": "Continue",
+    "skip": "Skip",
+    "next": "Next",
+    "yes": "Yes",
+    "no": "No",
+    "multiHint": "Pick up to {count}",
+    "multiHintBare": "Multiple selection",
+    "searching": "Searching…",
+    "noResults": "No matches",
+    "selected": "Selected",
+    "clear": "Change",
+    "validEmail": "Please enter a valid email address",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Email address",
+    "consentProcessing": "I agree to the processing of my email address to save my results and send account information. See <link>privacy policy</link>.",
+    "consentMarketing": "Send me occasional product updates (optional).",
+    "consentProcessingAria": "I agree to the processing of my email address to save my results and send account information",
+    "dataSecure": "Encrypted · GDPR compliant",
+    "submitting": "Saving…",
+    "footer": "© Acme. Tagline goes here.",
+    "datePicker": {
+      "day": "Day",
+      "month": "Month",
+      "year": "Year"
+    },
+    "timePicker": {
+      "hour": "Hour",
+      "minute": "Minute"
+    }
+  }
+}

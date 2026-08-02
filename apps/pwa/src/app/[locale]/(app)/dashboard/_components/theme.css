@@ -1,0 +1,210 @@
+/* Member-area scoped styles + theme tokens.
+ *
+ * TODO(new product): this file is the whole visual seam for the member area.
+ * Re-value the tokens below and the shell, the nav, the sheets and the login
+ * screen all follow. The STRUCTURE (screen shell, scroll container, desktop
+ * measure, focus ring, motion) is platform and should survive a rebrand.
+ *
+ * Two surfaces only: [data-surface="light"] (default) and
+ * [data-surface="dark"]. Set data-surface on BOTH .appRoot and .app-screen —
+ * portalled sheets wrap themselves in .appRoot and need the tokens too.
+ */
+
+/* ── Token contract ─────────────────────────────────────────────────────────
+ * --paper / --paper-soft  page + raised surface
+ * --ink / --ink-soft      primary + secondary text
+ * --accent / --accent-ink call-to-action fill + text on it
+ * --hairline(-strong)     1px rules
+ * --scrim                 modal backdrop
+ * --chrome-line           top/bottom nav rules (softer than --ink on dark)
+ * --rule                  editorial content dividers
+ * --success / --danger    status colours
+ * --measure               desktop content width
+ * --z-*                   the stacking order of the shell's layers
+ * -------------------------------------------------------------------------*/
+
+.appRoot,
+.app-screen {
+  --paper: #ffffff;
+  --paper-soft: #f5f6f7;
+  --ink: #16181c;
+  --ink-soft: #4b5058;
+  --accent: #16181c;
+  --accent-ink: #ffffff;
+  --hairline: rgba(22, 24, 28, 0.12);
+  --hairline-strong: rgba(22, 24, 28, 0.22);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --chrome-line: rgba(22, 24, 28, 0.14);
+  --rule: rgba(22, 24, 28, 0.12);
+  --success: oklch(0.62 0.13 155);
+  --danger: oklch(0.55 0.19 25);
+
+  /* Spacing scale. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 18px;
+  --space-5: 26px;
+  --space-6: 40px;
+
+  /* Radii. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* Type scale. */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 34px;
+
+  /* Layout. */
+  --measure: 820px;
+
+  /* Stacking order. Every overlay in the shell reads one of these instead of
+     a magic number, so a new layer cannot land between two existing ones. */
+  --z-nav: 80;
+  --z-scrim: 90;
+  --z-drawer: 91;
+  --z-sheet: 100;
+  --z-modal: 110;
+  --z-overlay: 120;
+
+  --font-display: var(--font-sans);
+}
+
+.appRoot[data-surface="dark"],
+.app-screen[data-surface="dark"] {
+  --paper: #131519;
+  --paper-soft: #1c1f25;
+  --ink: #eceef1;
+  --ink-soft: #a8aeb8;
+  --accent: #eceef1;
+  --accent-ink: #131519;
+  --hairline: rgba(255, 255, 255, 0.12);
+  --hairline-strong: rgba(255, 255, 255, 0.22);
+  --scrim: rgba(0, 0, 0, 0.66);
+  --chrome-line: rgba(255, 255, 255, 0.12);
+  --rule: rgba(255, 255, 255, 0.14);
+  /* Danger reads brighter on the dark surface so error text keeps AA contrast
+     (the light-theme deep red muddies against #131519). */
+  --danger: oklch(0.7 0.17 25);
+}
+
+.appRoot {
+  font-family: var(--font-sans);
+  color: var(--ink-soft);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+.appRoot * { box-sizing: border-box; }
+
+/* Keyboard focus — one consistent, token-driven ring across every interactive
+   element on the member-area surface. Pointer users never see it. */
+.appRoot :focus-visible,
+.app-screen :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Top-bar wordmark: hidden on narrow viewports so the centre slot can stay
+   truly centred without colliding with the brand; the mark always shows. */
+.tn-wordmark { display: none; }
+@media (min-width: 720px) { .tn-wordmark { display: inline-block; } }
+
+/* The app shell: a fixed-height column so the top and bottom nav never scroll
+   away and only .app-content moves. 100dvh (not 100vh) so mobile browser
+   chrome collapsing does not leave a dead strip under the bottom nav. */
+.app-screen {
+  height: 100dvh;
+  width: 100%;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.app-content::-webkit-scrollbar { display: none; }
+
+/* Desktop: cap the reading measure and centre it. Mobile stays full-bleed. */
+@media (min-width: 1024px) {
+  .appRoot { min-height: 100dvh; background: var(--paper); }
+  .app-content > * {
+    max-width: var(--measure);
+    margin-inline: auto;
+  }
+}
+
+/* Horizontal strip that hides its scrollbar in both engines. */
+.app-hscroll { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.app-hscroll::-webkit-scrollbar { display: none; }
+
+.display { font-family: var(--font-display); letter-spacing: -0.01em; }
+.mono-up {
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  font-weight: 600;
+}
+.body-sans {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.pageEnter { animation: appFadeUp .35s ease both; }
+@keyframes appFadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes appPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes appSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.tap { -webkit-tap-highlight-color: transparent; user-select: none; }
+
+.rule { height: 1px; background: var(--rule); border: 0; }
+
+/* Placeholder block: the neutral stand-in for real product content. Obvious on
+   purpose — it should look unfinished until the next product replaces it. */
+.placeholder-block {
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper-soft);
+  padding: var(--space-5);
+}
+
+.row-hover { transition: background .18s ease; }
+.row-hover:hover { background: var(--paper-soft); }
+.row-hover:focus-visible {
+  outline: none;
+  background: var(--paper-soft);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+@media (hover: none) {
+  .row-hover:hover { background: transparent; }
+  .row-hover:active { background: var(--paper-soft); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pageEnter { animation: none; }
+  .appRoot *,
+  .app-screen * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

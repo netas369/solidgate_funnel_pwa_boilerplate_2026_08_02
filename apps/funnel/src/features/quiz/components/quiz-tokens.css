@@ -1,0 +1,24 @@
+/*
+ * Quiz design tokens — the single re-skinning surface for the whole quiz.
+ *
+ * quiz-page.tsx reads --quiz-surface-* through its STEP_BACKGROUND table, and
+ * the shared chrome (nav arrow, progress footer) reads --quiz-accent. Change a
+ * value here and every step follows; there is no second place to edit.
+ *
+ * Individual step components still carry some hardcoded hex values for their
+ * inner details. Migrating those to tokens is the highest-value cleanup left in
+ * this feature — do it once and a new product re-themes the quiz from this file
+ * alone.
+ */
+.lmRoot.quizType {
+  /* Light surface: question and form screens. */
+  --quiz-surface-light: linear-gradient(180deg, #f0edfa 0%, #c0a2e5 100%);
+  /* Dark surface: reveals, gates and loaders. */
+  --quiz-surface-dark: #1d092c;
+  /* Interactive accent: selected states, the progress trail, the back arrow. */
+  --quiz-accent: #7f4cf2;
+  /* Ink on the light surface. */
+  --quiz-ink: #241f38;
+  /* Ink on the dark surface. */
+  --quiz-ink-inverse: #ffffff;
+}

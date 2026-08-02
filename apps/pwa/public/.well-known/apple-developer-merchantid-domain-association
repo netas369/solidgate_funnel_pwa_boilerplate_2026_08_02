@@ -1,0 +1,23 @@
+REPLACE_ME_WITH_YOUR_APPLE_PAY_DOMAIN_ASSOCIATION_TOKEN
+
+This file is a PLACEHOLDER. Apple Pay will not work until it is replaced.
+
+What it is
+  Apple's domain-verification token. Apple fetches
+  https://<your-domain>/.well-known/apple-developer-merchantid-domain-association
+  and compares the body byte-for-byte with the token it issued.
+
+How to replace it
+  1. Register this exact domain with your Apple Pay merchant identifier
+     (via Solidgate's dashboard, or directly in the Apple Developer portal).
+  2. Download the association file it gives you.
+  3. Overwrite this file with its contents. No trailing edits, no reformatting —
+     the body is compared exactly.
+  4. Re-issue it per merchant AND per domain. A token minted for the staging
+     domain will not verify production.
+
+Do not move or rename this path
+  next.config.ts pins a `Content-Type: text/plain` header on it (the file is
+  extensionless, so Next would otherwise serve application/octet-stream and
+  verification fails), and src/proxy.ts excludes /.well-known/ from the auth
+  gate because Apple and Solidgate fetch it unauthenticated.

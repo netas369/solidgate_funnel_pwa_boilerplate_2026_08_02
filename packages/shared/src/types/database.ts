@@ -1,0 +1,2391 @@
+// Generated from supabase/migrations/00001_baseline.sql.
+//
+// Hand-authored to match the baseline exactly, because the boilerplate ships
+// without a linked Supabase project. Once you have created your project and run
+// `npx supabase link`, stop hand-editing this file and regenerate it:
+//
+//   npx supabase gen types typescript --linked > packages/shared/src/types/database.ts
+//
+// Regenerate after every migration. If this file and the database disagree, the
+// database wins and the compiler will not warn you.
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  public: {
+    Tables: {
+      cron_runs: {
+        Row: {
+          cached: number
+          duration_ms: number | null
+          failed: number
+          failures: Json
+          generated: number
+          id: number
+          job: string
+          ok: boolean
+          ran_at: string
+          total: number
+        }
+        Insert: {
+          cached?: number
+          duration_ms?: number | null
+          failed?: number
+          failures?: Json
+          generated?: number
+          id?: never
+          job: string
+          ok: boolean
+          ran_at?: string
+          total?: number
+        }
+        Update: {
+          cached?: number
+          duration_ms?: number | null
+          failed?: number
+          failures?: Json
+          generated?: number
+          id?: never
+          job?: string
+          ok?: boolean
+          ran_at?: string
+          total?: number
+        }
+        Relationships: []
+      }
+      deletion_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          email: string
+          error_details: string | null
+          id: string
+          requested_at: string
+          status: string
+          tables_affected: Json | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          email: string
+          error_details?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          tables_affected?: Json | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          email?: string
+          error_details?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          tables_affected?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      entitlements: {
+        Row: {
+          access_level: string
+          created_at: string
+          expires_at: string | null
+          granted_at: string
+          id: string
+          order_id: string | null
+          payment_environment: string
+          product_slug: string
+          revoked_at: string | null
+          solidgate_subscription_id: string | null
+          source: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_level?: string
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          id?: string
+          order_id?: string | null
+          payment_environment?: string
+          product_slug: string
+          revoked_at?: string | null
+          solidgate_subscription_id?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_level?: string
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          id?: string
+          order_id?: string | null
+          payment_environment?: string
+          product_slug?: string
+          revoked_at?: string | null
+          solidgate_subscription_id?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entitlements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      funnel_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          session_id: string
+          step_number: number | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          session_id: string
+          step_number?: number | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          session_id?: string
+          step_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generation_locks: {
+        Row: {
+          acquired_at: string
+          expires_at: string
+          scope: string
+          scope_key: string
+        }
+        Insert: {
+          acquired_at?: string
+          expires_at: string
+          scope: string
+          scope_key: string
+        }
+        Update: {
+          acquired_at?: string
+          expires_at?: string
+          scope?: string
+          scope_key?: string
+        }
+        Relationships: []
+      }
+      meta_capi_event_claims: {
+        Row: {
+          created_at: string
+          environment: string
+          event_id: string
+          event_name: string
+          id: number
+          ip_hash: string
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          environment: string
+          event_id: string
+          event_name: string
+          id?: number
+          ip_hash: string
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          event_id?: string
+          event_name?: string
+          id?: number
+          ip_hash?: string
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_capi_event_claims_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          amount_cents: number
+          analytics_captured_at: string | null
+          claimed_at: string | null
+          created_at: string
+          currency: string
+          id: string
+          order_sequence: number
+          payment_environment: string
+          product_name: string
+          product_slug: string | null
+          psp: string
+          session_id: string | null
+          solidgate_card_source_sequence: number
+          solidgate_chargeback_amount_cents: number
+          solidgate_chargeback_id: string | null
+          solidgate_chargeback_status: string | null
+          solidgate_checkout_identity_bound_at: string | null
+          solidgate_checkout_identity_legacy: boolean
+          solidgate_checkout_locale: string | null
+          solidgate_customer_email: string | null
+          solidgate_order_id: string | null
+          solidgate_original_amount_cents: number | null
+          solidgate_payment_action: string | null
+          solidgate_payment_status: string | null
+          solidgate_pre_dispute_status: string | null
+          solidgate_product_id: string | null
+          solidgate_refunded_amount_cents: number
+          solidgate_submission_started_at: string | null
+          solidgate_submission_token: string | null
+          solidgate_subscription_id: string | null
+          solidgate_verify_url: string | null
+          status: string
+          tracking_metadata: Json
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          analytics_captured_at?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          order_sequence?: number
+          payment_environment?: string
+          product_name: string
+          product_slug?: string | null
+          psp?: string
+          session_id?: string | null
+          solidgate_card_source_sequence?: number
+          solidgate_chargeback_amount_cents?: number
+          solidgate_chargeback_id?: string | null
+          solidgate_chargeback_status?: string | null
+          solidgate_checkout_identity_bound_at?: string | null
+          solidgate_checkout_identity_legacy?: boolean
+          solidgate_checkout_locale?: string | null
+          solidgate_customer_email?: string | null
+          solidgate_order_id?: string | null
+          solidgate_original_amount_cents?: number | null
+          solidgate_payment_action?: string | null
+          solidgate_payment_status?: string | null
+          solidgate_pre_dispute_status?: string | null
+          solidgate_product_id?: string | null
+          solidgate_refunded_amount_cents?: number
+          solidgate_submission_started_at?: string | null
+          solidgate_submission_token?: string | null
+          solidgate_subscription_id?: string | null
+          solidgate_verify_url?: string | null
+          status?: string
+          tracking_metadata?: Json
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          analytics_captured_at?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          order_sequence?: number
+          payment_environment?: string
+          product_name?: string
+          product_slug?: string | null
+          psp?: string
+          session_id?: string | null
+          solidgate_card_source_sequence?: number
+          solidgate_chargeback_amount_cents?: number
+          solidgate_chargeback_id?: string | null
+          solidgate_chargeback_status?: string | null
+          solidgate_checkout_identity_bound_at?: string | null
+          solidgate_checkout_identity_legacy?: boolean
+          solidgate_checkout_locale?: string | null
+          solidgate_customer_email?: string | null
+          solidgate_order_id?: string | null
+          solidgate_original_amount_cents?: number | null
+          solidgate_payment_action?: string | null
+          solidgate_payment_status?: string | null
+          solidgate_pre_dispute_status?: string | null
+          solidgate_product_id?: string | null
+          solidgate_refunded_amount_cents?: number
+          solidgate_submission_started_at?: string | null
+          solidgate_submission_token?: string | null
+          solidgate_subscription_id?: string | null
+          solidgate_verify_url?: string | null
+          status?: string
+          tracking_metadata?: Json
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      otp_attempts: {
+        Row: {
+          attempted_at: string
+          email: string
+          id: string
+          ip_address: string | null
+          success: boolean
+        }
+        Insert: {
+          attempted_at?: string
+          email: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+        }
+        Update: {
+          attempted_at?: string
+          email?: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+        }
+        Relationships: []
+      }
+      renewal_events: {
+        Row: {
+          amount_cents: number
+          chargeback_amount_cents: number
+          chargeback_id: string | null
+          chargeback_status: string | null
+          created_at: string
+          currency: string
+          event_created_at: string | null
+          gross_amount_cents: number | null
+          id: string
+          invoice_created_at: string | null
+          payment_environment: string
+          product_key: string | null
+          refunded_amount_cents: number
+          solidgate_invoice_id: string | null
+          solidgate_order_id: string | null
+          solidgate_subscription_id: string | null
+          status: string
+          subscription_term_number: number | null
+        }
+        Insert: {
+          amount_cents: number
+          chargeback_amount_cents?: number
+          chargeback_id?: string | null
+          chargeback_status?: string | null
+          created_at?: string
+          currency: string
+          event_created_at?: string | null
+          gross_amount_cents?: number | null
+          id?: string
+          invoice_created_at?: string | null
+          payment_environment?: string
+          product_key?: string | null
+          refunded_amount_cents?: number
+          solidgate_invoice_id?: string | null
+          solidgate_order_id?: string | null
+          solidgate_subscription_id?: string | null
+          status?: string
+          subscription_term_number?: number | null
+        }
+        Update: {
+          amount_cents?: number
+          chargeback_amount_cents?: number
+          chargeback_id?: string | null
+          chargeback_status?: string | null
+          created_at?: string
+          currency?: string
+          event_created_at?: string | null
+          gross_amount_cents?: number | null
+          id?: string
+          invoice_created_at?: string | null
+          payment_environment?: string
+          product_key?: string | null
+          refunded_amount_cents?: number
+          solidgate_invoice_id?: string | null
+          solidgate_order_id?: string | null
+          solidgate_subscription_id?: string | null
+          status?: string
+          subscription_term_number?: number | null
+        }
+        Relationships: []
+      }
+      sessions: {
+        Row: {
+          consent_given_at: string | null
+          consent_version: string | null
+          created_at: string
+          current_step_id: string | null
+          email: string | null
+          id: string
+          last_oto_step: string | null
+          locale: string
+          marketing_consent: boolean | null
+          quiz_answers: Json
+          result_segment: string | null
+          solidgate_oto_environment: string | null
+          source: string
+          updated_at: string
+          user_id: string | null
+          welcome_email_pending: boolean
+        }
+        Insert: {
+          consent_given_at?: string | null
+          consent_version?: string | null
+          created_at?: string
+          current_step_id?: string | null
+          email?: string | null
+          id?: string
+          last_oto_step?: string | null
+          locale: string
+          marketing_consent?: boolean | null
+          quiz_answers?: Json
+          result_segment?: string | null
+          solidgate_oto_environment?: string | null
+          source?: string
+          updated_at?: string
+          user_id?: string | null
+          welcome_email_pending?: boolean
+        }
+        Update: {
+          consent_given_at?: string | null
+          consent_version?: string | null
+          created_at?: string
+          current_step_id?: string | null
+          email?: string | null
+          id?: string
+          last_oto_step?: string | null
+          locale?: string
+          marketing_consent?: boolean | null
+          quiz_answers?: Json
+          result_segment?: string | null
+          solidgate_oto_environment?: string | null
+          source?: string
+          updated_at?: string
+          user_id?: string | null
+          welcome_email_pending?: boolean
+        }
+        Relationships: []
+      }
+      solidgate_account_vault: {
+        Row: {
+          card_brand: string | null
+          card_last4: string | null
+          card_original_payment_method: string | null
+          card_source_created_at: string
+          card_source_id: string
+          card_source_kind: string
+          card_source_sequence: number
+          card_token: string | null
+          created_at: string
+          customer_account_id: string
+          payment_environment: string
+          session_origin_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          card_brand?: string | null
+          card_last4?: string | null
+          card_original_payment_method?: string | null
+          card_source_created_at?: string
+          card_source_id?: string
+          card_source_kind?: string
+          card_source_sequence?: number
+          card_token?: string | null
+          created_at?: string
+          customer_account_id: string
+          payment_environment?: string
+          session_origin_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          card_brand?: string | null
+          card_last4?: string | null
+          card_original_payment_method?: string | null
+          card_source_created_at?: string
+          card_source_id?: string
+          card_source_kind?: string
+          card_source_sequence?: number
+          card_token?: string | null
+          created_at?: string
+          customer_account_id?: string
+          payment_environment?: string
+          session_origin_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_account_vault_session_origin_id_fkey"
+            columns: ["session_origin_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solidgate_analytics_outbox: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          distinct_id: string
+          environment: string
+          event_key: string
+          event_name: string
+          id: string
+          insert_id: string
+          last_error: string | null
+          next_attempt_at: string
+          processing_started_at: string | null
+          properties: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          distinct_id: string
+          environment?: string
+          event_key: string
+          event_name: string
+          id?: string
+          insert_id: string
+          last_error?: string | null
+          next_attempt_at?: string
+          processing_started_at?: string | null
+          properties?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          distinct_id?: string
+          environment?: string
+          event_key?: string
+          event_name?: string
+          id?: string
+          insert_id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          processing_started_at?: string | null
+          properties?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      solidgate_card_update_attempts: {
+        Row: {
+          apply_started_at: string | null
+          apply_token: string | null
+          builder_started_at: string | null
+          builder_token: string | null
+          checkout_locale: string
+          completed_at: string | null
+          created_at: string
+          customer_email: string
+          id: string
+          is_current: boolean
+          last_provider_status: string | null
+          merchant_data: Json | null
+          payment_environment: string
+          solidgate_order_id: string
+          source_sequence: number
+          state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          apply_started_at?: string | null
+          apply_token?: string | null
+          builder_started_at?: string | null
+          builder_token?: string | null
+          checkout_locale: string
+          completed_at?: string | null
+          created_at?: string
+          customer_email: string
+          id?: string
+          is_current?: boolean
+          last_provider_status?: string | null
+          merchant_data?: Json | null
+          payment_environment: string
+          solidgate_order_id: string
+          source_sequence?: number
+          state: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          apply_started_at?: string | null
+          apply_token?: string | null
+          builder_started_at?: string | null
+          builder_token?: string | null
+          checkout_locale?: string
+          completed_at?: string | null
+          created_at?: string
+          customer_email?: string
+          id?: string
+          is_current?: boolean
+          last_provider_status?: string | null
+          merchant_data?: Json | null
+          payment_environment?: string
+          solidgate_order_id?: string
+          source_sequence?: number
+          state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      solidgate_entity_watermarks: {
+        Row: {
+          entity_id: string
+          entity_type: string
+          last_event_created_at: string | null
+          last_event_id: string | null
+          processing_event_created_at: string | null
+          processing_event_id: string | null
+          processing_started_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          entity_id: string
+          entity_type: string
+          last_event_created_at?: string | null
+          last_event_id?: string | null
+          processing_event_created_at?: string | null
+          processing_event_id?: string | null
+          processing_started_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          entity_id?: string
+          entity_type?: string
+          last_event_created_at?: string | null
+          last_event_id?: string | null
+          processing_event_created_at?: string | null
+          processing_event_id?: string | null
+          processing_started_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      solidgate_fulfillment_outbox: {
+        Row: {
+          attempts: number
+          claim_token: string | null
+          completed_at: string | null
+          created_at: string
+          effect_key: string
+          effect_type: string
+          environment: string
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          payload: Json
+          processing_started_at: string | null
+          solidgate_order_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          claim_token?: string | null
+          completed_at?: string | null
+          created_at?: string
+          effect_key: string
+          effect_type: string
+          environment: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          processing_started_at?: string | null
+          solidgate_order_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          claim_token?: string | null
+          completed_at?: string | null
+          created_at?: string
+          effect_key?: string
+          effect_type?: string
+          environment?: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          processing_started_at?: string | null
+          solidgate_order_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      solidgate_intro_claims: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          email_hash: string
+          lease_expires_at: string
+          payment_environment: string
+          session_id: string | null
+          solidgate_subscription_id: string | null
+          state: string
+          superseded_subscription_ids: string[]
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          email_hash: string
+          lease_expires_at?: string
+          payment_environment: string
+          session_id?: string | null
+          solidgate_subscription_id?: string | null
+          state?: string
+          superseded_subscription_ids?: string[]
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          email_hash?: string
+          lease_expires_at?: string
+          payment_environment?: string
+          session_id?: string | null
+          solidgate_subscription_id?: string | null
+          state?: string
+          superseded_subscription_ids?: string[]
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_intro_claims_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solidgate_invoice_orders: {
+        Row: {
+          amount_cents: number
+          chargeback_amount_cents: number
+          chargeback_id: string | null
+          chargeback_status: string | null
+          created_at: string
+          currency: string
+          environment: string
+          event_created_at: string | null
+          operation: string | null
+          order_metadata: Json
+          product_price_id: string | null
+          refunded_amount_cents: number
+          solidgate_invoice_id: string
+          solidgate_order_id: string
+          solidgate_subscription_id: string
+          source_created_at: string | null
+          source_updated_at: string | null
+          status: string
+          subscription_term_number: number | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number
+          chargeback_amount_cents?: number
+          chargeback_id?: string | null
+          chargeback_status?: string | null
+          created_at?: string
+          currency: string
+          environment?: string
+          event_created_at?: string | null
+          operation?: string | null
+          order_metadata?: Json
+          product_price_id?: string | null
+          refunded_amount_cents?: number
+          solidgate_invoice_id: string
+          solidgate_order_id: string
+          solidgate_subscription_id: string
+          source_created_at?: string | null
+          source_updated_at?: string | null
+          status: string
+          subscription_term_number?: number | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          chargeback_amount_cents?: number
+          chargeback_id?: string | null
+          chargeback_status?: string | null
+          created_at?: string
+          currency?: string
+          environment?: string
+          event_created_at?: string | null
+          operation?: string | null
+          order_metadata?: Json
+          product_price_id?: string | null
+          refunded_amount_cents?: number
+          solidgate_invoice_id?: string
+          solidgate_order_id?: string
+          solidgate_subscription_id?: string
+          source_created_at?: string | null
+          source_updated_at?: string | null
+          status?: string
+          subscription_term_number?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      solidgate_main_checkout_states: {
+        Row: {
+          build_started_at: string
+          builder_token: string
+          created_at: string
+          merchant_data: Json | null
+          offer_slug: string
+          order_db_id: string
+          payment_environment: string
+          product_slug: string
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          build_started_at?: string
+          builder_token: string
+          created_at?: string
+          merchant_data?: Json | null
+          offer_slug: string
+          order_db_id: string
+          payment_environment: string
+          product_slug: string
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          build_started_at?: string
+          builder_token?: string
+          created_at?: string
+          merchant_data?: Json | null
+          offer_slug?: string
+          order_db_id?: string
+          payment_environment?: string
+          product_slug?: string
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_main_checkout_states_order_db_id_fkey"
+            columns: ["order_db_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solidgate_main_checkout_states_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solidgate_pwa_purchase_states: {
+        Row: {
+          claim_kind: string | null
+          claim_started_at: string | null
+          claim_token: string
+          created_at: string
+          last_result_kind: string | null
+          last_result_net_amount_cents: number | null
+          last_result_subscription_id: string | null
+          last_result_verify_url: string | null
+          merchant_data: Json | null
+          offer_slug: string
+          order_db_id: string
+          payment_environment: string
+          product_slug: string
+          purchase_mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          claim_kind?: string | null
+          claim_started_at?: string | null
+          claim_token: string
+          created_at?: string
+          last_result_kind?: string | null
+          last_result_net_amount_cents?: number | null
+          last_result_subscription_id?: string | null
+          last_result_verify_url?: string | null
+          merchant_data?: Json | null
+          offer_slug: string
+          order_db_id: string
+          payment_environment: string
+          product_slug: string
+          purchase_mode: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          claim_kind?: string | null
+          claim_started_at?: string | null
+          claim_token?: string
+          created_at?: string
+          last_result_kind?: string | null
+          last_result_net_amount_cents?: number | null
+          last_result_subscription_id?: string | null
+          last_result_verify_url?: string | null
+          merchant_data?: Json | null
+          offer_slug?: string
+          order_db_id?: string
+          payment_environment?: string
+          product_slug?: string
+          purchase_mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_pwa_purchase_states_order_db_id_fkey"
+            columns: ["order_db_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solidgate_session_vault: {
+        Row: {
+          card_brand: string | null
+          card_last4: string | null
+          card_original_payment_method: string | null
+          card_source_created_at: string | null
+          card_source_legacy: boolean
+          card_source_order_id: string | null
+          card_source_sequence: number | null
+          card_token: string | null
+          created_at: string
+          customer_account_id: string
+          payment_environment: string
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          card_brand?: string | null
+          card_last4?: string | null
+          card_original_payment_method?: string | null
+          card_source_created_at?: string | null
+          card_source_legacy?: boolean
+          card_source_order_id?: string | null
+          card_source_sequence?: number | null
+          card_token?: string | null
+          created_at?: string
+          customer_account_id: string
+          payment_environment?: string
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          card_brand?: string | null
+          card_last4?: string | null
+          card_original_payment_method?: string | null
+          card_source_created_at?: string | null
+          card_source_legacy?: boolean
+          card_source_order_id?: string | null
+          card_source_sequence?: number | null
+          card_token?: string | null
+          created_at?: string
+          customer_account_id?: string
+          payment_environment?: string
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_session_vault_card_source_order_id_fkey"
+            columns: ["card_source_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solidgate_session_vault_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solidgate_subscription_token_sync_jobs: {
+        Row: {
+          applied_at: string | null
+          attempts: number
+          claim_token: string | null
+          created_at: string
+          desired_source_created_at: string
+          desired_source_id: string
+          desired_source_kind: string
+          desired_source_sequence: number
+          last_error: string | null
+          next_attempt_at: string
+          payment_environment: string
+          processing_started_at: string | null
+          solidgate_subscription_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          attempts?: number
+          claim_token?: string | null
+          created_at?: string
+          desired_source_created_at: string
+          desired_source_id: string
+          desired_source_kind: string
+          desired_source_sequence: number
+          last_error?: string | null
+          next_attempt_at?: string
+          payment_environment: string
+          processing_started_at?: string | null
+          solidgate_subscription_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          attempts?: number
+          claim_token?: string | null
+          created_at?: string
+          desired_source_created_at?: string
+          desired_source_id?: string
+          desired_source_kind?: string
+          desired_source_sequence?: number
+          last_error?: string | null
+          next_attempt_at?: string
+          payment_environment?: string
+          processing_started_at?: string | null
+          solidgate_subscription_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      solidgate_webhook_events: {
+        Row: {
+          attempts: number
+          claim_generation: number
+          claim_token: string | null
+          completed_at: string | null
+          environment: string
+          event_created_at: string | null
+          event_id: string
+          failed_at: string | null
+          last_error: string | null
+          payload: Json | null
+          processing_started_at: string | null
+          received_at: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          claim_generation?: number
+          claim_token?: string | null
+          completed_at?: string | null
+          environment?: string
+          event_created_at?: string | null
+          event_id: string
+          failed_at?: string | null
+          last_error?: string | null
+          payload?: Json | null
+          processing_started_at?: string | null
+          received_at?: string
+          status?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          claim_generation?: number
+          claim_token?: string | null
+          completed_at?: string | null
+          environment?: string
+          event_created_at?: string | null
+          event_id?: string
+          failed_at?: string | null
+          last_error?: string | null
+          payload?: Json | null
+          processing_started_at?: string | null
+          received_at?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_acquisition_attribution: {
+        Row: {
+          captured_at: string
+          created_at: string
+          payment_environment: string
+          source_order_id: string | null
+          source_session_id: string | null
+          updated_at: string
+          user_id: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          captured_at?: string
+          created_at?: string
+          payment_environment: string
+          source_order_id?: string | null
+          source_session_id?: string | null
+          updated_at?: string
+          user_id: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          captured_at?: string
+          created_at?: string
+          payment_environment?: string
+          source_order_id?: string | null
+          source_session_id?: string | null
+          updated_at?: string
+          user_id?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_acquisition_attribution_source_order_id_fkey"
+            columns: ["source_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_acquisition_attribution_source_session_id_fkey"
+            columns: ["source_session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_prefs: {
+        Row: {
+          app_open_count: number
+          country: string | null
+          last_active_at: string | null
+          locale: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_open_count?: number
+          country?: string | null
+          last_active_at?: string | null
+          locale: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_open_count?: number
+          country?: string | null
+          last_active_at?: string | null
+          locale?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      solidgate_intro_claims_needing_refund: {
+        Row: {
+          consumed_at: string | null
+          duplicate_count: number | null
+          duplicate_subscription_ids: string[] | null
+          email_hash: string | null
+          granted_subscription_id: string | null
+          payment_environment: string | null
+          session_id: string | null
+          tier: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          consumed_at?: string | null
+          duplicate_count?: never
+          duplicate_subscription_ids?: string[] | null
+          email_hash?: string | null
+          granted_subscription_id?: string | null
+          payment_environment?: string | null
+          session_id?: string | null
+          tier?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          consumed_at?: string | null
+          duplicate_count?: never
+          duplicate_subscription_ids?: string[] | null
+          email_hash?: string | null
+          granted_subscription_id?: string | null
+          payment_environment?: string | null
+          session_id?: string | null
+          tier?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_intro_claims_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Functions: {
+      advance_solidgate_oto_progress: {
+        Args: {
+          p_allow_catch_up?: boolean
+          p_current_step: number
+          p_payment_environment: string
+          p_session_id: string
+        }
+        Returns: {
+          advanced: boolean
+          conflict: boolean
+          persisted_step: number
+        }[]
+      }
+      apply_solidgate_subscription_entitlement_lifecycle: {
+        Args: {
+          p_access_level: string
+          p_expires_at: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_solidgate_subscription_id: string
+          p_source: string
+          p_status: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      bump_user_app_open: {
+        Args: {
+          p_default_locale: string
+          p_user_id: string
+        }
+        Returns: {
+          app_open_count: number
+          last_active_at: string
+        }[]
+      }
+      claim_meta_capi_event: {
+        Args: {
+          p_environment: string
+          p_event_id: string
+          p_event_name: string
+          p_ip_hash: string
+          p_max_events?: number
+          p_session_id: string
+          p_window_seconds?: number
+        }
+        Returns: boolean
+      }
+      claim_solidgate_analytics_outbox: {
+        Args: {
+          p_environment: string
+          p_lease_seconds?: number
+          p_limit?: number
+        }
+        Returns: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          distinct_id: string
+          environment: string
+          event_key: string
+          event_name: string
+          id: string
+          insert_id: string
+          last_error: string | null
+          next_attempt_at: string
+          processing_started_at: string | null
+          properties: Json
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "solidgate_analytics_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_solidgate_card_update_attempt: {
+        Args: {
+          p_apply_token: string
+          p_payment_environment: string
+          p_solidgate_order_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      claim_solidgate_entity_event: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_event_created_at: string
+          p_event_id: string
+          p_lease_seconds?: number
+        }
+        Returns: string
+      }
+      claim_solidgate_fulfillment_outbox: {
+        Args: {
+          p_environment: string
+          p_lease_seconds?: number
+          p_limit?: number
+        }
+        Returns: {
+          attempts: number
+          claim_token: string | null
+          completed_at: string | null
+          created_at: string
+          effect_key: string
+          effect_type: string
+          environment: string
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          payload: Json
+          processing_started_at: string | null
+          solidgate_order_id: string
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "solidgate_fulfillment_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_solidgate_intro_offer: {
+        Args: {
+          p_email_hash: string
+          p_payment_environment: string
+          p_session_id: string
+          p_tier: string
+        }
+        Returns: string
+      }
+      claim_solidgate_subscription_token_sync: {
+        Args: {
+          p_lease_seconds?: number
+          p_limit?: number
+          p_payment_environment: string
+          p_user_id?: string
+        }
+        Returns: {
+          applied_at: string | null
+          attempts: number
+          claim_token: string | null
+          created_at: string
+          desired_source_created_at: string
+          desired_source_id: string
+          desired_source_kind: string
+          desired_source_sequence: number
+          last_error: string | null
+          next_attempt_at: string
+          payment_environment: string
+          processing_started_at: string | null
+          solidgate_subscription_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "solidgate_subscription_token_sync_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_solidgate_webhook_event: {
+        Args: {
+          p_environment: string
+          p_event_created_at: string
+          p_event_id: string
+          p_lease_seconds?: number
+          p_payload: Json
+          p_type: string
+        }
+        Returns: boolean
+      }
+      claim_solidgate_webhook_event_v2: {
+        Args: {
+          p_environment: string
+          p_event_created_at: string
+          p_event_id: string
+          p_lease_seconds?: number
+          p_payload: Json
+          p_type: string
+        }
+        Returns: {
+          claim_generation: number
+          claim_state: string
+          claim_token: string
+        }[]
+      }
+      clear_solidgate_legacy_session_vault: {
+        Args: {
+          p_payment_environment: string
+          p_session_id: string
+        }
+        Returns: boolean
+      }
+      complete_solidgate_card_update_attempt: {
+        Args: {
+          p_apply_token: string
+          p_payment_environment: string
+          p_provider_status: string
+          p_solidgate_order_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      complete_solidgate_entity_event: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_event_created_at: string
+          p_event_id: string
+        }
+        Returns: undefined
+      }
+      complete_solidgate_subscription_token_sync: {
+        Args: {
+          p_claim_token: string
+          p_desired_source_id: string
+          p_desired_source_kind: string
+          p_payment_environment: string
+          p_require_nonbillable?: boolean
+          p_solidgate_subscription_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      complete_solidgate_webhook_event_v2: {
+        Args: {
+          p_claim_generation: number
+          p_claim_token: string
+          p_environment: string
+          p_event_id: string
+        }
+        Returns: boolean
+      }
+      consume_solidgate_intro_offer: {
+        Args: {
+          p_email_hash: string
+          p_payment_environment: string
+          p_session_id: string
+          p_subscription_id: string
+          p_tier: string
+        }
+        Returns: string
+      }
+      enqueue_solidgate_subscription_token_sync: {
+        Args: {
+          p_payment_environment: string
+          p_user_id: string
+        }
+        Returns: number
+      }
+      fail_solidgate_subscription_token_sync: {
+        Args: {
+          p_claim_token: string
+          p_desired_source_id: string
+          p_desired_source_kind: string
+          p_last_error: string
+          p_payment_environment: string
+          p_solidgate_subscription_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      fail_solidgate_webhook_event_v2: {
+        Args: {
+          p_claim_generation: number
+          p_claim_token: string
+          p_environment: string
+          p_event_id: string
+          p_last_error: string
+        }
+        Returns: boolean
+      }
+      fence_solidgate_subscription_token_sync_for_tokenless_source: {
+        Args: {
+          p_payment_environment: string
+          p_source_created_at: string
+          p_source_id: string
+          p_source_kind: string
+          p_source_sequence: number
+          p_user_id: string
+        }
+        Returns: number
+      }
+      finalize_solidgate_card_update_attempt: {
+        Args: {
+          p_attempt_id: string
+          p_builder_token: string
+          p_merchant_data: Json
+          p_payment_environment: string
+          p_solidgate_order_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      finalize_solidgate_main_checkout: {
+        Args: {
+          p_amount_cents: number
+          p_builder_token: string
+          p_currency: string
+          p_merchant_data: Json
+          p_offer_slug: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_session_id: string
+          p_solidgate_order_id: string
+        }
+        Returns: Json
+      }
+      finalize_solidgate_main_checkout_v2: {
+        Args: {
+          p_amount_cents: number
+          p_builder_token: string
+          p_checkout_locale: string
+          p_currency: string
+          p_customer_email: string
+          p_merchant_data: Json
+          p_offer_slug: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_session_id: string
+          p_solidgate_order_id: string
+        }
+        Returns: Json
+      }
+      finalize_solidgate_pwa_form: {
+        Args: {
+          p_amount_cents: number
+          p_claim_token: string
+          p_currency: string
+          p_merchant_data: Json
+          p_offer_slug: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_solidgate_order_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      finalize_solidgate_pwa_form_v2: {
+        Args: {
+          p_amount_cents: number
+          p_checkout_locale: string
+          p_claim_token: string
+          p_currency: string
+          p_customer_email: string
+          p_merchant_data: Json
+          p_offer_slug: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_solidgate_order_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      find_auth_user_id_by_email: {
+        Args: {
+          p_email: string
+        }
+        Returns: string
+      }
+      get_solidgate_card_update_attempt: {
+        Args: {
+          p_payment_environment: string
+          p_solidgate_order_id: string
+          p_user_id: string
+        }
+        Returns: {
+          attempt_id: string
+          attempt_state: string
+          bound_checkout_locale: string
+          bound_customer_email: string
+          is_current: boolean
+          source_created_at: string
+        }[]
+      }
+      get_solidgate_main_checkout_identity: {
+        Args: {
+          p_payment_environment: string
+          p_product_slug: string
+          p_session_id: string
+        }
+        Returns: {
+          amount_cents: number
+          checkout_locale: string
+          currency: string
+          customer_email: string
+          offer_slug: string
+          order_db_id: string
+          solidgate_payment_action: string
+          solidgate_product_id: string
+          tracking_metadata: Json
+          user_id: string
+        }[]
+      }
+      get_solidgate_pwa_checkout_identity: {
+        Args: {
+          p_payment_environment: string
+          p_product_slug: string
+          p_user_id: string
+        }
+        Returns: {
+          amount_cents: number
+          checkout_locale: string
+          currency: string
+          customer_email: string
+          offer_slug: string
+          order_db_id: string
+          purchase_mode: string
+          solidgate_payment_action: string
+          solidgate_product_id: string
+          tracking_metadata: Json
+        }[]
+      }
+      grant_solidgate_main_entitlement: {
+        Args: {
+          p_amount_cents: number
+          p_fallback_expires_at: string
+          p_order_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_subscription_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      grant_solidgate_oto_entitlement: {
+        Args: {
+          p_access_level: string
+          p_expires_at: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_solidgate_subscription_id: string
+          p_source: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      grant_solidgate_pwa_entitlement: {
+        Args: {
+          p_access_level: string
+          p_expires_at: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_solidgate_subscription_id: string
+          p_source: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      open_solidgate_card_update_attempt: {
+        Args: {
+          p_builder_token: string
+          p_candidate_order_id: string
+          p_checkout_locale: string
+          p_customer_email: string
+          p_payment_environment: string
+          p_user_id: string
+        }
+        Returns: {
+          attempt_id: string
+          attempt_state: string
+          bound_checkout_locale: string
+          bound_customer_email: string
+          is_new: boolean
+          merchant_data: Json
+          should_build: boolean
+          solidgate_order_id: string
+        }[]
+      }
+      open_solidgate_main_checkout: {
+        Args: {
+          p_amount_cents: number
+          p_builder_token: string
+          p_currency: string
+          p_offer_slug: string
+          p_payment_environment: string
+          p_product_name: string
+          p_product_slug: string
+          p_session_id: string
+          p_tracking_metadata: Json
+          p_user_id?: string
+        }
+        Returns: {
+          bound_amount_cents: number
+          bound_currency: string
+          bound_offer_slug: string
+          bound_order_status: string
+          bound_payment_environment: string
+          bound_payment_status: string
+          bound_product_name: string
+          bound_product_slug: string
+          bound_session_id: string
+          bound_tracking_metadata: Json
+          is_new: boolean
+          merchant_data: Json
+          order_db_id: string
+          should_build: boolean
+          solidgate_order_id: string
+        }[]
+      }
+      open_solidgate_main_checkout_v2: {
+        Args: {
+          p_amount_cents: number
+          p_builder_token: string
+          p_checkout_locale: string
+          p_currency: string
+          p_customer_email: string
+          p_offer_slug: string
+          p_payment_environment: string
+          p_product_name: string
+          p_product_slug: string
+          p_session_id: string
+          p_solidgate_payment_action: string
+          p_solidgate_product_id: string
+          p_tracking_metadata: Json
+          p_user_id?: string
+        }
+        Returns: {
+          bound_amount_cents: number
+          bound_checkout_locale: string
+          bound_currency: string
+          bound_customer_email: string
+          bound_offer_slug: string
+          bound_order_status: string
+          bound_payment_environment: string
+          bound_payment_status: string
+          bound_product_name: string
+          bound_product_slug: string
+          bound_session_id: string
+          bound_solidgate_payment_action: string
+          bound_solidgate_product_id: string
+          bound_tracking_metadata: Json
+          is_new: boolean
+          merchant_data: Json
+          order_db_id: string
+          should_build: boolean
+          solidgate_order_id: string
+        }[]
+      }
+      open_solidgate_oto_order_v2: {
+        Args: {
+          p_amount_cents: number
+          p_builder_token: string
+          p_checkout_locale: string
+          p_currency: string
+          p_customer_email: string
+          p_order_prefix: string
+          p_payment_environment: string
+          p_product_name: string
+          p_product_slug: string
+          p_session_id: string
+          p_solidgate_payment_action?: string
+          p_solidgate_product_id?: string
+          p_tracking_metadata: Json
+          p_user_id?: string
+        }
+        Returns: {
+          bound_checkout_locale: string
+          bound_currency: string
+          bound_customer_email: string
+          bound_original_amount_cents: number
+          bound_solidgate_payment_action: string
+          bound_solidgate_product_id: string
+          bound_tracking_metadata: Json
+          claim_token: string
+          is_new: boolean
+          needs_reconcile: boolean
+          order_db_id: string
+          order_status: string
+          should_submit: boolean
+          solidgate_order_id: string
+          solidgate_payment_status: string
+        }[]
+      }
+      open_solidgate_pwa_purchase: {
+        Args: {
+          p_amount_cents: number
+          p_claim_token: string
+          p_currency: string
+          p_offer_slug: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_requested_mode: string
+          p_tracking_metadata: Json
+          p_user_id: string
+        }
+        Returns: {
+          bound_amount_cents: number
+          bound_currency: string
+          bound_offer_slug: string
+          bound_order_status: string
+          bound_payment_environment: string
+          bound_payment_status: string
+          bound_product_name: string
+          bound_product_slug: string
+          bound_tracking_metadata: Json
+          bound_user_id: string
+          claim_token: string
+          is_new: boolean
+          last_result_kind: string
+          last_result_net_amount_cents: number
+          merchant_data: Json
+          needs_reconcile: boolean
+          order_db_id: string
+          purchase_mode: string
+          should_build: boolean
+          should_submit: boolean
+          solidgate_order_id: string
+          solidgate_subscription_id: string
+          verify_url: string
+        }[]
+      }
+      open_solidgate_pwa_purchase_v2: {
+        Args: {
+          p_amount_cents: number
+          p_checkout_locale: string
+          p_claim_token: string
+          p_currency: string
+          p_customer_email: string
+          p_offer_slug: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_requested_mode: string
+          p_solidgate_payment_action: string
+          p_solidgate_product_id: string
+          p_tracking_metadata: Json
+          p_user_id: string
+        }
+        Returns: {
+          bound_amount_cents: number
+          bound_checkout_locale: string
+          bound_currency: string
+          bound_customer_email: string
+          bound_offer_slug: string
+          bound_order_status: string
+          bound_payment_environment: string
+          bound_payment_status: string
+          bound_product_name: string
+          bound_product_slug: string
+          bound_solidgate_payment_action: string
+          bound_solidgate_product_id: string
+          bound_tracking_metadata: Json
+          bound_user_id: string
+          claim_token: string
+          is_new: boolean
+          last_result_kind: string
+          last_result_net_amount_cents: number
+          merchant_data: Json
+          needs_reconcile: boolean
+          order_db_id: string
+          purchase_mode: string
+          should_build: boolean
+          should_submit: boolean
+          solidgate_order_id: string
+          solidgate_subscription_id: string
+          verify_url: string
+        }[]
+      }
+      persist_user_acquisition_attribution: {
+        Args: {
+          p_captured_at: string
+          p_payment_environment: string
+          p_source_order_id: string
+          p_source_session_id: string
+          p_user_id: string
+          p_utm_campaign?: string
+          p_utm_content?: string
+          p_utm_medium?: string
+          p_utm_source?: string
+          p_utm_term?: string
+        }
+        Returns: boolean
+      }
+      promote_solidgate_session_vault_monotonic: {
+        Args: {
+          p_payment_environment: string
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      promote_solidgate_session_vault_with_method: {
+        Args: {
+          p_payment_environment: string
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      read_claimed_solidgate_subscription_token_sync: {
+        Args: {
+          p_claim_token: string
+          p_payment_environment: string
+          p_solidgate_subscription_id: string
+          p_user_id: string
+        }
+        Returns: {
+          card_token: string
+          desired_source_created_at: string
+          desired_source_id: string
+          desired_source_kind: string
+          desired_source_sequence: number
+          subscription_is_billable: boolean
+        }[]
+      }
+      reconcile_solidgate_legacy_order_identity: {
+        Args: {
+          p_card_brand: string
+          p_card_last4: string
+          p_card_token: string
+          p_currency: string
+          p_customer_account_id: string
+          p_customer_email: string
+          p_order_description: string
+          p_order_metadata: Json
+          p_original_amount_cents: number
+          p_payment_environment: string
+          p_solidgate_order_id: string
+          p_solidgate_product_id: string
+        }
+        Returns: boolean
+      }
+      record_solidgate_card_update_attempt_status: {
+        Args: {
+          p_payment_environment: string
+          p_provider_status: string
+          p_solidgate_order_id: string
+          p_terminal?: boolean
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      record_solidgate_pwa_confirmed_capture: {
+        Args: {
+          p_amount_cents: number
+          p_currency: string
+          p_offer_slug: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_provider_status: string
+          p_solidgate_order_id: string
+          p_subscription_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      record_solidgate_pwa_submission_result: {
+        Args: {
+          p_amount_cents: number
+          p_claim_token: string
+          p_currency: string
+          p_net_amount_cents: number
+          p_offer_slug: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_provider_status: string
+          p_result_kind: string
+          p_solidgate_order_id: string
+          p_subscription_id: string
+          p_user_id: string
+          p_verify_url: string
+        }
+        Returns: boolean
+      }
+      release_solidgate_card_update_attempt: {
+        Args: {
+          p_apply_token: string
+          p_payment_environment: string
+          p_provider_status: string
+          p_solidgate_order_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      release_solidgate_entity_event: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_event_id: string
+        }
+        Returns: undefined
+      }
+      resume_solidgate_oto_order_after_absent_reconcile: {
+        Args: {
+          p_builder_token: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_session_id: string
+          p_solidgate_order_id: string
+        }
+        Returns: boolean
+      }
+      resume_solidgate_pwa_submission_after_absent_reconcile: {
+        Args: {
+          p_amount_cents: number
+          p_claim_token: string
+          p_currency: string
+          p_offer_slug: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_solidgate_order_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      revoke_user_auth_sessions: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: number
+      }
+      solidgate_checkout_core_is_canonical: {
+        Args: {
+          p_order: Database["public"]["Tables"]["orders"]["Row"]
+        }
+        Returns: boolean
+      }
+      solidgate_main_checkout_amount: {
+        Args: {
+          p_currency: string
+          p_offer_slug: string
+        }
+        Returns: number
+      }
+      solidgate_oto_step_from_internal_slug: {
+        Args: {
+          p_internal_slug: string
+        }
+        Returns: number
+      }
+      solidgate_oto_step_from_product_slug: {
+        Args: {
+          p_product_slug: string
+        }
+        Returns: number
+      }
+      solidgate_persisted_oto_step: {
+        Args: {
+          p_last_oto_step: string
+        }
+        Returns: number
+      }
+      solidgate_pwa_product_code: {
+        Args: {
+          p_offer_slug: string
+        }
+        Returns: string
+      }
+      solidgate_special_free_card_ready: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: boolean
+      }
+      solidgate_subscription_token_sync_is_billable: {
+        Args: {
+          p_payment_environment: string
+          p_solidgate_subscription_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      write_solidgate_account_vault_monotonic: {
+        Args: {
+          p_card_brand: string
+          p_card_last4: string
+          p_card_token: string
+          p_payment_environment: string
+          p_source_claim_token: string
+          p_source_id: string
+          p_source_kind: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      write_solidgate_account_vault_with_method: {
+        Args: {
+          p_card_brand: string
+          p_card_last4: string
+          p_card_token: string
+          p_original_payment_method: string
+          p_payment_environment: string
+          p_source_claim_token: string
+          p_source_id: string
+          p_source_kind: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      write_solidgate_session_vault_monotonic: {
+        Args: {
+          p_card_brand: string
+          p_card_last4: string
+          p_card_token: string
+          p_customer_account_id: string
+          p_payment_environment: string
+          p_session_id: string
+          p_source_order_id: string
+        }
+        Returns: string
+      }
+      write_solidgate_session_vault_with_method: {
+        Args: {
+          p_card_brand: string
+          p_card_last4: string
+          p_card_token: string
+          p_customer_account_id: string
+          p_original_payment_method: string
+          p_payment_environment: string
+          p_session_id: string
+          p_source_order_id: string
+        }
+        Returns: string
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
