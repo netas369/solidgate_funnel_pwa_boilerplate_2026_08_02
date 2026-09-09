@@ -7,15 +7,16 @@ run on any branch without touching real data.
 Every assertion is a `DO $$ ... ASSERT ... $$` — the script aborts loudly on the
 first failure and prints a `... PASSED` banner when it does not.
 
-These are the only coverage of the PL/pgSQL money logic (roughly 330 assertions
-across the seven scripts). The application-level test suites cannot reach it:
-the behaviour lives entirely inside the database.
+These eight scripts cover the PL/pgSQL money logic. The application-level test
+suites cannot reach it: the behaviour lives entirely inside the database.
 
 ## Running them
 
 The whole schema is one file, so the recipe is one file too.
 
 ```sh
+set -e
+
 docker run -d --name sgtest --tmpfs /pgdata:rw,size=512m \
   -e PGDATA=/pgdata -e POSTGRES_PASSWORD=postgres postgres:17-alpine
 sleep 5
@@ -23,7 +24,8 @@ sleep 5
 # A bare image has none of the Supabase scaffolding the schema assumes.
 docker exec sgtest psql -U postgres -v ON_ERROR_STOP=1 -c "
   CREATE EXTENSION IF NOT EXISTS pgcrypto;
-  CREATE EXTENSION IF NOT EXISTS dblink;
+  CREATE SCHEMA extensions;
+  CREATE EXTENSION IF NOT EXISTS dblink WITH SCHEMA extensions;
   CREATE ROLE anon;
   CREATE ROLE authenticated;
   CREATE ROLE service_role BYPASSRLS;
@@ -40,7 +42,7 @@ docker exec sgtest psql -U postgres -v ON_ERROR_STOP=1 -c "
   -- bare Postgres.
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
-  GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
+  GRANT USAGE ON SCHEMA public, auth, extensions TO anon, authenticated, service_role;
 "
 
 docker exec -i sgtest psql -U postgres -v ON_ERROR_STOP=1 -q \
@@ -51,12 +53,17 @@ for t in supabase/tests/*.sql; do
   docker exec -i sgtest psql -U postgres -v ON_ERROR_STOP=1 \
     -v "round2_dblink_conn=host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres" \
     < "$t"
+  if [ "$t" = "supabase/tests/solidgate_round2_concurrency.sql" ]; then
+    docker exec -i sgtest psql -U postgres -v ON_ERROR_STOP=1 \
+      -v "round2_dblink_conn=host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres" \
+      < "$t"
+  fi
 done
 
 docker rm -f sgtest
 ```
 
-Three details in that setup are load-bearing and easy to get wrong:
+Four details in that setup are load-bearing and easy to get wrong:
 
 - **`service_role BYPASSRLS`.** Real Supabase grants it. Without it every table
   read in these scripts silently returns zero rows and the assertions fail for
@@ -65,9 +72,16 @@ Three details in that setup are load-bearing and easy to get wrong:
   the baseline runs re-grants the tables the baseline deliberately revoked
   (`solidgate_card_update_attempts`,
   `solidgate_subscription_token_sync_jobs`), and the ACL assertions fail.
-- **`supabase_admin`.** Supabase owns `auth.users`; two scripts reconnect as
+- **`supabase_admin`.** Supabase owns `auth.users`; some scripts reconnect as
   that role to insert fixture users rather than granting the application roles
   write access to the auth directory.
+- **`dblink` in `extensions`.** The concurrency suite calls
+  `extensions.dblink_*` explicitly. Installing the extension in `public` leaves
+  those functions unavailable even though extension installation succeeded.
+
+Start with a fresh database for each complete run. Some scripts, including
+`solidgate_intro_claims.sql`, commit their fixtures and are not repeatable
+against that same database without resetting it.
 
 The release gate is successful only when every script prints its banners and
 `solidgate_round2_concurrency.sql` can be run **twice in succession** — that is
@@ -189,3 +203,18 @@ Proves that provider-reported token origin stays bound to the exact monotonic
 vault generation and survives safe promotion. It also proves the zero-auth
 boundary: missing, invalid, or Click to Pay provenance cannot satisfy the
 `special_free` access guard, while an exact Apple Pay token can.
+
+## `solidgate_subscription_renewals.sql`
+
+Exercises subscription entitlement changes with the real lifecycle RPC and
+database triggers. It proves expired main trial access becomes a full paid
+period, a weekly add-on recovers from `past_due`, and duplicate callbacks do not
+add another billing period. Initial grant replays and older active callbacks
+cannot shorten paid access or downgrade it to a trial. Recovery from grace
+uses the actual paid expiry, even when the grace deadline was later.
+
+It also verifies that an older subscription cannot replace a newer entitlement
+owner, environment mismatches cannot change access, and refunds and revocation
+tombstones still block grants. All fixtures roll back. Provider invoice
+validation and period-end calculation are covered separately by the webhook
+tests; this suite checks that the resulting access is actually persisted.

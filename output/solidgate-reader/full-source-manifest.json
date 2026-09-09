@@ -1,0 +1,44 @@
+[
+  {
+    "id": "review",
+    "filename": "BOILERPLATE_REVIEW.lt.md",
+    "source_sha256": "57a20e3932a9c97c979f01b8511a1b5aa693f4c716e4019e0f8a6dadc336c858",
+    "section_count": 7
+  },
+  {
+    "id": "handoff",
+    "filename": "HANDOFF.lt.md",
+    "source_sha256": "529ee0851f732f612826fda62df620ebae5ea41af4ca2041101538750e120452",
+    "section_count": 9
+  },
+  {
+    "id": "architecture",
+    "filename": "boilerplate-architecture-audit.lt.md",
+    "source_sha256": "1a6cc2c11c517645110da662872c011f93e0d68bce7cc1f62cbb82e7d4cb9267",
+    "section_count": 14
+  },
+  {
+    "id": "pricing",
+    "filename": "price-map-and-catalog.lt.md",
+    "source_sha256": "d8a918268fca74dd16a4685076b02666e9ad8d7e7d588098bc6e87750b6b437f",
+    "section_count": 10
+  },
+  {
+    "id": "core",
+    "filename": "boilerplate-tables-core.lt.md",
+    "source_sha256": "cd0f4e00b8f4f50a489726b7f0afb2b56e8c69d670eef4d6cbe982722c8c71ec",
+    "section_count": 14
+  },
+  {
+    "id": "workflows",
+    "filename": "boilerplate-tables-workflows.lt.md",
+    "source_sha256": "35269ecb4767aa4a0091ae201a3cd66841246beec6cf46b141efe8f420eb14d2",
+    "section_count": 10
+  },
+  {
+    "id": "events",
+    "filename": "boilerplate-tables-events.lt.md",
+    "source_sha256": "99fb12276303b6c6e5a67253ae76daabb05d16fc2769d9214a18c35b3799a3db",
+    "section_count": 10
+  }
+]

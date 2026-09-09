@@ -1,0 +1,113 @@
+<div id="solidgate-full-analysis" lang="lt">
+  <style>
+    #solidgate-full-analysis { color: var(--foreground, #202522); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 17px; line-height: 1.7; max-width: 1100px; margin: 0 auto; padding: 24px 32px 72px; }
+    #solidgate-full-analysis * { box-sizing: border-box; }
+    #solidgate-full-analysis a { color: inherit; text-underline-offset: 4px; }
+    #solidgate-full-analysis a:hover { text-decoration-thickness: 2px; }
+    #solidgate-full-analysis a:focus-visible, #solidgate-full-analysis button:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
+    #solidgate-full-analysis .full-eyebrow { color: var(--muted-foreground, #67716b); font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+    #solidgate-full-analysis .full-hero { padding: 20px 0 30px; border-bottom: 1px solid var(--border, #dce2dd); }
+    #solidgate-full-analysis h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.13; letter-spacing: -.035em; margin: 16px 0; font-weight: 600; }
+    #solidgate-full-analysis .full-lead { max-width: 780px; font-size: 19px; margin: 20px 0; }
+    #solidgate-full-analysis .full-meta { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 24px; font-size: 14px; color: var(--muted-foreground, #67716b); }
+    #solidgate-full-analysis .full-quick-nav { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 13px 0; background: var(--background, #fff); border-bottom: 1px solid var(--border, #dce2dd); font-size: 13px; font-weight: 500; }
+    #solidgate-full-analysis .full-quick-nav a { text-decoration: none; }
+    #solidgate-full-analysis .full-quick-nav a:hover { text-decoration: underline; }
+    #solidgate-full-analysis .full-toc { padding: 34px 0 44px; }
+    #solidgate-full-analysis .full-toc h2 { font-size: 24px; margin: 0 0 12px; }
+    #solidgate-full-analysis .full-toc-note { font-size: 14px; color: var(--muted-foreground, #67716b); margin-bottom: 28px; }
+    #solidgate-full-analysis .full-toc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 48px; }
+    #solidgate-full-analysis .full-toc-group { min-width: 0; }
+    #solidgate-full-analysis .full-toc-group h3 { font-size: 18px; line-height: 1.4; margin: 0 0 12px; }
+    #solidgate-full-analysis .full-toc-group ul { list-style: none; padding: 0; margin: 0; }
+    #solidgate-full-analysis .full-toc-group li { margin: 7px 0; font-size: 14px; line-height: 1.5; }
+    #solidgate-full-analysis .full-toc-group li a { text-decoration: none; overflow-wrap: anywhere; }
+    #solidgate-full-analysis .full-toc-group li a:hover { text-decoration: underline; }
+    #solidgate-full-analysis .full-topic { padding-top: 48px; margin-top: 24px; border-top: 2px solid var(--border, #dce2dd); min-width: 0; }
+    #solidgate-full-analysis .full-topic, #solidgate-full-analysis [id] { scroll-margin-top: 145px; }
+    #solidgate-full-analysis .full-topic-label { margin: 0 0 12px; }
+    #solidgate-full-analysis .full-topic h2 { font-size: 30px; line-height: 1.3; font-weight: 600; letter-spacing: -.025em; margin: 12px 0 28px; }
+    #solidgate-full-analysis .full-topic h3 { font-size: 24px; line-height: 1.4; font-weight: 600; margin: 54px 0 20px; padding-top: 20px; border-top: 1px solid var(--border, #dce2dd); }
+    #solidgate-full-analysis .full-topic h4 { font-size: 19px; line-height: 1.5; font-weight: 600; margin: 32px 0 14px; }
+    #solidgate-full-analysis .full-topic p { margin: 16px 0; }
+    #solidgate-full-analysis .full-topic ul, #solidgate-full-analysis .full-topic ol { padding-left: 24px; }
+    #solidgate-full-analysis .full-topic li { margin: 10px 0; }
+    #solidgate-full-analysis .full-topic { overflow-wrap: anywhere; }
+    #solidgate-full-analysis code { font-size: .87em; white-space: normal; overflow-wrap: anywhere; }
+    #solidgate-full-analysis pre { padding: 22px; margin: 24px 0; background: var(--muted, #f2f5f2); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
+    #solidgate-full-analysis pre code { white-space: pre-wrap; }
+    #solidgate-full-analysis .full-table { table-layout: fixed; width: 100%; border-collapse: collapse; margin: 28px 0; font-size: 15px; line-height: 1.6; }
+    #solidgate-full-analysis .full-table th, #solidgate-full-analysis .full-table td { padding: 14px 12px; text-align: left; vertical-align: top; overflow-wrap: anywhere; border-bottom: 1px solid var(--border, #dce2dd); }
+    #solidgate-full-analysis .full-table th { font-weight: 600; background: var(--muted, #f2f5f2); }
+    #solidgate-full-analysis .full-table td:first-child { font-weight: 500; }
+    #solidgate-full-analysis .full-table tr:hover td { background: var(--muted, #f2f5f2); }
+    #solidgate-full-analysis .reader-flow { display: grid; gap: 10px; text-align: center; margin: 28px 0; font-size: 15px; }
+    #solidgate-full-analysis .reader-flow-step { padding: 14px; background: var(--muted, #f2f5f2); border: 1px solid var(--border, #dce2dd); border-radius: 6px; }
+    #solidgate-full-analysis .reader-flow-branches { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    #solidgate-full-analysis .reader-flow-branch { display: grid; align-content: start; gap: 10px; }
+    #solidgate-full-analysis .reader-flow-results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    #solidgate-full-analysis .reader-flow-arrow { color: var(--muted-foreground, #67716b); }
+    #solidgate-full-analysis details { margin: 24px 0; }
+    #solidgate-full-analysis summary { cursor: pointer; font-size: 14px; }
+    #solidgate-full-analysis .full-topic-end { margin-top: 36px; font-size: 14px; }
+    #solidgate-full-analysis .full-footer { border-top: 1px solid var(--border, #dce2dd); padding-top: 24px; margin-top: 48px; font-size: 14px; }
+    #solidgate-full-analysis .full-source { width: min(90%, 760px); padding: 28px; border: 1px solid var(--border, #dce2dd); border-radius: 12px; background: var(--background, #fff); color: var(--foreground, #202522); }
+    #solidgate-full-analysis .full-source code { display: block; margin: 24px 0; }
+    @media (max-width: 650px) {
+      #solidgate-full-analysis { font-size: 16px; padding: 12px 8px 48px; }
+      #solidgate-full-analysis .full-toc-grid { grid-template-columns: 1fr; }
+      #solidgate-full-analysis .full-topic h2 { font-size: 26px; }
+      #solidgate-full-analysis .full-topic h3 { font-size: 22px; }
+      #solidgate-full-analysis .full-quick-nav { gap: 7px 14px; font-size: 12px; }
+      #solidgate-full-analysis .full-table, #solidgate-full-analysis .full-table tbody { display: block; }
+      #solidgate-full-analysis .full-table colgroup { display: none; }
+      #solidgate-full-analysis .full-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+      #solidgate-full-analysis .full-table tr { display: block; border-bottom: 1px solid var(--border, #dce2dd); padding: 14px 0; }
+      #solidgate-full-analysis .full-table td { display: block; width: auto; border: 0; padding: 6px 0; }
+      #solidgate-full-analysis .full-table td:not(:first-child)::before { content: attr(data-label); display: block; font-size: 12px; color: var(--muted-foreground, #67716b); margin-bottom: 4px; font-weight: 600; }
+      #solidgate-full-analysis .reader-flow-results { grid-template-columns: 1fr; }
+    }
+    @media print {
+      #solidgate-full-analysis { max-width: none; padding: 0; font-size: 11pt; }
+      #solidgate-full-analysis .full-quick-nav, #solidgate-full-analysis .full-topic-end { display: none; }
+      #solidgate-full-analysis .full-topic { break-before: page; }
+      #solidgate-full-analysis h2, #solidgate-full-analysis h3, #solidgate-full-analysis h4 { break-after: avoid; }
+      #solidgate-full-analysis tr { break-inside: avoid; }
+    }
+  </style>
+  <header id="full-top" class="full-hero">
+    <div class="full-eyebrow">Mokėjimų modulis · Visa analizė</div>
+    <h1>Solidgate boilerplate</h1>
+    <p class="full-lead">Šaltinio sistemos architektūra, visų lentelių ir stulpelių paaiškinimai, kainodara ir tolesni modulio darbai šiame boilerplate.</p>
+    <div class="full-meta"><span>API v1 / Billing 1.0</span><span><!--FULL_DOCUMENT_COUNT--> dokumentai</span><span>22 šaltinio lentelės</span><span>307 stulpeliai</span><span>Peržiūrėta 2026-09-09</span></div>
+  </header>
+  <nav class="full-quick-nav" aria-label="Greitas perėjimas prie temos">
+    <!--FULL_QUICK_NAV-->
+  </nav>
+  <nav id="full-toc" class="full-toc" aria-label="Visos analizės turinys">
+    <h2>Skaityti pagal temą</h2>
+    <p class="full-toc-note">Visa analizė pateikta žemiau viename ištisiniame puslapyje. Spausk temą arba skaityk iš eilės. Lentelės ar stulpelio ieškok su ⌘F / Ctrl+F.</p>
+    <div class="full-toc-grid"><!--FULL_TOC--></div>
+  </nav>
+  <main><!--FULL_CONTENT--></main>
+  <footer class="full-footer">Visos analizės pabaiga · <!--FULL_DOCUMENT_COUNT--> dokumentai · 22 šaltinio lentelės · 307 stulpeliai. <a href="#full-top">Grįžti į pradžią ↑</a></footer>
+  <dialog id="full-source-dialog" class="full-source" aria-labelledby="full-source-title">
+    <h2 id="full-source-title">Kodo šaltinis</h2>
+    <p>Failas ir eilutė, kuriais remiasi ši analizės vieta:</p>
+    <code id="full-source-path"></code>
+    <form method="dialog"><button type="submit" class="btn">Uždaryti</button></form>
+  </dialog>
+  <script>
+    (() => {
+      const root = document.getElementById('solidgate-full-analysis');
+      const source = root.querySelector('#full-source-dialog');
+      root.addEventListener('click', event => {
+        const link = event.target.closest('a[data-source-path]');
+        if (!link) return;
+        event.preventDefault();
+        root.querySelector('#full-source-path').textContent = link.dataset.sourcePath;
+        source.showModal();
+      });
+    })();
+  </script>
+</div>

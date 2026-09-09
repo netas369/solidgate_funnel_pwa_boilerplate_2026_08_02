@@ -158,6 +158,8 @@ interface SubscriptionEvent {
       product_price_id?: string;
       created_at?: string;
       updated_at?: string;
+      billing_period_started_at?: string;
+      billing_period_ended_at?: string;
       subscription_term_number?: number;
       orders?: Record<
         string,
@@ -3473,9 +3475,20 @@ async function assertInitialSubscriptionCardFinalized(
 
   const expectedAmount = durable.solidgate_original_amount_cents ?? durable.amount_cents;
   const captureStatus = durable.solidgate_payment_status ?? '';
+  // A partial refund preserves the captured purchase and its subscription.
+  // The provider now reports `refunded`, so requiring settle_ok forever would
+  // reject every later paid renewal. Only an exact, positive remaining balance
+  // proves this case; full refunds and inconsistent money remain blocked.
+  const refundedAmount = durable.solidgate_refunded_amount_cents ?? 0;
+  const partiallyRefundedCapture = captureStatus === 'refunded'
+    && Number.isSafeInteger(refundedAmount)
+    && refundedAmount > 0
+    && refundedAmount < expectedAmount
+    && Number.isSafeInteger(durable.amount_cents)
+    && durable.amount_cents === expectedAmount - refundedAmount;
   const captureProven = expectedAmount === 0
     ? captureStatus === 'auth_ok' || SETTLED_ORDER_STATUSES.has(captureStatus)
-    : SETTLED_ORDER_STATUSES.has(captureStatus);
+    : SETTLED_ORDER_STATUSES.has(captureStatus) || partiallyRefundedCapture;
   if (
     !sameImmutableOrder
     || !FINALIZED_SUBSCRIPTION_ORDER_STATUSES.has(durable.status ?? '')
@@ -3581,8 +3594,10 @@ const SUBSCRIPTION_DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Positive lifecycle callbacks must never turn a subscription entitlement into
- * unbounded access. Prefer a sane provider next-charge date; otherwise anchor
- * a bounded fallback to the signed event/invoice time and the current cadence.
+ * unbounded access. The successful invoice's billing period is the access
+ * promise; next_charge_at is a payment schedule and can differ from it.
+ * Older payloads without that period retain a bounded next-charge/cadence
+ * fallback, anchored to the invoice so later callbacks cannot mint more time.
  */
 function positiveSubscriptionExpiry(
   event: SubscriptionEvent,
@@ -3590,16 +3605,30 @@ function positiveSubscriptionExpiry(
   productSlug: string,
   context?: WebhookContext,
 ): string {
+  // `active` also accompanies paid terms. The term/trial facts, rather than
+  // the callback name alone, decide whether this is the introductory period.
+  const term = invoice?.subscription_term_number;
+  const initialPeriod = term === 0 || (term == null && event.subscription?.trial === true);
+  const cadenceDays = isRecurringAddon(productSlug) || initialPeriod ? 7 : 30;
+  const maximumProviderDays = isRecurringAddon(productSlug) || initialPeriod ? 14 : 45;
+  const periodStart = isoSolidgateDate(invoice?.billing_period_started_at);
+  const periodEnd = isoSolidgateDate(invoice?.billing_period_ended_at);
   const anchorCandidates = [
-    isoSolidgateDate(context?.eventCreatedAt),
+    periodStart,
     isoSolidgateDate(invoice?.created_at),
-    isoSolidgateDate(event.subscription?.started_at),
+    isoSolidgateDate(context?.eventCreatedAt),
+    // A subscription may have started months before this paid renewal.
+    initialPeriod ? isoSolidgateDate(event.subscription?.started_at) : null,
   ];
   const anchor = anchorCandidates.find((candidate): candidate is string => Boolean(candidate));
   const anchorMs = anchor ? new Date(anchor).getTime() : Date.now();
-  const initialPeriod = event.callback_type === 'active' || invoice?.subscription_term_number === 0;
-  const cadenceDays = isRecurringAddon(productSlug) || initialPeriod ? 7 : 30;
-  const maximumProviderDays = isRecurringAddon(productSlug) || initialPeriod ? 14 : 45;
+
+  if (periodStart && periodEnd) {
+    const duration = Date.parse(periodEnd) - Date.parse(periodStart);
+    if (duration > 0 && duration <= maximumProviderDays * SUBSCRIPTION_DAY_MS) {
+      return periodEnd;
+    }
+  }
   const providerNextCharge = isoSolidgateDate(event.subscription?.next_charge_at);
   if (providerNextCharge) {
     const providerMs = new Date(providerNextCharge).getTime();
@@ -3621,6 +3650,68 @@ const RENEWAL_CALLBACKS = new Set([
   'resume',
   'switch_product',
 ]);
+
+/**
+ * A newer bookkeeping callback can overtake `renew` and advance the entity
+ * watermark. Project its paid term as well, or the now-stale renew would leave
+ * access at the previous expiry forever. Initial/auth-only and inactive
+ * snapshots remain observational; they are not initial capture proof.
+ */
+function isPaidRenewalSnapshot(
+  event: SubscriptionEvent,
+  invoice: InitialSubscriptionInvoice | undefined,
+  row: SubscriptionOrderRow,
+): boolean {
+  if (
+    !['order_update', 'scheduled_for_cancellation'].includes(event.callback_type ?? '')
+    || event.subscription?.status !== 'active'
+    || event.product?.product_id !== row.solidgate_product_id
+    || event.product?.currency?.toLowerCase() !== row.currency.toLowerCase()
+    || invoice?.status !== 'success'
+    || !Number.isSafeInteger(invoice.subscription_term_number)
+    || (invoice.subscription_term_number ?? 0) <= 0
+    || !Number.isSafeInteger(invoice.amount)
+    || (invoice.amount ?? 0) <= 0
+  ) return false;
+  const orders = Object.values(invoice.orders ?? {});
+  return !orders.some((order) => ['refunded', 'void_ok'].includes(order.status ?? ''))
+    && orders.some((order) =>
+      ['settle_ok', 'approved', 'partial_settled'].includes(order.status ?? '')
+      && order.amount === invoice.amount
+    );
+}
+
+async function renewalSnapshotWasReversed(
+  db: SupabaseClient,
+  invoiceId: string,
+  subscriptionId: string,
+  environment: PaymentEnvironment,
+): Promise<boolean> {
+  const { data: renewal, error } = await db.from('renewal_events')
+    .select('status')
+    .eq('payment_environment', environment)
+    .eq('solidgate_invoice_id', invoiceId)
+    .eq('solidgate_subscription_id', subscriptionId)
+    .maybeSingle();
+  if (error) throw new Error(`renewal snapshot reversal read failed: ${error.message}`);
+  if (renewal && renewal.status !== 'paid') return true;
+
+  // A card reversal can arrive before the successful subscription snapshot has
+  // created renewal_events. Preserve that durable evidence too.
+  const { data: orders, error: ordersError } = await db.from('solidgate_invoice_orders')
+    .select('status,refunded_amount_cents,chargeback_id,chargeback_status,chargeback_amount_cents')
+    .eq('environment', environment)
+    .eq('solidgate_invoice_id', invoiceId)
+    .eq('solidgate_subscription_id', subscriptionId);
+  if (ordersError) throw new Error(`renewal snapshot order reversal read failed: ${ordersError.message}`);
+  return (orders ?? []).some((order) =>
+    ['refunded', 'void_ok'].includes(order.status)
+    || order.refunded_amount_cents > 0
+    || order.chargeback_id
+    || order.chargeback_status
+    || order.chargeback_amount_cents > 0
+  );
+}
 
 /**
  * Success for one provider invoice/term is economically final even when a
@@ -3675,6 +3766,7 @@ async function recordSubscriptionInvoices(
   if (!subscriptionId) return;
   const environment = paymentEnvironment(context);
   const currency = (event.product?.currency ?? row.currency ?? 'eur').toLowerCase();
+  const currentInvoice = latestInvoice(event)?.[1];
 
   for (const [invoiceMapId, invoice] of Object.entries(event.invoices ?? {})) {
     const invoiceId = invoice.id ?? invoiceMapId;
@@ -3713,7 +3805,10 @@ async function recordSubscriptionInvoices(
     const successfulOrder = orderEntries.find(([, order]) =>
       order.status === 'settle_ok' || order.status === 'approved' || order.status === 'partial_settled'
     );
-    const renewal = invoice.status === 'success' && RENEWAL_CALLBACKS.has(callbackType) && term !== 0;
+    const renewal = invoice.status === 'success'
+      && (RENEWAL_CALLBACKS.has(callbackType)
+        || (invoice === currentInvoice && isPaidRenewalSnapshot(event, invoice, row)))
+      && term !== 0;
     if (!renewal || (invoice.amount ?? 0) <= 0) continue;
 
     const renewalOrderId = successfulOrder?.[1]?.id ?? successfulOrder?.[0] ?? null;
@@ -3819,7 +3914,11 @@ async function handleSubscription(
 
   const invoiceEntry = latestInvoice(event);
   const invoice = invoiceEntry?.[1];
-  const lifecycleKind = financialLifecycleKind(callbackType);
+  const paidRenewalSnapshot = isPaidRenewalSnapshot(event, invoice, row);
+  if (paidRenewalSnapshot && await renewalSnapshotWasReversed(
+    db, invoice!.id ?? invoiceEntry![0], subscriptionId, environment,
+  )) return;
+  const lifecycleKind = financialLifecycleKind(callbackType) ?? (paidRenewalSnapshot ? 'positive' : null);
   let lifecycleAlreadyApplied = false;
   if (lifecycleKind) {
     const finalized = await assertInitialSubscriptionCardFinalized(
@@ -3890,7 +3989,24 @@ async function handleSubscription(
     utm_term: invoiceMetadata.utm_term,
   };
 
-  switch (callbackType) {
+  // Preserve cancellation intent even when its paid invoice repairs a missed
+  // renewal. The access mutation below never cancels ahead of the paid end.
+  if (callbackType === 'scheduled_for_cancellation') {
+    await enqueueAnalytics(db, {
+      eventKey: `subscription:${subscriptionId}:cancellation-scheduled`,
+      eventName: 'subscription_cancellation_scheduled',
+      distinctId: row.session_id ?? userId ?? subscriptionId,
+      properties: {
+        ...commonAnalytics,
+        billing_type: 'subscription_lifecycle',
+        callback_type: callbackType,
+        cancel_code: sub?.cancel_code ?? null,
+        cancel_message: sub?.cancel_message ?? null,
+      },
+    });
+  }
+
+  switch (paidRenewalSnapshot ? 'renew' : callbackType) {
     // First successful charge, and every renewal after it.
     case 'active':
     case 'renew':
@@ -3942,8 +4058,8 @@ async function handleSubscription(
         const lifecycleApplied = await applySolidgateSubscriptionLifecycle(db, {
           row,
           userId,
-          // Access runs to the next charge: a subscriber who stops paying stops
-          // having access, without a cron job to expire them.
+          // Access runs through the paid invoice period, with next-charge and
+          // bounded cadence fallbacks for older payloads lacking period dates.
           accessLevel: sub?.trial ? 'trial' : 'full',
           expiresAt,
           subscriptionId,
@@ -4080,18 +4196,6 @@ async function handleSubscription(
     // Access continues until the paid period ends — record intent, do not
     // revoke before Solidgate emits the terminal cancel/expire callback.
     case 'scheduled_for_cancellation':
-      await enqueueAnalytics(db, {
-        eventKey: `subscription:${subscriptionId}:cancellation-scheduled`,
-        eventName: 'subscription_cancellation_scheduled',
-        distinctId: row.session_id ?? userId ?? subscriptionId,
-        properties: {
-          ...commonAnalytics,
-          billing_type: 'subscription_lifecycle',
-          callback_type: callbackType,
-          cancel_code: sub?.cancel_code ?? null,
-          cancel_message: sub?.cancel_message ?? null,
-        },
-      });
       return;
 
     case 'pause':

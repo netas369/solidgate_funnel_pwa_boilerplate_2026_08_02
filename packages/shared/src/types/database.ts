@@ -1,13 +1,6 @@
-// Generated from supabase/migrations/00001_baseline.sql.
-//
-// Hand-authored to match the baseline exactly, because the boilerplate ships
-// without a linked Supabase project. Once you have created your project and run
-// `npx supabase link`, stop hand-editing this file and regenerate it:
-//
-//   npx supabase gen types typescript --linked > packages/shared/src/types/database.ts
-//
-// Regenerate after every migration. If this file and the database disagree, the
-// database wins and the compiler will not warn you.
+// Generated from the local 00001_baseline.sql schema (public).
+// Regenerate after migrations with: supabase gen types --local --schema public
+// Supabase extension objects belong in the extensions schema.
 
 export type Json =
   | string
@@ -1352,10 +1345,7 @@ export type Database = {
         Returns: string
       }
       bump_user_app_open: {
-        Args: {
-          p_default_locale: string
-          p_user_id: string
-        }
+        Args: { p_default_locale: string; p_user_id: string }
         Returns: {
           app_open_count: number
           last_active_at: string
@@ -1520,10 +1510,7 @@ export type Database = {
         }[]
       }
       clear_solidgate_legacy_session_vault: {
-        Args: {
-          p_payment_environment: string
-          p_session_id: string
-        }
+        Args: { p_payment_environment: string; p_session_id: string }
         Returns: boolean
       }
       complete_solidgate_card_update_attempt: {
@@ -1577,10 +1564,7 @@ export type Database = {
         Returns: string
       }
       enqueue_solidgate_subscription_token_sync: {
-        Args: {
-          p_payment_environment: string
-          p_user_id: string
-        }
+        Args: { p_payment_environment: string; p_user_id: string }
         Returns: number
       }
       fail_solidgate_subscription_token_sync: {
@@ -1691,12 +1675,7 @@ export type Database = {
         }
         Returns: Json
       }
-      find_auth_user_id_by_email: {
-        Args: {
-          p_email: string
-        }
-        Returns: string
-      }
+      find_auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
       get_solidgate_card_update_attempt: {
         Args: {
           p_payment_environment: string
@@ -2116,11 +2095,7 @@ export type Database = {
         Returns: boolean
       }
       release_solidgate_entity_event: {
-        Args: {
-          p_entity_id: string
-          p_entity_type: string
-          p_event_id: string
-        }
+        Args: { p_entity_id: string; p_entity_type: string; p_event_id: string }
         Returns: undefined
       }
       resume_solidgate_oto_order_after_absent_reconcile: {
@@ -2149,52 +2124,35 @@ export type Database = {
         Returns: boolean
       }
       revoke_user_auth_sessions: {
-        Args: {
-          p_user_id: string
-        }
+        Args: { p_user_id: string }
         Returns: number
       }
       solidgate_checkout_core_is_canonical: {
-        Args: {
-          p_order: Database["public"]["Tables"]["orders"]["Row"]
-        }
+        Args: { p_order: Database["public"]["Tables"]["orders"]["Row"] }
         Returns: boolean
       }
       solidgate_main_checkout_amount: {
-        Args: {
-          p_currency: string
-          p_offer_slug: string
-        }
+        Args: { p_currency: string; p_offer_slug: string }
         Returns: number
       }
       solidgate_oto_step_from_internal_slug: {
-        Args: {
-          p_internal_slug: string
-        }
+        Args: { p_internal_slug: string }
         Returns: number
       }
       solidgate_oto_step_from_product_slug: {
-        Args: {
-          p_product_slug: string
-        }
+        Args: { p_product_slug: string }
         Returns: number
       }
       solidgate_persisted_oto_step: {
-        Args: {
-          p_last_oto_step: string
-        }
+        Args: { p_last_oto_step: string }
         Returns: number
       }
       solidgate_pwa_product_code: {
-        Args: {
-          p_offer_slug: string
-        }
+        Args: { p_offer_slug: string }
         Returns: string
       }
       solidgate_special_free_card_ready: {
-        Args: {
-          p_order_id: string
-        }
+        Args: { p_order_id: string }
         Returns: boolean
       }
       solidgate_subscription_token_sync_is_billable: {
@@ -2275,12 +2233,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2304,11 +2262,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2329,11 +2287,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2354,11 +2312,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2371,11 +2329,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

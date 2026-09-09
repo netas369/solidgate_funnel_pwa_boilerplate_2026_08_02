@@ -98,6 +98,12 @@ Database behaviour tests live in `supabase/tests/` and are plain `psql` assertio
 
 ## Starting a new product
 
+The Solidgate architecture audit, all table/column explanations, pricing analysis and
+continuation notes are collected in **[docs/solidgate/README.md](docs/solidgate/README.md)**.
+For continuous reading, open **[the complete analysis](output/solidgate-reader/solidgate-analysis.html)**.
+The imported findings describe the source project and must be checked against this
+boilerplate before implementation.
+
 Read **[docs/new-product-checklist.md](docs/new-product-checklist.md)** — it walks the whole
 path in order, from `boilerplate-brand.ts` through Solidgate catalog seeding to the
 pre-launch checks.

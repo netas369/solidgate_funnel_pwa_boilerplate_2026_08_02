@@ -1,0 +1,289 @@
+<div id="solidgate-document-reader" lang="lt">
+  <style>
+    #solidgate-document-reader { --font-size-base: 16px; color: var(--foreground); }
+    #solidgate-document-reader * { box-sizing: border-box; }
+    #solidgate-document-reader [hidden] { display: none !important; }
+    #solidgate-document-reader .reader-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 16px; }
+    #solidgate-document-reader .reader-top h1 { margin: 0; }
+    #solidgate-document-reader .reader-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    #solidgate-document-reader .reader-search { display: grid; gap: 8px; margin-bottom: 24px; }
+    #solidgate-document-reader .reader-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 28px; align-items: start; }
+    #solidgate-document-reader .reader-sidebar { min-width: 0; padding-right: 16px; border-right: 1px solid var(--border); }
+    #solidgate-document-reader .reader-sidebar ol { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 12px; }
+    #solidgate-document-reader .reader-sidebar a { display: block; text-decoration: none; overflow-wrap: anywhere; color: var(--muted-foreground); padding-block: 3px; }
+    #solidgate-document-reader .reader-sidebar a[aria-current="page"] { color: var(--foreground); font-weight: 500; text-decoration: underline; text-underline-offset: 4px; }
+    #solidgate-document-reader .reader-sidebar a:hover { color: var(--foreground); }
+    #solidgate-document-reader .reader-nav-number { display: inline-block; min-width: 24px; color: var(--muted-foreground); }
+    #solidgate-document-reader .reader-main { min-width: 0; }
+    #solidgate-document-reader .reader-context { margin: 0 0 8px; color: var(--muted-foreground); }
+    #solidgate-document-reader .reader-content { overflow-wrap: anywhere; }
+    #solidgate-document-reader .reader-content > :first-child { margin-top: 0; }
+    #solidgate-document-reader .reader-content p { margin-block: 16px; }
+    #solidgate-document-reader .reader-content li { margin-block: 8px; }
+    #solidgate-document-reader .reader-content h2 { margin-block: 0 20px; }
+    #solidgate-document-reader .reader-content h3 { margin-block: 32px 12px; }
+    #solidgate-document-reader .reader-content code { overflow-wrap: anywhere; white-space: normal; }
+    #solidgate-document-reader .reader-content pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+    #solidgate-document-reader .reader-content pre code { white-space: pre-wrap; }
+    #solidgate-document-reader .reader-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-block: 24px; }
+    #solidgate-document-reader .reader-table th { text-align: left; font-weight: 500; padding: 12px 10px; vertical-align: top; border-bottom: 1px solid var(--border); background: var(--muted); color: var(--foreground); }
+    #solidgate-document-reader .reader-table td { padding: 14px 10px; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+    #solidgate-document-reader .reader-table td:first-child { font-weight: 500; }
+    #solidgate-document-reader .reader-table tr:hover td { background: var(--muted); }
+    #solidgate-document-reader .reader-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+    #solidgate-document-reader .reader-mobile-nav { display: none; margin-bottom: 24px; }
+    #solidgate-document-reader mark { color: var(--foreground); background: color-mix(in srgb, var(--yellow) 35%, var(--background)); }
+    #solidgate-document-reader .reader-source { max-width: min(90%, 640px); background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+    #solidgate-document-reader .reader-source code { overflow-wrap: anywhere; white-space: normal; }
+    #solidgate-document-reader .reader-source form { margin-top: 20px; }
+    #solidgate-document-reader .reader-flow { display: grid; gap: 10px; text-align: center; margin-block: 24px; }
+    #solidgate-document-reader .reader-flow-step { padding: 12px; background: var(--muted); color: var(--foreground); }
+    #solidgate-document-reader .reader-flow-branches { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    #solidgate-document-reader .reader-flow-branch { display: grid; align-content: start; gap: 10px; }
+    #solidgate-document-reader .reader-flow-results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    #solidgate-document-reader .reader-flow-arrow { color: var(--muted-foreground); }
+    @media (max-width: 800px) {
+      #solidgate-document-reader .reader-layout { display: block; }
+      #solidgate-document-reader .reader-sidebar { display: none; }
+      #solidgate-document-reader .reader-mobile-nav { display: grid; gap: 8px; }
+    }
+    @media (max-width: 580px) {
+      #solidgate-document-reader .reader-table, #solidgate-document-reader .reader-table tbody { display: block; }
+      #solidgate-document-reader .reader-table colgroup { display: none; }
+      #solidgate-document-reader .reader-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+      #solidgate-document-reader .reader-table tr { display: block; border-bottom: 1px solid var(--border); padding-block: 16px; }
+      #solidgate-document-reader .reader-table td { display: block; width: auto; border: 0; padding: 6px 0; }
+      #solidgate-document-reader .reader-table td:not(:first-child)::before { content: attr(data-label); display: block; color: var(--muted-foreground); margin-bottom: 4px; font-weight: 500; }
+      #solidgate-document-reader .reader-flow-results { grid-template-columns: 1fr; }
+    }
+    @media (pointer: coarse) {
+      #solidgate-document-reader .reader-sidebar a { min-height: 44px; }
+    }
+  </style>
+  <header class="reader-top">
+    <h1>Solidgate</h1>
+    <span class="text-small">Mokėjimų modulio dokumentacija · API v1 / Billing 1.0</span>
+  </header>
+  <nav class="reader-toolbar" aria-label="Dokumentai">
+    <button type="button" class="btn btn-primary" data-doc="architecture" aria-pressed="true">Architektūra</button>
+    <button type="button" class="btn" data-doc="core" aria-pressed="false">Pirkimai ir prieiga</button>
+    <button type="button" class="btn" data-doc="workflows" aria-pressed="false">Checkout ir kortelės</button>
+    <button type="button" class="btn" data-doc="events" aria-pressed="false">Webhook ir eilės</button>
+  </nav>
+  <div class="reader-search">
+    <label class="form-label" for="solidgate-reader-search">Paieška visuose dokumentuose</label>
+    <input id="solidgate-reader-search" class="form-control" type="search" placeholder="Lentelė, stulpelis arba tema…" autocomplete="off">
+    <span id="solidgate-reader-search-status" class="text-small text-muted" aria-live="polite">22 lentelės · 307 aprašyti stulpeliai</span>
+  </div>
+  <div class="reader-mobile-nav">
+    <label class="form-label" for="solidgate-reader-section">Skyrius</label>
+    <select id="solidgate-reader-section" class="form-select"><!--READER_OPTIONS--></select>
+  </div>
+  <div class="reader-layout">
+    <aside class="reader-sidebar">
+      <span id="solidgate-reader-nav-label" class="text-small text-muted">Šiame dokumente</span>
+      <nav aria-label="Skyriai"><ol id="solidgate-reader-toc"><!--READER_TOC--></ol></nav>
+    </aside>
+    <main class="reader-main">
+      <p id="solidgate-reader-context" class="reader-context text-small">Architektūra · Įžanga</p>
+      <article id="solidgate-reader-content" class="reader-content"><!--READER_INITIAL--></article>
+      <footer class="reader-footer">
+        <button type="button" id="solidgate-reader-prev" class="btn btn-ghost" disabled>← Ankstesnis</button>
+        <span id="solidgate-reader-position" class="text-small text-muted"></span>
+        <button type="button" id="solidgate-reader-next" class="btn">Kitas skyrius →</button>
+      </footer>
+    </main>
+  </div>
+  <dialog id="solidgate-reader-source" class="reader-source" aria-labelledby="solidgate-reader-source-title">
+    <h3 id="solidgate-reader-source-title">Kodo šaltinis</h3>
+    <p><code id="solidgate-reader-source-path"></code></p>
+    <form method="dialog"><button type="submit" class="btn">Uždaryti</button></form>
+  </dialog>
+  <div id="solidgate-reader-data" hidden><!--READER_DATA--></div>
+  <script>
+    (() => {
+      const root = document.getElementById('solidgate-document-reader');
+      const dataNode = root.querySelector('#solidgate-reader-data');
+      const docs = Array.from(dataNode.querySelectorAll('[data-document]')).map(node => ({
+        id: node.dataset.document,
+        title: node.dataset.title,
+        filename: node.dataset.filename,
+        sections: Array.from(node.querySelectorAll('template')).map((template, index) => ({
+          id: node.dataset.document + '-' + index,
+          index,
+          title: template.dataset.title,
+          html: template.innerHTML,
+          search: (template.dataset.title + ' ' + template.content.textContent).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+        }))
+      }));
+      const all = docs.flatMap(doc => doc.sections.map(section => ({ doc, section })));
+      const search = root.querySelector('#solidgate-reader-search');
+      const article = root.querySelector('#solidgate-reader-content');
+      const select = root.querySelector('#solidgate-reader-section');
+      const toc = root.querySelector('#solidgate-reader-toc');
+      const status = root.querySelector('#solidgate-reader-search-status');
+      const context = root.querySelector('#solidgate-reader-context');
+      const position = root.querySelector('#solidgate-reader-position');
+      const previous = root.querySelector('#solidgate-reader-prev');
+      const next = root.querySelector('#solidgate-reader-next');
+      const sourceDialog = root.querySelector('#solidgate-reader-source');
+      let currentDoc = docs[0];
+      let currentSection = currentDoc.sections[0];
+      let activeList = [];
+      const memory = new Map();
+      const normalizedQuery = () => search.value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      function listForCurrentState() {
+        const query = normalizedQuery();
+        if (!query) return currentDoc.sections.map(section => ({ doc: currentDoc, section }));
+        const words = query.split(/\s+/);
+        return all.filter(item => words.every(word => item.section.search.includes(word)));
+      }
+      function highlight() {
+        const value = search.value.trim();
+        if (!value) return;
+        const words = value.split(/\s+/).filter(Boolean).map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = new RegExp(words.join('|'), 'gi');
+        const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach(node => {
+          if (node.parentElement.closest('script,style,mark')) return;
+          const text = node.textContent;
+          pattern.lastIndex = 0;
+          const matches = [...text.matchAll(pattern)];
+          if (!matches.length) return;
+          const replacement = document.createDocumentFragment();
+          let offset = 0;
+          matches.forEach(match => {
+            replacement.append(document.createTextNode(text.slice(offset, match.index)));
+            const marker = document.createElement('mark');
+            marker.textContent = match[0];
+            replacement.append(marker);
+            offset = match.index + match[0].length;
+          });
+          replacement.append(document.createTextNode(text.slice(offset)));
+          node.replaceWith(replacement);
+        });
+      }
+      function prepareTables() {
+        article.querySelectorAll('table').forEach(table => {
+          table.classList.add('reader-table');
+          table.querySelectorAll('colgroup').forEach(group => group.remove());
+          const headings = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+          const colgroup = document.createElement('colgroup');
+          const widths = headings.length === 4 ? [23, 23, 44, 10] : headings.length === 3 ? [25, 25, 50] : [];
+          headings.forEach((label, i) => {
+            const col = document.createElement('col');
+            if (widths[i]) col.style.width = widths[i] + '%';
+            colgroup.append(col);
+          });
+          table.prepend(colgroup);
+          table.querySelectorAll('tbody tr').forEach(row => {
+            Array.from(row.children).forEach((cell, i) => cell.dataset.label = headings[i] || '');
+          });
+        });
+      }
+      function render() {
+        activeList = listForCurrentState();
+        if (activeList.length && !activeList.some(item => item.section.id === currentSection.id)) {
+          currentDoc = activeList[0].doc;
+          currentSection = activeList[0].section;
+        }
+        const searching = Boolean(normalizedQuery());
+        status.textContent = searching ? 'Rasta skyrių: ' + activeList.length : '22 lentelės · 307 aprašyti stulpeliai';
+        root.querySelector('#solidgate-reader-nav-label').textContent = searching ? 'Paieškos rezultatai' : 'Šiame dokumente';
+        toc.replaceChildren();
+        select.replaceChildren();
+        activeList.forEach((item, i) => {
+          const li = document.createElement('li');
+          const link = document.createElement('a');
+          link.href = '#' + item.section.id;
+          link.dataset.section = item.section.id;
+          link.textContent = (searching ? item.doc.title + ' · ' : '') + item.section.title;
+          if (item.section.id === currentSection.id) link.setAttribute('aria-current', 'page');
+          li.append(link);
+          toc.append(li);
+          const option = document.createElement('option');
+          option.value = item.section.id;
+          option.textContent = (searching ? item.doc.title + ' · ' : '') + item.section.title;
+          option.selected = item.section.id === currentSection.id;
+          select.append(option);
+        });
+        root.querySelectorAll('button[data-doc]').forEach(button => {
+          const active = button.dataset.doc === currentDoc.id;
+          button.setAttribute('aria-pressed', String(active));
+          button.classList.toggle('btn-primary', active);
+        });
+        if (!activeList.length) {
+          article.replaceChildren();
+          const message = document.createElement('p');
+          message.textContent = 'Nieko nerasta. Pabandyk kitą lentelės, stulpelio arba temos pavadinimą.';
+          article.append(message);
+          context.textContent = 'Paieška';
+          position.textContent = '';
+          previous.disabled = true;
+          next.disabled = true;
+          return;
+        }
+        article.innerHTML = currentSection.html;
+        article.querySelectorAll('a[href^="https://"]').forEach(link => {
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+        });
+        prepareTables();
+        highlight();
+        const index = activeList.findIndex(item => item.section.id === currentSection.id);
+        context.textContent = currentDoc.title + ' · ' + (currentSection.index === 0 ? 'Įžanga' : 'Skyrius ' + currentSection.index);
+        position.textContent = (index + 1) + ' / ' + activeList.length;
+        previous.disabled = index === 0;
+        next.disabled = index === activeList.length - 1;
+        memory.set(currentDoc.id, currentSection.id);
+      }
+      function openSection(id) {
+        const found = all.find(item => item.section.id === id);
+        if (!found) return;
+        currentDoc = found.doc;
+        currentSection = found.section;
+        render();
+        root.scrollIntoView?.({block: 'start'});
+      }
+      function openDocument(id) {
+        const doc = docs.find(item => item.id === id);
+        if (!doc) return;
+        search.value = '';
+        currentDoc = doc;
+        currentSection = doc.sections.find(section => section.id === memory.get(id)) || doc.sections[0];
+        render();
+        root.scrollIntoView?.({block: 'start'});
+      }
+      root.addEventListener('click', event => {
+        const docButton = event.target.closest('button[data-doc]');
+        if (docButton) { openDocument(docButton.dataset.doc); return; }
+        const sectionLink = event.target.closest('a[data-section]');
+        if (sectionLink) { event.preventDefault(); openSection(sectionLink.dataset.section); return; }
+        const link = event.target.closest('a[href]');
+        if (!link) return;
+        const href = link.getAttribute('href');
+        const documentMatch = docs.find(doc => href.split('#')[0].endsWith(doc.filename));
+        if (documentMatch) { event.preventDefault(); openDocument(documentMatch.id); return; }
+        if (href.startsWith('/Users/')) {
+          event.preventDefault();
+          root.querySelector('#solidgate-reader-source-path').textContent = href;
+          if (typeof sourceDialog.showModal === 'function') sourceDialog.showModal();
+          else sourceDialog.setAttribute('open', '');
+        }
+      });
+      search.addEventListener('input', render);
+      select.addEventListener('change', () => openSection(select.value));
+      previous.addEventListener('click', () => {
+        const i = activeList.findIndex(item => item.section.id === currentSection.id);
+        if (i > 0) openSection(activeList[i - 1].section.id);
+      });
+      next.addEventListener('click', () => {
+        const i = activeList.findIndex(item => item.section.id === currentSection.id);
+        if (i < activeList.length - 1) openSection(activeList[i + 1].section.id);
+      });
+      render();
+    })();
+  </script>
+</div>

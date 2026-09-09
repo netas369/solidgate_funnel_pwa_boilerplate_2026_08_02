@@ -3753,6 +3753,236 @@ describe('durable server-side lifecycle analytics outbox', () => {
 });
 
 describe('subscription.updated.v2', () => {
+  it.each(['order_update', 'scheduled_for_cancellation'])(
+    'projects the paid period when %s overtakes renew', async (callbackType) => {
+      const captured = capturedSubscriptionOrder({ status: 'trialing' });
+      const ordering = { claim_solidgate_entity_event: 'claimed' };
+      const attempt = makeDb([captured], undefined, {
+        entitlements: [subscriptionEntitlement(captured)],
+      }, ordering);
+      const payload = initialSubscriptionPayload(captured, {
+        callbackType,
+        subscription: { status: 'active', trial: false },
+        invoice: {
+          id: 'paid-invoice-overtaking-renew',
+          subscription_term_number: 1,
+          amount: 5900,
+          billing_period_started_at: '2026-08-01 10:00:00',
+          billing_period_ended_at: '2026-08-31 10:00:00',
+          orders: { rebill: { id: 'rebill-overtaking-renew', status: 'settle_ok', amount: 5900 } },
+        },
+      });
+      await handleEvent(attempt.db, 'subscription.updated.v2', payload, {
+        environment: 'production', eventId: 'newer-snapshot', eventCreatedAt: '2026-08-01T10:00:02Z',
+      });
+      // The real watermark rejects the older renew after completing the newer
+      // snapshot. It must already have projected the paid period at that point.
+      ordering.claim_solidgate_entity_event = 'stale';
+      await handleEvent(attempt.db, 'subscription.updated.v2', { ...payload, callback_type: 'renew' }, {
+        environment: 'production', eventId: 'older-renew', eventCreatedAt: '2026-08-01T10:00:01Z',
+      });
+      expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toEqual([
+        expect.objectContaining({ p_status: 'active', p_access_level: 'full', p_expires_at: '2026-08-31T10:00:00.000Z' }),
+      ]);
+      expect(attempt.upsertsTo('renewal_events')).toHaveLength(1);
+      if (callbackType === 'scheduled_for_cancellation') {
+        expect(attempt.upsertsTo('solidgate_analytics_outbox')).toContainEqual(
+          expect.objectContaining({ event_name: 'subscription_cancellation_scheduled' }),
+        );
+      }
+    },
+  );
+
+  it.each([
+    { subscriptionStatus: 'paused' },
+    { subscriptionStatus: 'cancelled' },
+    { term: 0 },
+    { orderStatus: 'auth_ok' },
+    { orderStatus: 'refunded' },
+    { orderAmount: 100 },
+    { productId: 'another-product' },
+    { ledgerStatus: 'refunded' },
+    { mappingStatus: 'void_ok' },
+    { mappingStatus: 'refunded' },
+  ])('does not project an unproven or reversed renewal snapshot: %j', async (scenario) => {
+    const captured = capturedSubscriptionOrder({ status: 'active' });
+    const invoiceId = 'snapshot-not-payable';
+    const attempt = makeDb([captured], undefined, {
+      entitlements: [subscriptionEntitlement(captured)],
+      renewal_events: scenario.ledgerStatus ? [{
+        solidgate_invoice_id: invoiceId,
+        solidgate_subscription_id: captured.solidgate_subscription_id,
+        status: scenario.ledgerStatus,
+      }] : [],
+      solidgate_invoice_orders: scenario.mappingStatus ? [{
+        solidgate_invoice_id: invoiceId,
+        solidgate_subscription_id: captured.solidgate_subscription_id,
+        status: scenario.mappingStatus,
+      }] : [],
+    });
+    await handleEvent(attempt.db, 'subscription.updated.v2', initialSubscriptionPayload(captured, {
+      callbackType: 'order_update',
+      subscription: { status: scenario.subscriptionStatus ?? 'active', trial: false },
+      ...(scenario.productId ? { product: { product_id: scenario.productId, currency: 'USD' } } : {}),
+      invoice: {
+        id: invoiceId,
+        subscription_term_number: scenario.term ?? 1,
+        amount: 5900,
+        orders: { rebill: { id: 'snapshot-order', status: scenario.orderStatus ?? 'settle_ok', amount: scenario.orderAmount ?? 5900 } },
+      },
+    }));
+    expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toHaveLength(0);
+    expect(attempt.upsertsTo('renewal_events')).toHaveLength(0);
+  });
+
+  it.each(['active', 'past_due'])('renews a main membership after a partial refund while %s', async (status) => {
+    const captured = capturedSubscriptionOrder({
+      status,
+      amount_cents: 1267,
+      solidgate_original_amount_cents: 1767,
+      solidgate_refunded_amount_cents: 500,
+      solidgate_payment_status: 'refunded',
+    });
+    const { db, rpcsTo } = makeDb([captured], undefined, {
+      entitlements: [subscriptionEntitlement(captured, {
+        status,
+        access_level: status === 'past_due' ? 'grace' : 'full',
+      })],
+    });
+    await handleEvent(db, 'subscription.updated.v2', initialSubscriptionPayload(captured, {
+      callbackType: 'renew',
+      subscription: { status: 'active', trial: false },
+      invoice: {
+        subscription_term_number: 1,
+        amount: 5900,
+        billing_period_started_at: '2026-08-01 10:00:00',
+        billing_period_ended_at: '2026-08-31 10:00:00',
+        orders: { rebill: { id: 'rebill-after-partial-refund', status: 'settle_ok', amount: 5900 } },
+      },
+    }));
+    expect(rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toContainEqual(
+      expect.objectContaining({ p_status: 'active', p_access_level: 'full', p_expires_at: '2026-08-31T10:00:00.000Z' }),
+    );
+  });
+
+  it.each([
+    { amount_cents: 1300, solidgate_refunded_amount_cents: 500 },
+    { amount_cents: 0, solidgate_refunded_amount_cents: 1767 },
+    { amount_cents: 1767, solidgate_refunded_amount_cents: 0 },
+  ])('does not accept inconsistent or fully refunded initial money as renewal capture proof: %j', async (money) => {
+    const captured = capturedSubscriptionOrder({
+      status: 'active',
+      solidgate_original_amount_cents: 1767,
+      solidgate_payment_status: 'refunded',
+      ...money,
+    });
+    const { db, rpcsTo } = makeDb([captured], undefined, {
+      entitlements: [subscriptionEntitlement(captured)],
+    });
+    await expect(handleEvent(db, 'subscription.updated.v2', initialSubscriptionPayload(captured, {
+      callbackType: 'renew',
+      subscription: { status: 'active', trial: false },
+      invoice: { subscription_term_number: 1, amount: 5900 },
+    }))).rejects.toThrow('waiting for card settlement finalization');
+    expect(rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toHaveLength(0);
+  });
+
+  it.each([
+    {
+      name: 'active callback for a paid monthly term is not another seven-day intro',
+      callbackType: 'active',
+      eventCreatedAt: '2026-08-01T10:00:00.000Z',
+      nextChargeAt: '2026-08-31 10:00:00',
+      invoiceDates: { created_at: '2026-08-01 10:00:00' },
+      expectedExpiry: '2026-08-31T10:00:00.000Z',
+    },
+    {
+      name: 'paid invoice end controls access when next charge is missing',
+      callbackType: 'renew',
+      eventCreatedAt: '2026-08-03T10:00:00.000Z',
+      invoiceDates: {
+        created_at: '2026-08-01 10:00:00',
+        billing_period_started_at: '2026-08-01 10:00:00',
+        billing_period_ended_at: '2026-08-31 10:00:00',
+      },
+      expectedExpiry: '2026-08-31T10:00:00.000Z',
+    },
+    {
+      name: 'an early next charge cannot shorten the paid invoice period',
+      callbackType: 'renew',
+      eventCreatedAt: '2026-08-01T10:00:00.000Z',
+      nextChargeAt: '2026-08-08 10:00:00',
+      invoiceDates: {
+        billing_period_started_at: '2026-08-01 10:00:00',
+        billing_period_ended_at: '2026-08-31 10:00:00',
+      },
+      expectedExpiry: '2026-08-31T10:00:00.000Z',
+    },
+    {
+      name: 'late restore of an old paid invoice does not invent a fresh month',
+      callbackType: 'restore',
+      eventCreatedAt: '2026-09-10T10:00:00.000Z',
+      invoiceDates: {
+        created_at: '2026-08-01 10:00:00',
+        billing_period_started_at: '2026-08-01 10:00:00',
+        billing_period_ended_at: '2026-08-31 10:00:00',
+      },
+      expectedExpiry: '2026-08-31T10:00:00.000Z',
+    },
+    {
+      name: 'fallback cadence starts at the invoice rather than a later callback',
+      callbackType: 'recurring',
+      eventCreatedAt: '2026-08-10T10:00:00.000Z',
+      invoiceDates: { created_at: '2026-08-01 10:00:00' },
+      expectedExpiry: '2026-08-31T10:00:00.000Z',
+    },
+    {
+      name: 'invalid invoice period falls back to a valid next charge',
+      callbackType: 'renew',
+      eventCreatedAt: '2026-08-01T10:00:00.000Z',
+      nextChargeAt: '2026-08-31 10:00:00',
+      invoiceDates: {
+        billing_period_started_at: '2026-08-01 10:00:00',
+        billing_period_ended_at: '2026-07-31 10:00:00',
+      },
+      expectedExpiry: '2026-08-31T10:00:00.000Z',
+    },
+  ])('$name', async ({ callbackType, eventCreatedAt, nextChargeAt, invoiceDates, expectedExpiry }) => {
+    const captured = capturedSubscriptionOrder({ status: 'trialing' });
+    const { db, rpcsTo } = makeDb([captured], undefined, {
+      entitlements: [subscriptionEntitlement(captured, {
+        access_level: 'trial',
+        expires_at: '2026-08-01T10:00:00.000Z',
+      })],
+    });
+    await handleEvent(db, 'subscription.updated.v2', initialSubscriptionPayload(captured, {
+      callbackType,
+      subscription: { status: 'active', trial: false, next_charge_at: nextChargeAt },
+      invoice: {
+        id: 'paid-monthly-renewal',
+        status: 'success',
+        amount: 5900,
+        subscription_term_number: 1,
+        ...invoiceDates,
+        orders: { rebill: { id: 'generated-monthly-rebill', status: 'settle_ok', amount: 5900 } },
+      },
+    }), {
+      environment: 'production',
+      eventId: 'paid-monthly-renewal-event',
+      eventCreatedAt,
+    });
+
+    expect(rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toContainEqual(
+      expect.objectContaining({
+        p_order_db_id: captured.id,
+        p_solidgate_subscription_id: captured.solidgate_subscription_id,
+        p_access_level: 'full',
+        p_status: 'active',
+        p_expires_at: expectedExpiry,
+      }),
+    );
+  });
+
   it('grants access to the next charge date and records term-1 renewal + generated order mapping', async () => {
     const captured = capturedSubscriptionOrder({ status: 'trialing' });
     const { db, updatesTo, upsertsTo, rpcsTo } = makeDb(
@@ -3770,6 +4000,7 @@ describe('subscription.updated.v2', () => {
           id: 'inv-1',
           status: 'success',
           amount: 5900,
+          created_at: '2026-07-20 20:08:51',
           subscription_term_number: 1,
           product_price_id: 'price-renewal-usd',
           order_metadata: {

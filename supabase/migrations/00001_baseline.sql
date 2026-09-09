@@ -7055,8 +7055,21 @@ BEGIN
   END IF;
 
   UPDATE public.entitlements AS entitlement
-  SET access_level = p_access_level,
-      expires_at = COALESCE(p_expires_at, entitlement.expires_at),
+  -- An older positive snapshot may arrive after a paid renewal, including at
+  -- the same provider timestamp. It cannot shorten that paid period or turn
+  -- full access back into a trial. Recovery from past_due deliberately takes
+  -- the actual paid expiry instead: the grace deadline is not paid time.
+  SET access_level = CASE
+        WHEN p_status = 'active' AND entitlement.status = 'active'
+          AND entitlement.access_level = 'full' AND p_access_level = 'trial'
+          THEN 'full'
+        ELSE p_access_level
+      END,
+      expires_at = CASE
+        WHEN p_status = 'active' AND entitlement.status = 'active'
+          THEN GREATEST(p_expires_at, entitlement.expires_at)
+        ELSE COALESCE(p_expires_at, entitlement.expires_at)
+      END,
       source = p_source,
       status = p_status,
       revoked_at = NULL,

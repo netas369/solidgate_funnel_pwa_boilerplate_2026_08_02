@@ -1,0 +1,54 @@
+{
+  "transferred_at": "2026-09-09",
+  "source_project": "/Users/Netas/Projects/theastrologist",
+  "source_head": "1050748491ca82304a989e0e1232251056541d1f",
+  "source_worktree_note": "Audited working tree includes uncommitted changes. Git HEAD alone does not reproduce it. Source-code links intentionally refer to the audited original project.",
+  "target_project": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02",
+  "target_head_before_transfer": "1bf6cb91ac4a26370a296e283d7323f920e3a863",
+  "audit_documents": [
+    {
+      "source": "/Users/Netas/Projects/theastrologist/docs/solidgate/boilerplate-architecture-audit.lt.md",
+      "destination": "docs/solidgate/boilerplate-architecture-audit.lt.md",
+      "sha256": "1a6cc2c11c517645110da662872c011f93e0d68bce7cc1f62cbb82e7d4cb9267",
+      "bytes": 30943
+    },
+    {
+      "source": "/Users/Netas/Projects/theastrologist/docs/solidgate/boilerplate-tables-core.lt.md",
+      "destination": "docs/solidgate/boilerplate-tables-core.lt.md",
+      "sha256": "cd0f4e00b8f4f50a489726b7f0afb2b56e8c69d670eef4d6cbe982722c8c71ec",
+      "bytes": 44185
+    },
+    {
+      "source": "/Users/Netas/Projects/theastrologist/docs/solidgate/boilerplate-tables-events.lt.md",
+      "destination": "docs/solidgate/boilerplate-tables-events.lt.md",
+      "sha256": "99fb12276303b6c6e5a67253ae76daabb05d16fc2769d9214a18c35b3799a3db",
+      "bytes": 33514
+    },
+    {
+      "source": "/Users/Netas/Projects/theastrologist/docs/solidgate/boilerplate-tables-workflows.lt.md",
+      "destination": "docs/solidgate/boilerplate-tables-workflows.lt.md",
+      "sha256": "35269ecb4767aa4a0091ae201a3cd66841246beec6cf46b141efe8f420eb14d2",
+      "bytes": 37673
+    }
+  ],
+  "reader": "output/solidgate-reader/solidgate-analysis.html",
+  "reader_note": "Continuous reader rebuilt in target with six source documents. Rebuild uses local templates, Python and Pandoc; no plugin or external assets required.",
+  "verification": {
+    "date": "2026-09-09",
+    "original_audit_documents_byte_identical": 4,
+    "continuous_reader_documents": 6,
+    "continuous_reader_sections": 66,
+    "source_text_elements_checked": 1868,
+    "missing_source_text_elements": 0,
+    "table_dictionaries": 22,
+    "column_descriptions": 307,
+    "duplicate_html_ids": 0,
+    "broken_internal_anchors": 0,
+    "hidden_analysis_sections": 0,
+    "remote_reader_assets": 0,
+    "target_provider_ids_remain_empty": true,
+    "git_diff_check": "passed",
+    "payment_or_database_tests_in_target": "not run; documentation transfer only",
+    "browser_open": "not attempted during transfer"
+  }
+}

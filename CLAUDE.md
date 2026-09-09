@@ -23,6 +23,14 @@ Copy, prices, products, branding and assets are product.
 - Only the `en` message pack ships. All 15 routing locales still route and fall back to
   `en` with a warning.
 
+## Solidgate module review
+
+The ongoing payment-module review starts at `docs/solidgate/README.md` and
+`docs/solidgate/HANDOFF.lt.md`. The imported audit describes a source implementation;
+verify each finding against this boilerplate before changing code. API v1 / Billing 1.0
+is the selected direction. Proposed schema changes are not applied migrations, and
+the source project's product examples must not become this boilerplate's configuration.
+
 ## Stack
 
 Next.js App Router · React · TypeScript · Tailwind · Zustand · next-intl · Supabase ·

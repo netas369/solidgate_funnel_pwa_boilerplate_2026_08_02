@@ -1,0 +1,28 @@
+<div class="reader-flow" role="img" aria-label="Sesija ir pasirinktas pasiūlymas sukuria atominį mokėjimo bandymą. Solidgate rezultatą patikrina serveris arba webhook su dublikatų ir eiliškumo kontrole. Finansinė būsena valdo prieigą, tokenų saugyklą ir papildomų darbų eilę.">
+  <div class="reader-flow-step">sessions / prisijungęs vartotojas</div>
+  <div class="reader-flow-arrow" aria-hidden="true">↓</div>
+  <div class="reader-flow-step">Serveris pasirenka pasiūlymą ir kainą</div>
+  <div class="reader-flow-arrow" aria-hidden="true">↓</div>
+  <div class="reader-flow-step">Atominė RPC: orders + vykstančio bandymo būsena</div>
+  <div class="reader-flow-arrow" aria-hidden="true">↓</div>
+  <div class="reader-flow-step">Solidgate forma arba tokeno nuskaitymas</div>
+  <div class="reader-flow-arrow" aria-hidden="true">↙　↘</div>
+  <div class="reader-flow-branches">
+    <div class="reader-flow-branch"><div class="reader-flow-step">Serverio statuso patikra</div></div>
+    <div class="reader-flow-branch">
+      <div class="reader-flow-step">Patikrintas webhook</div>
+      <div class="reader-flow-arrow" aria-hidden="true">↓</div>
+      <div class="reader-flow-step">solidgate_webhook_events: dublikatų kontrolė</div>
+      <div class="reader-flow-arrow" aria-hidden="true">↓</div>
+      <div class="reader-flow-step">solidgate_entity_watermarks: įvykių tvarka</div>
+    </div>
+  </div>
+  <div class="reader-flow-arrow" aria-hidden="true">↘　↙</div>
+  <div class="reader-flow-step">Finansinė būsena: orders / recurring lentelės</div>
+  <div class="reader-flow-arrow" aria-hidden="true">↓</div>
+  <div class="reader-flow-results">
+    <div class="reader-flow-step">entitlements: aplikacijos prieiga</div>
+    <div class="reader-flow-step">vault: tokenas su kilmės įrodymu</div>
+    <div class="reader-flow-step">outbox: laiškai, analitika, kiti veiksmai</div>
+  </div>
+</div>

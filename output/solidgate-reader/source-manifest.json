@@ -1,0 +1,30 @@
+[
+  {
+    "id": "architecture",
+    "title": "Architektūra",
+    "filename": "boilerplate-architecture-audit.lt.md",
+    "source_sha256": "1a6cc2c11c517645110da662872c011f93e0d68bce7cc1f62cbb82e7d4cb9267",
+    "section_count": 14
+  },
+  {
+    "id": "core",
+    "title": "Pirkimai ir prieiga",
+    "filename": "boilerplate-tables-core.lt.md",
+    "source_sha256": "cd0f4e00b8f4f50a489726b7f0afb2b56e8c69d670eef4d6cbe982722c8c71ec",
+    "section_count": 14
+  },
+  {
+    "id": "workflows",
+    "title": "Checkout ir kortelės",
+    "filename": "boilerplate-tables-workflows.lt.md",
+    "source_sha256": "35269ecb4767aa4a0091ae201a3cd66841246beec6cf46b141efe8f420eb14d2",
+    "section_count": 10
+  },
+  {
+    "id": "events",
+    "title": "Webhook ir eilės",
+    "filename": "boilerplate-tables-events.lt.md",
+    "source_sha256": "99fb12276303b6c6e5a67253ae76daabb05d16fc2769d9214a18c35b3799a3db",
+    "section_count": 10
+  }
+]
