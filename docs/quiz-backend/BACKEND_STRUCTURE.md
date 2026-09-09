@@ -1,22 +1,21 @@
 # Backend Structure
 
-## 1. Responsibility layers
+## 1. Implemented responsibility layers
 
 ```text
 API routes
-  -> quiz service
-  -> authorization, validation and scoring
-  -> quiz repository
-  -> PostgreSQL/Supabase
+  -> authorization, validation and scoring helpers
+  -> service-role PostgreSQL RPC
+  -> sessions + funnel_events
 ```
 
 ### API routes
 
-Routes parse HTTP requests, call the service layer, and translate known failures into stable HTTP responses. They must not contain product scoring rules or construct arbitrary database updates directly from the request body.
+Routes parse HTTP requests, coordinate the use case, call a fixed database RPC, and translate known failures into stable HTTP responses. They must not contain product scoring rules or construct arbitrary database updates directly from the request body.
 
-### Quiz service
+### Server helpers
 
-The service coordinates a complete use case: create, persist, read, complete, or link a session. It owns transaction boundaries and decides which event belongs to a successful state change.
+The helpers in `features/quiz/server` own session authorization, versioned answer validation, deterministic scoring, and standard error responses. Keeping those rules outside route files makes them reusable and directly testable.
 
 ### Authorization
 
@@ -35,38 +34,40 @@ Validation loads the immutable definition named by `sessions.quiz_variant`. It v
 
 Scoring is deterministic server code. It reads the validated stored snapshot and the matching versioned quiz definition. The client never supplies a trusted final result.
 
-### Repository
+### Database RPCs
 
-The repository is the only layer that reads or writes `sessions` and `funnel_events`. It uses an atomic upsert or transaction, revision checks, and unique event IDs.
+Service-role SQL functions are the transaction boundary for multi-write operations. They update `sessions`, write required `funnel_events`, enforce revision checks, and handle event idempotency atomically. API routes may perform an authorized read before calling a fixed RPC; they never accept a table or column name from the client.
 
-## 2. Recommended source layout
+## 2. Current source layout
 
-The existing repository can be moved toward this structure incrementally:
+The implemented backend is intentionally compact:
 
 ```text
 apps/funnel/src/app/api/
   session/create/route.ts
-  session/persist/route.ts
+  session/snapshot/route.ts
   session/read/route.ts
   session/complete/route.ts
   session/link-user/route.ts
   funnel-events/route.ts
 
-packages/shared/src/quiz/
-  quiz-service.ts
-  quiz-repository.ts
-  quiz-validation.ts
-  quiz-authorization.ts
+apps/funnel/src/features/quiz/server/
+  quiz-access.ts
+  quiz-definition.ts
   quiz-scoring.ts
-  quiz-events.ts
-  quiz-types.ts
-  quiz-errors.ts
-  definitions/
-    quiz-definition-schema.ts
-    example-v1.ts
+  http.ts
+
+packages/shared/src/
+  quiz-session-cookie.ts
+
+supabase/migrations/
+  00001_baseline.sql
+
+supabase/tests/
+  quiz_backend.sql
 ```
 
-This is a target organization, not a requirement to rewrite working code at once.
+Do not add repository or service wrapper files merely to mirror an abstract architecture. Split these helpers only when additional quiz variants or consumers create a real reuse boundary.
 
 ## 3. Main operations
 
@@ -125,16 +126,16 @@ Product analytics calls and email-provider calls do not belong inside the databa
 
 Stable error codes are part of the API contract:
 
-| Status | Code | Meaning |
-|---:|---|---|
-| 400 | `INVALID_REQUEST` | Malformed JSON or missing required field |
-| 401 | `UNAUTHORIZED_SESSION` | Missing or invalid session credential |
-| 403 | `SESSION_OWNERSHIP_MISMATCH` | Authenticated caller does not own the session |
-| 404 | `SESSION_NOT_FOUND` | No accessible session exists |
-| 409 | `STALE_SESSION_REVISION` | A newer snapshot already won |
-| 409 | `SESSION_ALREADY_COMPLETED` | Normal writes are not allowed after completion |
-| 422 | `INVALID_QUIZ_ANSWERS` | Answer snapshot does not match its definition |
-| 413 | `PAYLOAD_TOO_LARGE` | A configured JSON or metadata limit was exceeded |
-| 500 | `PERSISTENCE_FAILED` | Unexpected storage failure |
+| Status | Code                         | Meaning                                          |
+| -----: | ---------------------------- | ------------------------------------------------ |
+|    400 | `INVALID_REQUEST`            | Malformed JSON or missing required field         |
+|    401 | `UNAUTHORIZED_SESSION`       | Missing or invalid session credential            |
+|    403 | `SESSION_OWNERSHIP_MISMATCH` | Authenticated caller does not own the session    |
+|    404 | `SESSION_NOT_FOUND`          | No accessible session exists                     |
+|    409 | `STALE_SESSION_REVISION`     | A newer snapshot already won                     |
+|    409 | `SESSION_ALREADY_COMPLETED`  | Normal writes are not allowed after completion   |
+|    422 | `INVALID_QUIZ_ANSWERS`       | Answer snapshot does not match its definition    |
+|    413 | `PAYLOAD_TOO_LARGE`          | A configured JSON or metadata limit was exceeded |
+|    500 | `PERSISTENCE_FAILED`         | Unexpected storage failure                       |
 
 Logs may include request IDs, session IDs, revisions, route names, and error codes. They must not include full answer snapshots, raw tokens, email addresses, payment data, or consent payloads.

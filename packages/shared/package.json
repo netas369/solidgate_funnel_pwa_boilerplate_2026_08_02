@@ -15,6 +15,7 @@
     "./payment-cookie": "./src/payment-cookie.ts",
     "./payment-environment": "./src/payment-environment.ts",
     "./payment-session-access": "./src/payment-session-access.ts",
+    "./quiz-session-cookie": "./src/quiz-session-cookie.ts",
     "./price-map": "./src/price-map.ts",
     "./format-price": "./src/format-price.ts",
     "./oto-product-label": "./src/oto-product-label.ts",

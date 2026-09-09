@@ -60,4 +60,4 @@ It does not own:
 
 ## Documentation status
 
-These files define the desired hardened contract and separately identify what the repository currently implements. `reference-schema.sql` is not in `supabase/migrations`, so adding this documentation does not alter any database.
+The hardened backend is implemented on `quiz-branch-`, while frontend integration is deliberately deferred. See `IMPLEMENTATION_STATUS.md` for the exact boundary. `reference-schema.sql` remains explanatory; the implemented schema lives in `supabase/migrations/00001_baseline.sql`.

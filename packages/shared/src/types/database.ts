@@ -150,25 +150,31 @@ export type Database = {
       funnel_events: {
         Row: {
           created_at: string
+          event_id: string
           event_type: string
           id: string
-          metadata: Json | null
+          metadata: Json
+          occurred_at: string
           session_id: string
           step_number: number | null
         }
         Insert: {
           created_at?: string
+          event_id?: string
           event_type: string
           id?: string
-          metadata?: Json | null
+          metadata?: Json
+          occurred_at?: string
           session_id: string
           step_number?: number | null
         }
         Update: {
           created_at?: string
+          event_id?: string
           event_type?: string
           id?: string
-          metadata?: Json | null
+          metadata?: Json
+          occurred_at?: string
           session_id?: string
           step_number?: number | null
         }
@@ -452,57 +458,84 @@ export type Database = {
       }
       sessions: {
         Row: {
+          attribution: Json
+          client_context: Json
+          completed_at: string | null
           consent_given_at: string | null
           consent_version: string | null
           created_at: string
           current_step_id: string | null
           email: string | null
+          funnel_variant: string
           id: string
           last_oto_step: string | null
           locale: string
           marketing_consent: boolean | null
           quiz_answers: Json
+          quiz_result: Json | null
+          quiz_variant: string
           result_segment: string | null
+          revision: number
           solidgate_oto_environment: string | null
           source: string
+          status: string
           updated_at: string
           user_id: string | null
+          visitor_id: string | null
           welcome_email_pending: boolean
         }
         Insert: {
+          attribution?: Json
+          client_context?: Json
+          completed_at?: string | null
           consent_given_at?: string | null
           consent_version?: string | null
           created_at?: string
           current_step_id?: string | null
           email?: string | null
+          funnel_variant?: string
           id?: string
           last_oto_step?: string | null
           locale: string
           marketing_consent?: boolean | null
           quiz_answers?: Json
+          quiz_result?: Json | null
+          quiz_variant?: string
           result_segment?: string | null
+          revision?: number
           solidgate_oto_environment?: string | null
           source?: string
+          status?: string
           updated_at?: string
           user_id?: string | null
+          visitor_id?: string | null
           welcome_email_pending?: boolean
         }
         Update: {
+          attribution?: Json
+          client_context?: Json
+          completed_at?: string | null
           consent_given_at?: string | null
           consent_version?: string | null
           created_at?: string
           current_step_id?: string | null
           email?: string | null
+          funnel_variant?: string
           id?: string
           last_oto_step?: string | null
           locale?: string
           marketing_consent?: boolean | null
           quiz_answers?: Json
+          quiz_result?: Json | null
+          quiz_variant?: string
           result_segment?: string | null
+          revision?: number
           solidgate_oto_environment?: string | null
           source?: string
+          status?: string
           updated_at?: string
           user_id?: string | null
+          visitor_id?: string | null
           welcome_email_pending?: boolean
         }
         Relationships: []
@@ -1317,6 +1350,64 @@ export type Database = {
       }
     }
     Functions: {
+      complete_quiz_session: {
+        Args: {
+          p_event_id: string
+          p_expected_revision: number
+          p_quiz_result: Json
+          p_result_segment: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      create_quiz_session: {
+        Args: {
+          p_attribution: Json
+          p_client_context: Json
+          p_email: string | null
+          p_event_id: string
+          p_funnel_variant: string
+          p_locale: string
+          p_quiz_variant: string
+          p_session_id: string
+          p_source: string
+          p_visitor_id: string | null
+        }
+        Returns: Json
+      }
+      link_quiz_session_user: {
+        Args: { p_session_id: string; p_user_id: string }
+        Returns: Json
+      }
+      persist_quiz_session_snapshot: {
+        Args: {
+          p_consent_given_at: string | null
+          p_consent_version: string | null
+          p_current_step_id: string | null
+          p_email: string | null
+          p_event_id: string | null
+          p_event_metadata: Json
+          p_event_step_number: number | null
+          p_event_type: string | null
+          p_expected_revision: number
+          p_locale: string | null
+          p_marketing_consent: boolean | null
+          p_quiz_answers: Json
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      record_funnel_event: {
+        Args: {
+          p_event_id: string
+          p_event_type: string
+          p_metadata: Json
+          p_occurred_at: string | null
+          p_session_id: string
+          p_step_number: number | null
+        }
+        Returns: string
+      }
       advance_solidgate_oto_progress: {
         Args: {
           p_allow_catch_up?: boolean

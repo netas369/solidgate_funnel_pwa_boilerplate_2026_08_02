@@ -2,8 +2,9 @@
 --
 -- Documentation only. This file is intentionally outside supabase/migrations.
 -- Do not apply it automatically to this repository's existing database.
--- It shows the complete two-table target for a fresh product. Convert changes
--- to a reviewed migration when implementation is explicitly authorized.
+-- It shows the quiz-focused two-table shape for a fresh product and omits
+-- payment-specific columns already present on sessions. The executable source
+-- of truth is supabase/migrations/00001_baseline.sql; never apply this file.
 
 create table public.sessions (
   id uuid primary key default gen_random_uuid(),
@@ -33,7 +34,7 @@ create table public.sessions (
   -- Consent and downstream handoff state.
   consent_given_at timestamptz,
   consent_version text,
-  marketing_consent boolean not null default false,
+  marketing_consent boolean default true,
   welcome_email_pending boolean not null default false,
 
   created_at timestamptz not null default now(),

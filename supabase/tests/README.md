@@ -7,8 +7,9 @@ run on any branch without touching real data.
 Every assertion is a `DO $$ ... ASSERT ... $$` — the script aborts loudly on the
 first failure and prints a `... PASSED` banner when it does not.
 
-These eight scripts cover the PL/pgSQL money logic. The application-level test
-suites cannot reach it: the behaviour lives entirely inside the database.
+These nine scripts cover the PL/pgSQL money logic and the atomic quiz backend.
+The application-level test suites cannot reach it: the behaviour lives entirely
+inside the database.
 
 ## Running them
 
@@ -90,9 +91,15 @@ what proves its cleanup is retry-safe.
 ## Changing the schema
 
 `00001_baseline.sql` is the whole schema. Extend the relevant script here
-*before* changing any of the functions it covers — the behaviour these scripts
+_before_ changing any of the functions it covers — the behaviour these scripts
 pin is not visible from the application layer, and a regression surfaces as a
 buyer being charged twice, not as a failing unit test.
+
+## `quiz_backend.sql`
+
+Covers the two-table quiz contract: session creation, one-row JSONB snapshots,
+optimistic revision conflicts, event idempotency, and immutable completion.
+It rolls back all fixtures.
 
 ---
 
@@ -113,7 +120,7 @@ Non-obvious invariants the assertions pin down:
 - a **pending** order never blocks a re-claim — every checkout is written as
   `pending` before the intent is issued, so blocking on it would make the whole
   recovery path unreachable;
-- a `pending` order whose payment actually *started* (`auth_ok`, `3ds_verify`,
+- a `pending` order whose payment actually _started_ (`auth_ok`, `3ds_verify`,
   `processing`, `settle_ok`, `partial_settled`) **does** block: the card is
   charged or about to be, and re-keying would mint a second payable intent for
   the same email during the settle window;

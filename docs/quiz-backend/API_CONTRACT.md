@@ -19,7 +19,7 @@ Standard error:
   "error": {
     "code": "INVALID_QUIZ_ANSWERS",
     "message": "The answer snapshot is invalid.",
-    "fields": {"height_cm": "OUT_OF_RANGE"}
+    "fields": { "primaryGoal": "INVALID_OPTION" }
   }
 }
 ```
@@ -32,9 +32,8 @@ Request:
 
 ```json
 {
+  "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
   "visitorId": "web_6f9938c8d8e94a6a",
-  "quizVariant": "example-v1",
-  "funnelVariant": "main-a",
   "locale": "en",
   "source": "quiz",
   "attribution": {
@@ -56,13 +55,18 @@ Response `201`:
     "answers": {},
     "revision": 0
   },
-  "sessionToken": "signed-expiring-token"
+  "persisted": {
+    "id": "0198d633-48df-7ca8-b728-c4339d29db47",
+    "status": "active",
+    "revision": 0,
+    "current_step_id": null
+  }
 }
 ```
 
-The server validates known variants, captures bounded client context, and makes create idempotent for the supplied session identity.
+`sessionId` is optional; the server generates it when omitted. Quiz and funnel variants are server-owned constants and are not accepted from the caller. A successful response also sets the signed, HTTP-only `quiz_session_access` cookie. Reusing a session ID returns `409 SESSION_ALREADY_EXISTS` rather than taking ownership of the existing session.
 
-## `POST /api/session/persist`
+## `POST /api/session/snapshot`
 
 Updates the existing row with the complete current answer snapshot.
 
@@ -72,17 +76,17 @@ Request:
 {
   "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
   "expectedRevision": 2,
-  "currentStepId": "activity_level",
+  "currentStepId": "step4",
   "answers": {
     "gender": "female",
-    "diet_familiarity": "beginner",
-    "activity_level": "light"
+    "primaryGoal": "a",
+    "challenges": ["o1", "o2"]
   },
   "event": {
     "eventId": "0198d633-0000-7000-8000-000000000002",
     "type": "step_completed",
     "stepNumber": 3,
-    "metadata": {"step_id": "activity_level"}
+    "metadata": { "step_id": "step3" }
   }
 }
 ```
@@ -102,13 +106,13 @@ Response `200`:
 ```json
 {
   "ok": true,
-  "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
   "revision": 3,
-  "currentStepId": "activity_level"
+  "currentStepId": "step4",
+  "status": "active"
 }
 ```
 
-If `expectedRevision` is stale, response `409` includes the current safe state so the client can reconcile. The client should normally serialize saves, making this conflict exceptional rather than routine.
+If `expectedRevision` is stale, response `409` includes `currentRevision`. The client can then perform an authorized read and reconcile. The client should normally serialize saves, making this conflict exceptional rather than routine.
 
 ## `GET /api/session/read?sessionId=:sessionId`
 
@@ -120,16 +124,16 @@ Response `200`:
 {
   "id": "0198d633-48df-7ca8-b728-c4339d29db47",
   "status": "active",
-  "currentStepId": "activity_level",
-  "answers": {
+  "current_step_id": "step4",
+  "quiz_answers": {
     "gender": "female",
-    "diet_familiarity": "beginner",
-    "activity_level": "light"
+    "primaryGoal": "a",
+    "challenges": ["o1", "o2"]
   },
-  "result": null,
-  "resultSegment": null,
-  "quizVariant": "example-v1",
-  "funnelVariant": "main-a",
+  "quiz_result": null,
+  "result_segment": null,
+  "quiz_variant": "boilerplate-v1",
+  "funnel_variant": "main-v1",
   "locale": "en",
   "revision": 3
 }
@@ -153,11 +157,11 @@ The backend authorizes the caller, validates every required reachable answer, ca
 ```json
 {
   "quiz_result": {
-    "score_version": "example-v1",
-    "profile": "balanced",
-    "scores": {"consistency": 72, "readiness": 64}
+    "score_version": "boilerplate-v1",
+    "profile": "a",
+    "answered_questions": 5
   },
-  "result_segment": "balanced",
+  "result_segment": "a",
   "status": "completed",
   "current_step_id": "results",
   "completed_at": "2026-09-09T10:20:00Z",
@@ -174,11 +178,11 @@ Response `200`:
   "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
   "status": "completed",
   "revision": 8,
-  "resultSegment": "balanced",
+  "resultSegment": "a",
   "result": {
-    "score_version": "example-v1",
-    "profile": "balanced",
-    "scores": {"consistency": 72, "readiness": 64}
+    "score_version": "boilerplate-v1",
+    "profile": "a",
+    "answered_questions": 5
   },
   "completedAt": "2026-09-09T10:20:00Z"
 }
@@ -191,7 +195,7 @@ Requires authentication. The server reads the user from the trusted authenticati
 Request:
 
 ```json
-{"sessionId": "0198d633-48df-7ca8-b728-c4339d29db47"}
+{ "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47" }
 ```
 
 The operation is idempotent for the same user. If a different user already owns the session, return `409 SESSION_OWNERSHIP_MISMATCH`.
@@ -212,16 +216,16 @@ Request:
 }
 ```
 
-The backend validates authorization, event name, metadata, and size. Reusing the same `eventId` returns success without inserting another row. Clients cannot emit server-owned events such as `quiz_completed` or payment-confirmed events.
+The backend validates authorization, event name, metadata, size, and any client timestamp. Client timestamps may be at most seven days old or five minutes in the future. Reusing the same `eventId` returns success without inserting another row. Clients cannot emit server-owned events such as `quiz_completed` or `checkout_completed`.
 
 ## Recommended limits
 
-| Item | Limit |
-|---|---:|
-| Complete `quiz_answers` snapshot | 64 KiB |
-| Complete `quiz_result` | 64 KiB |
-| Event metadata | 8 KiB |
-| Email | 320 characters |
-| Locale | 35 characters |
-| Variant/source/step key | 100 characters |
-| One attribution string | 255 characters |
+| Item                             |          Limit |
+| -------------------------------- | -------------: |
+| Complete `quiz_answers` snapshot |         64 KiB |
+| Complete `quiz_result`           |         64 KiB |
+| Event metadata                   |          8 KiB |
+| Email                            | 320 characters |
+| Locale                           |  35 characters |
+| Variant/source/step key          | 100 characters |
+| One attribution string           | 255 characters |

@@ -13,31 +13,31 @@ sessions (one row per quiz journey)
 
 This is the current truth. Every save updates the same row.
 
-| Column | Type | Required | Purpose |
-|---|---|---:|---|
-| `id` | UUID | Yes | Session primary key |
-| `user_id` | UUID | No | Authenticated owner after linking |
-| `visitor_id` | TEXT | No | Coarse anonymous visitor/install identifier; never authorization |
-| `email` | TEXT | No | Normalized captured email; not proof of ownership |
-| `quiz_answers` | JSONB | Yes | Complete current answer snapshot |
-| `quiz_result` | JSONB | No | Final server-computed result snapshot |
-| `result_segment` | TEXT | No | Stable top-level result code used by funnel consumers |
-| `current_step_id` | TEXT | No | Current or last persisted stable step key |
-| `status` | TEXT | Yes | `active`, `completed`, `abandoned`, or `expired` |
-| `revision` | INTEGER | Yes | Optimistic concurrency counter |
-| `quiz_variant` | TEXT | Yes | Immutable questions, branching and scoring version |
-| `funnel_variant` | TEXT | Yes | Immutable funnel presentation/offer version |
-| `locale` | TEXT | Yes | Current language/locale |
-| `source` | TEXT | Yes | Entry route such as `quiz` or `special-offer` |
-| `attribution` | JSONB | Yes | First-touch campaign/UTM snapshot |
-| `client_context` | JSONB | Yes | Bounded device/country/browser context |
-| `consent_given_at` | TIMESTAMPTZ | No | Recorded consent time |
-| `consent_version` | TEXT | No | Version of displayed consent copy |
-| `marketing_consent` | BOOLEAN | Yes | Recorded marketing choice under product policy |
-| `welcome_email_pending` | BOOLEAN | Yes | Handoff flag; quiz module does not send the email |
-| `created_at` | TIMESTAMPTZ | Yes | Server creation time |
-| `updated_at` | TIMESTAMPTZ | Yes | Server last-update time |
-| `completed_at` | TIMESTAMPTZ | No | Server completion time |
+| Column                  | Type        | Required | Purpose                                                          |
+| ----------------------- | ----------- | -------: | ---------------------------------------------------------------- |
+| `id`                    | UUID        |      Yes | Session primary key                                              |
+| `user_id`               | UUID        |       No | Authenticated owner after linking                                |
+| `visitor_id`            | TEXT        |       No | Coarse anonymous visitor/install identifier; never authorization |
+| `email`                 | TEXT        |       No | Normalized captured email; not proof of ownership                |
+| `quiz_answers`          | JSONB       |      Yes | Complete current answer snapshot                                 |
+| `quiz_result`           | JSONB       |       No | Final server-computed result snapshot                            |
+| `result_segment`        | TEXT        |       No | Stable top-level result code used by funnel consumers            |
+| `current_step_id`       | TEXT        |       No | Current or last persisted stable step key                        |
+| `status`                | TEXT        |      Yes | `active`, `completed`, `abandoned`, or `expired`                 |
+| `revision`              | INTEGER     |      Yes | Optimistic concurrency counter                                   |
+| `quiz_variant`          | TEXT        |      Yes | Immutable questions, branching and scoring version               |
+| `funnel_variant`        | TEXT        |      Yes | Immutable funnel presentation/offer version                      |
+| `locale`                | TEXT        |      Yes | Current language/locale                                          |
+| `source`                | TEXT        |      Yes | Entry route such as `quiz` or `special-offer`                    |
+| `attribution`           | JSONB       |      Yes | First-touch campaign/UTM snapshot                                |
+| `client_context`        | JSONB       |      Yes | Bounded device/country/browser context                           |
+| `consent_given_at`      | TIMESTAMPTZ |       No | Recorded consent time                                            |
+| `consent_version`       | TEXT        |       No | Version of displayed consent copy                                |
+| `marketing_consent`     | BOOLEAN     |      Yes | Recorded marketing choice under product policy                   |
+| `welcome_email_pending` | BOOLEAN     |      Yes | Handoff flag; quiz module does not send the email                |
+| `created_at`            | TIMESTAMPTZ |      Yes | Server creation time                                             |
+| `updated_at`            | TIMESTAMPTZ |      Yes | Server last-update time                                          |
+| `completed_at`          | TIMESTAMPTZ |       No | Server completion time                                           |
 
 ### Example row
 
@@ -49,18 +49,18 @@ This is the current truth. Every save updates the same row.
   "email": "alex@example.com",
   "quiz_answers": {
     "gender": "female",
-    "diet_familiarity": "beginner",
-    "activity_level": "light",
-    "excluded_foods": ["pork", "lamb"],
-    "height_cm": 170
+    "primaryGoal": "a",
+    "challenges": ["o1", "o2"],
+    "fullName": "Alex Example",
+    "email": "alex@example.com"
   },
   "quiz_result": null,
   "result_segment": null,
-  "current_step_id": "activity_level",
+  "current_step_id": "step7",
   "status": "active",
   "revision": 3,
-  "quiz_variant": "example-v1",
-  "funnel_variant": "main-a",
+  "quiz_variant": "boilerplate-v1",
+  "funnel_variant": "main-v1",
   "locale": "en",
   "source": "quiz",
   "attribution": {
@@ -106,16 +106,16 @@ This is the current truth. Every save updates the same row.
 
 This table stores history, not current state.
 
-| Column | Type | Required | Purpose |
-|---|---|---:|---|
-| `id` | UUID | Yes | Database primary key |
-| `event_id` | UUID | Yes | Client/server idempotency key, unique |
-| `session_id` | UUID | Yes | Owning session |
-| `event_type` | TEXT | Yes | Name from `EVENT_CATALOG.md` |
-| `step_number` | INTEGER | No | Step position relevant to the event |
-| `metadata` | JSONB | Yes | Small event-specific properties |
-| `occurred_at` | TIMESTAMPTZ | Yes | When the action occurred |
-| `created_at` | TIMESTAMPTZ | Yes | When the database received it |
+| Column        | Type        | Required | Purpose                               |
+| ------------- | ----------- | -------: | ------------------------------------- |
+| `id`          | UUID        |      Yes | Database primary key                  |
+| `event_id`    | UUID        |      Yes | Client/server idempotency key, unique |
+| `session_id`  | UUID        |      Yes | Owning session                        |
+| `event_type`  | TEXT        |      Yes | Name from `EVENT_CATALOG.md`          |
+| `step_number` | INTEGER     |       No | Step position relevant to the event   |
+| `metadata`    | JSONB       |      Yes | Small event-specific properties       |
+| `occurred_at` | TIMESTAMPTZ |      Yes | When the action occurred              |
+| `created_at`  | TIMESTAMPTZ |      Yes | When the database received it         |
 
 ### Example rows
 
@@ -134,7 +134,7 @@ This table stores history, not current state.
     "session_id": "0198d633-48df-7ca8-b728-c4339d29db47",
     "event_type": "step_completed",
     "step_number": 3,
-    "metadata": {"step_id": "activity_level"},
+    "metadata": { "step_id": "step3" },
     "occurred_at": "2026-09-09T10:12:00Z"
   }
 ]

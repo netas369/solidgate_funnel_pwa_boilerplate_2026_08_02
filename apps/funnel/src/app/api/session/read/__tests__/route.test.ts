@@ -103,7 +103,7 @@ describe('GET /api/session/read', () => {
     expect(response.status).toBe(200);
   });
 
-  it('returns 401 for authenticated non-owner without cookie', async () => {
+  it('returns 403 for authenticated non-owner without cookie', async () => {
     mockSelectSingle.mockResolvedValue({
       data: { id: 'sid', user_id: 'uid-other' },
     });
@@ -112,7 +112,7 @@ describe('GET /api/session/read', () => {
 
     const response = await getRoute('sid');
 
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(403);
   });
 
   it('returns 401 when cookie sessionId does not match', async () => {

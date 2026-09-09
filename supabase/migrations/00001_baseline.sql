@@ -243,11 +243,19 @@ $$;
 CREATE TABLE IF NOT EXISTS public.sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT,
+  visitor_id TEXT,
   quiz_answers JSONB NOT NULL DEFAULT '{}'::JSONB,
+  quiz_result JSONB,
   result_segment TEXT,
   current_step_id TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  revision INTEGER NOT NULL DEFAULT 0,
+  quiz_variant TEXT NOT NULL DEFAULT 'boilerplate-v1',
+  funnel_variant TEXT NOT NULL DEFAULT 'main-v1',
   locale TEXT NOT NULL,
   source TEXT NOT NULL DEFAULT 'quiz',
+  attribution JSONB NOT NULL DEFAULT '{}'::JSONB,
+  client_context JSONB NOT NULL DEFAULT '{}'::JSONB,
 
   -- Auth linking (post-checkout OTP)
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -267,22 +275,119 @@ CREATE TABLE IF NOT EXISTS public.sessions (
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ,
 
   CONSTRAINT sessions_solidgate_oto_environment_check CHECK (
     solidgate_oto_environment IS NULL
     OR solidgate_oto_environment IN ('production', 'sandbox')
+  ),
+  CONSTRAINT sessions_status_check CHECK (
+    status IN ('active', 'completed', 'abandoned', 'expired')
+  ),
+  CONSTRAINT sessions_revision_check CHECK (revision >= 0),
+  CONSTRAINT sessions_quiz_answers_object_check CHECK (
+    jsonb_typeof(quiz_answers) = 'object'
+  ),
+  CONSTRAINT sessions_quiz_result_object_check CHECK (
+    quiz_result IS NULL OR jsonb_typeof(quiz_result) = 'object'
+  ),
+  CONSTRAINT sessions_attribution_object_check CHECK (
+    jsonb_typeof(attribution) = 'object'
+  ),
+  CONSTRAINT sessions_client_context_object_check CHECK (
+    jsonb_typeof(client_context) = 'object'
+  ),
+  CONSTRAINT sessions_completion_check CHECK (
+    (status = 'completed') = (completed_at IS NOT NULL)
   )
 );
+
+-- Keep the baseline idempotent when it is re-run against an older local
+-- boilerplate database instead of a completely fresh reset.
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS visitor_id TEXT;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS quiz_result JSONB;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS revision INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS quiz_variant TEXT NOT NULL DEFAULT 'boilerplate-v1';
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS funnel_variant TEXT NOT NULL DEFAULT 'main-v1';
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS attribution JSONB NOT NULL DEFAULT '{}'::JSONB;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS client_context JSONB NOT NULL DEFAULT '{}'::JSONB;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_status_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_status_check
+      CHECK (status IN ('active', 'completed', 'abandoned', 'expired'));
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_revision_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_revision_check CHECK (revision >= 0);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_quiz_answers_object_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_quiz_answers_object_check
+      CHECK (jsonb_typeof(quiz_answers) = 'object');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_quiz_result_object_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_quiz_result_object_check
+      CHECK (quiz_result IS NULL OR jsonb_typeof(quiz_result) = 'object');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_attribution_object_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_attribution_object_check
+      CHECK (jsonb_typeof(attribution) = 'object');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_client_context_object_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_client_context_object_check
+      CHECK (jsonb_typeof(client_context) = 'object');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_completion_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_completion_check
+      CHECK ((status = 'completed') = (completed_at IS NOT NULL));
+  END IF;
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_sessions_email ON public.sessions (email);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON public.sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_current_step ON public.sessions (current_step_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_visitor_id ON public.sessions (visitor_id)
+  WHERE visitor_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sessions_quiz_reporting
+  ON public.sessions (created_at, funnel_variant, quiz_variant, source, status);
 
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Anyone can create a session" ON public.sessions;
-CREATE POLICY "Anyone can create a session"
-  ON public.sessions FOR INSERT TO anon WITH CHECK (true);
+-- Session creation goes through /api/session/create so the server can pin the
+-- quiz version, mint the signed access cookie and create quiz_started in the
+-- same transaction. There is intentionally no direct anonymous INSERT policy.
 
 DROP POLICY IF EXISTS "Authenticated users can read their own sessions" ON public.sessions;
 CREATE POLICY "Authenticated users can read their own sessions"
@@ -299,30 +404,406 @@ CREATE POLICY "Authenticated users can update their own sessions"
 -- ── funnel_events ───────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.funnel_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
   event_type TEXT NOT NULL CHECK (event_type IN (
     'quiz_started', 'step_completed', 'lead_captured', 'quiz_completed',
+    'results_viewed', 'offer_viewed', 'offer_accepted', 'offer_declined',
     'oto_viewed', 'oto_accepted', 'oto_declined', 'checkout_completed'
   )),
   step_number INTEGER,
-  metadata JSONB DEFAULT '{}'::JSONB,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.funnel_events
+  ADD COLUMN IF NOT EXISTS event_id UUID NOT NULL DEFAULT gen_random_uuid();
+ALTER TABLE public.funnel_events
+  ADD COLUMN IF NOT EXISTS occurred_at TIMESTAMPTZ NOT NULL DEFAULT now();
+UPDATE public.funnel_events SET metadata = '{}'::JSONB WHERE metadata IS NULL;
+ALTER TABLE public.funnel_events ALTER COLUMN metadata SET NOT NULL;
+ALTER TABLE public.funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check;
+ALTER TABLE public.funnel_events
+  ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+    'quiz_started', 'step_completed', 'lead_captured', 'quiz_completed',
+    'results_viewed', 'offer_viewed', 'offer_accepted', 'offer_declined',
+    'oto_viewed', 'oto_accepted', 'oto_declined', 'checkout_completed'
+  ));
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_events_event_id
+  ON public.funnel_events (event_id);
 CREATE INDEX IF NOT EXISTS idx_funnel_events_session_id ON public.funnel_events (session_id);
 CREATE INDEX IF NOT EXISTS idx_funnel_events_event_type ON public.funnel_events (event_type);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_events_one_session_milestone
+  ON public.funnel_events (session_id, event_type)
+  WHERE event_type IN ('quiz_started', 'lead_captured', 'quiz_completed');
+CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_events_one_step_completion
+  ON public.funnel_events (session_id, event_type, step_number)
+  WHERE event_type = 'step_completed';
 
 ALTER TABLE public.funnel_events ENABLE ROW LEVEL SECURITY;
 
+-- The hardened funnel-event path uses authenticated backend routes. Direct
+-- browser writes remain temporarily available for the existing frontend; the
+-- backend-only quiz branch adds /api/funnel-events but does not switch callers.
+-- Remove these policies when the frontend migration is explicitly in scope.
 DROP POLICY IF EXISTS "Anyone can insert funnel events" ON public.funnel_events;
 CREATE POLICY "Anyone can insert funnel events"
   ON public.funnel_events FOR INSERT TO anon WITH CHECK (true);
-
--- Without this second policy every post-checkout OTO event is rejected: the
--- visitor is authenticated by then, and `TO anon` does not cover them.
 DROP POLICY IF EXISTS "Authenticated can insert funnel events" ON public.funnel_events;
 CREATE POLICY "Authenticated can insert funnel events"
   ON public.funnel_events FOR INSERT TO authenticated WITH CHECK (true);
+
+-- ── quiz backend atomic operations ─────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.create_quiz_session(
+  p_session_id UUID,
+  p_email TEXT,
+  p_visitor_id TEXT,
+  p_quiz_variant TEXT,
+  p_funnel_variant TEXT,
+  p_locale TEXT,
+  p_source TEXT,
+  p_attribution JSONB,
+  p_client_context JSONB,
+  p_event_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_session public.sessions%ROWTYPE;
+BEGIN
+  INSERT INTO public.sessions (
+    id,
+    email,
+    visitor_id,
+    quiz_variant,
+    funnel_variant,
+    locale,
+    source,
+    attribution,
+    client_context
+  ) VALUES (
+    p_session_id,
+    p_email,
+    p_visitor_id,
+    p_quiz_variant,
+    p_funnel_variant,
+    p_locale,
+    p_source,
+    COALESCE(p_attribution, '{}'::JSONB),
+    COALESCE(p_client_context, '{}'::JSONB)
+  )
+  RETURNING * INTO v_session;
+
+  IF p_source = 'quiz' THEN
+    INSERT INTO public.funnel_events (
+      event_id,
+      session_id,
+      event_type,
+      step_number,
+      metadata,
+      occurred_at
+    ) VALUES (
+      p_event_id,
+      p_session_id,
+      'quiz_started',
+      1,
+      '{}'::JSONB,
+      now()
+    )
+    ON CONFLICT DO NOTHING;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'id', v_session.id,
+    'status', v_session.status,
+    'revision', v_session.revision,
+    'current_step_id', v_session.current_step_id
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.persist_quiz_session_snapshot(
+  p_session_id UUID,
+  p_expected_revision INTEGER,
+  p_quiz_answers JSONB,
+  p_current_step_id TEXT,
+  p_email TEXT,
+  p_locale TEXT,
+  p_consent_given_at TIMESTAMPTZ,
+  p_consent_version TEXT,
+  p_marketing_consent BOOLEAN,
+  p_event_id UUID,
+  p_event_type TEXT,
+  p_event_step_number INTEGER,
+  p_event_metadata JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_session public.sessions%ROWTYPE;
+  v_existing public.sessions%ROWTYPE;
+BEGIN
+  UPDATE public.sessions
+  SET
+    quiz_answers = p_quiz_answers,
+    current_step_id = COALESCE(p_current_step_id, current_step_id),
+    email = COALESCE(p_email, email),
+    locale = COALESCE(p_locale, locale),
+    consent_given_at = COALESCE(p_consent_given_at, consent_given_at),
+    consent_version = COALESCE(p_consent_version, consent_version),
+    marketing_consent = COALESCE(p_marketing_consent, marketing_consent),
+    welcome_email_pending = CASE
+      WHEN p_email IS NOT NULL THEN true
+      ELSE welcome_email_pending
+    END,
+    revision = revision + 1,
+    updated_at = now()
+  WHERE id = p_session_id
+    AND status = 'active'
+    AND revision = p_expected_revision
+  RETURNING * INTO v_session;
+
+  IF NOT FOUND THEN
+    SELECT * INTO v_existing
+    FROM public.sessions
+    WHERE id = p_session_id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION USING
+        ERRCODE = 'P0002',
+        MESSAGE = 'QUIZ_SESSION_NOT_FOUND';
+    END IF;
+
+    IF v_existing.status <> 'active' THEN
+      RAISE EXCEPTION USING
+        ERRCODE = 'P0001',
+        MESSAGE = 'QUIZ_SESSION_TERMINAL';
+    END IF;
+
+    RAISE EXCEPTION USING
+      ERRCODE = '40001',
+      MESSAGE = 'QUIZ_STALE_REVISION:' || v_existing.revision::TEXT;
+  END IF;
+
+  IF p_event_id IS NOT NULL AND p_event_type IS NOT NULL THEN
+    INSERT INTO public.funnel_events (
+      event_id,
+      session_id,
+      event_type,
+      step_number,
+      metadata,
+      occurred_at
+    ) VALUES (
+      p_event_id,
+      p_session_id,
+      p_event_type,
+      p_event_step_number,
+      COALESCE(p_event_metadata, '{}'::JSONB),
+      now()
+    )
+    ON CONFLICT DO NOTHING;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'id', v_session.id,
+    'status', v_session.status,
+    'revision', v_session.revision,
+    'current_step_id', v_session.current_step_id
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.complete_quiz_session(
+  p_session_id UUID,
+  p_expected_revision INTEGER,
+  p_quiz_result JSONB,
+  p_result_segment TEXT,
+  p_event_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_session public.sessions%ROWTYPE;
+BEGIN
+  SELECT * INTO v_session
+  FROM public.sessions
+  WHERE id = p_session_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0002',
+      MESSAGE = 'QUIZ_SESSION_NOT_FOUND';
+  END IF;
+
+  IF v_session.status = 'completed' THEN
+    RETURN jsonb_build_object(
+      'id', v_session.id,
+      'status', v_session.status,
+      'revision', v_session.revision,
+      'quiz_result', v_session.quiz_result,
+      'result_segment', v_session.result_segment,
+      'completed_at', v_session.completed_at
+    );
+  END IF;
+
+  IF v_session.status <> 'active' THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0001',
+      MESSAGE = 'QUIZ_SESSION_TERMINAL';
+  END IF;
+
+  IF v_session.revision <> p_expected_revision THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '40001',
+      MESSAGE = 'QUIZ_STALE_REVISION:' || v_session.revision::TEXT;
+  END IF;
+
+  UPDATE public.sessions
+  SET
+    quiz_result = p_quiz_result,
+    result_segment = p_result_segment,
+    status = 'completed',
+    current_step_id = 'results',
+    completed_at = now(),
+    updated_at = now(),
+    revision = revision + 1
+  WHERE id = p_session_id
+  RETURNING * INTO v_session;
+
+  INSERT INTO public.funnel_events (
+    event_id,
+    session_id,
+    event_type,
+    metadata,
+    occurred_at
+  ) VALUES (
+    p_event_id,
+    p_session_id,
+    'quiz_completed',
+    jsonb_build_object('result_segment', p_result_segment),
+    now()
+  )
+  ON CONFLICT DO NOTHING;
+
+  RETURN jsonb_build_object(
+    'id', v_session.id,
+    'status', v_session.status,
+    'revision', v_session.revision,
+    'quiz_result', v_session.quiz_result,
+    'result_segment', v_session.result_segment,
+    'completed_at', v_session.completed_at
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.record_funnel_event(
+  p_event_id UUID,
+  p_session_id UUID,
+  p_event_type TEXT,
+  p_step_number INTEGER,
+  p_metadata JSONB,
+  p_occurred_at TIMESTAMPTZ
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_id UUID;
+BEGIN
+  INSERT INTO public.funnel_events (
+    event_id,
+    session_id,
+    event_type,
+    step_number,
+    metadata,
+    occurred_at
+  ) VALUES (
+    p_event_id,
+    p_session_id,
+    p_event_type,
+    p_step_number,
+    COALESCE(p_metadata, '{}'::JSONB),
+    COALESCE(p_occurred_at, now())
+  )
+  ON CONFLICT DO NOTHING
+  RETURNING id INTO v_id;
+
+  IF v_id IS NULL THEN
+    SELECT id INTO v_id
+    FROM public.funnel_events
+    WHERE event_id = p_event_id;
+  END IF;
+
+  RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.link_quiz_session_user(
+  p_session_id UUID,
+  p_user_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_session public.sessions%ROWTYPE;
+BEGIN
+  SELECT * INTO v_session
+  FROM public.sessions
+  WHERE id = p_session_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0002',
+      MESSAGE = 'QUIZ_SESSION_NOT_FOUND';
+  END IF;
+
+  IF v_session.user_id IS NOT NULL AND v_session.user_id <> p_user_id THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0001',
+      MESSAGE = 'QUIZ_SESSION_OWNERSHIP_MISMATCH';
+  END IF;
+
+  IF v_session.user_id IS NULL THEN
+    UPDATE public.sessions
+    SET user_id = p_user_id, updated_at = now()
+    WHERE id = p_session_id
+    RETURNING * INTO v_session;
+  END IF;
+
+  RETURN jsonb_build_object('id', v_session.id, 'user_id', v_session.user_id);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_quiz_session(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, JSONB, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.persist_quiz_session_snapshot(UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, BOOLEAN, UUID, TEXT, INTEGER, JSONB) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.complete_quiz_session(UUID, INTEGER, JSONB, TEXT, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.record_funnel_event(UUID, UUID, TEXT, INTEGER, JSONB, TIMESTAMPTZ) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.link_quiz_session_user(UUID, UUID) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.create_quiz_session(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, JSONB, UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION public.persist_quiz_session_snapshot(UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, BOOLEAN, UUID, TEXT, INTEGER, JSONB) TO service_role;
+GRANT EXECUTE ON FUNCTION public.complete_quiz_session(UUID, INTEGER, JSONB, TEXT, UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION public.record_funnel_event(UUID, UUID, TEXT, INTEGER, JSONB, TIMESTAMPTZ) TO service_role;
+GRANT EXECUTE ON FUNCTION public.link_quiz_session_user(UUID, UUID) TO service_role;
 
 
 -- ── otp_attempts ────────────────────────────────────────────────────────────

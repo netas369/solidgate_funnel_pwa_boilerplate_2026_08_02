@@ -1,10 +1,9 @@
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { PAYMENT_COOKIE_NAME, verifyPaymentCookie } from '@repo/shared/payment-cookie';
 import { getSupabaseAdminClient } from '@repo/shared/supabase/admin';
-import { createClient } from '@repo/shared/supabase/server';
 import { currentPaymentEnvironment } from '@repo/shared/payment-environment';
 import { SOLIDGATE_PRODUCT_CODES } from '@repo/shared/solidgate/catalog';
+import { authorizeQuizSession } from '@/features/quiz/server/quiz-access';
+import { errorResponse } from '@/features/quiz/server/http';
 
 export async function GET(request: Request) {
   const sessionId = new URL(request.url).searchParams.get('sessionId');
@@ -15,7 +14,9 @@ export async function GET(request: Request) {
 
   const { data: session } = await getSupabaseAdminClient()
     .from('sessions')
-    .select('id, current_step_id, quiz_answers, email, result_segment, user_id')
+    .select(
+      'id, current_step_id, quiz_answers, quiz_result, email, result_segment, user_id, status, revision, quiz_variant, funnel_variant, locale, completed_at',
+    )
     .eq('id', sessionId)
     .single();
 
@@ -23,28 +24,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  // Auth path: check Supabase auth cookie
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user && session.user_id === user.id) {
-    return NextResponse.json(await maybeEnrichWithSubscription(request, session));
+  const access = await authorizeQuizSession(session.id, session.user_id);
+  if (!access.ok) {
+    return errorResponse(access.status, access.code, 'The caller cannot read this quiz session.');
   }
-
-  // Cookie path: check payment cookie
-  const cookieStore = await cookies();
-  const cookieValue = cookieStore.get(PAYMENT_COOKIE_NAME)?.value;
-
-  if (cookieValue) {
-    const verified = await verifyPaymentCookie(cookieValue);
-    if (verified?.sessionId === sessionId) {
-      return NextResponse.json(await maybeEnrichWithSubscription(request, session));
-    }
-  }
-
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  return NextResponse.json(await maybeEnrichWithSubscription(request, session));
 }
 
 /**
