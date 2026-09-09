@@ -1,0 +1,140 @@
+# Backend Structure
+
+## 1. Responsibility layers
+
+```text
+API routes
+  -> quiz service
+  -> authorization, validation and scoring
+  -> quiz repository
+  -> PostgreSQL/Supabase
+```
+
+### API routes
+
+Routes parse HTTP requests, call the service layer, and translate known failures into stable HTTP responses. They must not contain product scoring rules or construct arbitrary database updates directly from the request body.
+
+### Quiz service
+
+The service coordinates a complete use case: create, persist, read, complete, or link a session. It owns transaction boundaries and decides which event belongs to a successful state change.
+
+### Authorization
+
+Authorization establishes whether the caller may use the requested session. Supported paths are:
+
+- an authenticated user owns `sessions.user_id`; or
+- an anonymous caller presents a signed, expiring credential bound to that session.
+
+Knowing a session UUID is not sufficient authorization.
+
+### Validation
+
+Validation loads the immutable definition named by `sessions.quiz_variant`. It verifies question keys, answer types, allowed option codes, numeric bounds, arrays, required questions, and branching. It also applies request-size limits.
+
+### Scoring
+
+Scoring is deterministic server code. It reads the validated stored snapshot and the matching versioned quiz definition. The client never supplies a trusted final result.
+
+### Repository
+
+The repository is the only layer that reads or writes `sessions` and `funnel_events`. It uses an atomic upsert or transaction, revision checks, and unique event IDs.
+
+## 2. Recommended source layout
+
+The existing repository can be moved toward this structure incrementally:
+
+```text
+apps/funnel/src/app/api/
+  session/create/route.ts
+  session/persist/route.ts
+  session/read/route.ts
+  session/complete/route.ts
+  session/link-user/route.ts
+  funnel-events/route.ts
+
+packages/shared/src/quiz/
+  quiz-service.ts
+  quiz-repository.ts
+  quiz-validation.ts
+  quiz-authorization.ts
+  quiz-scoring.ts
+  quiz-events.ts
+  quiz-types.ts
+  quiz-errors.ts
+  definitions/
+    quiz-definition-schema.ts
+    example-v1.ts
+```
+
+This is a target organization, not a requirement to rewrite working code at once.
+
+## 3. Main operations
+
+### Create
+
+`createQuizSession()` validates the requested variants, captures entry attribution, creates one `sessions` row, issues an anonymous session credential, and emits `quiz_started` when the quiz actually begins.
+
+### Persist
+
+`persistQuizSession()` authorizes the session, checks its revision and active status, validates the complete answer snapshot, updates the same session row, increments the revision, and optionally inserts one idempotent milestone event.
+
+### Read
+
+`readQuizSession()` authorizes the caller and returns safe resumable fields: answers, current step, variant, result when completed, and the current revision. Internal metadata and credentials are never returned.
+
+### Complete
+
+`completeQuizSession()` validates all required reachable questions, computes the result on the server, saves the result on the same session row, marks it complete, and inserts `quiz_completed` in one transaction. A retry returns the already stored result.
+
+### Link user
+
+`linkSessionToUser()` uses the authenticated principal from the server session. The client cannot select an arbitrary `user_id`. A session already owned by another user cannot be reassigned.
+
+### Record event
+
+`recordFunnelEvent()` accepts a small catalog of allowed events and a unique `event_id`. Duplicate delivery returns success without a duplicate row.
+
+## 4. Normal answer flow
+
+```text
+1. User selects an answer.
+2. Frontend updates the local answer object.
+3. Frontend queues a snapshot save.
+4. Backend authorizes the session.
+5. Backend checks expected revision.
+6. Backend validates all submitted answers against quiz_variant.
+7. Backend updates sessions.quiz_answers and current_step_id.
+8. Backend increments sessions.revision.
+9. Backend inserts the milestone event when requested.
+10. Backend commits and returns the new revision.
+```
+
+The frontend should serialize saves per session. Navigation may remain responsive, but the save queue must preserve order.
+
+## 5. Transaction rules
+
+Use one transaction when two facts must agree. Examples:
+
+- persisted step state and its `step_completed` event;
+- final result, completed status, completion timestamp, and `quiz_completed` event;
+- authenticated user link and any server-owned link event.
+
+Product analytics calls and email-provider calls do not belong inside the database transaction. They may be triggered after commit and retried independently.
+
+## 6. Error model
+
+Stable error codes are part of the API contract:
+
+| Status | Code | Meaning |
+|---:|---|---|
+| 400 | `INVALID_REQUEST` | Malformed JSON or missing required field |
+| 401 | `UNAUTHORIZED_SESSION` | Missing or invalid session credential |
+| 403 | `SESSION_OWNERSHIP_MISMATCH` | Authenticated caller does not own the session |
+| 404 | `SESSION_NOT_FOUND` | No accessible session exists |
+| 409 | `STALE_SESSION_REVISION` | A newer snapshot already won |
+| 409 | `SESSION_ALREADY_COMPLETED` | Normal writes are not allowed after completion |
+| 422 | `INVALID_QUIZ_ANSWERS` | Answer snapshot does not match its definition |
+| 413 | `PAYLOAD_TOO_LARGE` | A configured JSON or metadata limit was exceeded |
+| 500 | `PERSISTENCE_FAILED` | Unexpected storage failure |
+
+Logs may include request IDs, session IDs, revisions, route names, and error codes. They must not include full answer snapshots, raw tokens, email addresses, payment data, or consent payloads.

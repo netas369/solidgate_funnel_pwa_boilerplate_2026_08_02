@@ -37,6 +37,9 @@ scripts/     Solidgate catalog seeding, price exports, reconciliation tooling
 docs/        new-product checklist, runbooks, Solidgate implementation guide
 ```
 
+The complete two-table quiz persistence contract, current implementation gaps, API examples,
+and AI-agent rules are in **[docs/quiz-backend/README.md](docs/quiz-backend/README.md)**.
+
 ## Stack
 
 Next.js App Router · React · TypeScript · Tailwind · Zustand · next-intl ·

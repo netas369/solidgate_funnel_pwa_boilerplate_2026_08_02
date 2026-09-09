@@ -1,0 +1,18 @@
+{
+  "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
+  "expectedRevision": 2,
+  "currentStepId": "activity_level",
+  "answers": {
+    "gender": "female",
+    "diet_familiarity": "beginner",
+    "activity_level": "light"
+  },
+  "event": {
+    "eventId": "0198d633-0000-7000-8000-000000000002",
+    "type": "step_completed",
+    "stepNumber": 3,
+    "metadata": {
+      "step_id": "activity_level"
+    }
+  }
+}

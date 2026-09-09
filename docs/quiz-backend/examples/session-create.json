@@ -1,0 +1,12 @@
+{
+  "visitorId": "web_6f9938c8d8e94a6a",
+  "quizVariant": "example-v1",
+  "funnelVariant": "main-a",
+  "locale": "en",
+  "source": "quiz",
+  "attribution": {
+    "utm_source": "meta",
+    "utm_medium": "paid_social",
+    "utm_campaign": "example_launch"
+  }
+}
