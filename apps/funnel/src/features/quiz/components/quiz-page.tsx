@@ -163,8 +163,16 @@ export function QuizPage() {
         revision: created.revision,
         isComplete: false,
         hasUnsavedProgress: Boolean(recovery),
+        quizVariant: created.quizVariant,
+        funnelVariant: created.funnelVariant,
+        source: created.source,
       });
-      track('quiz_started', { session_id: created.id });
+      track('quiz_started', {
+        session_id: created.id,
+        quiz_variant: created.quizVariant,
+        funnel_variant: created.funnelVariant,
+        source: created.source,
+      });
       if (recovery) {
         await saveQuizProgress(created.id, recovery.currentStepId, recoveredAnswers, {
           locale,
@@ -202,6 +210,9 @@ export function QuizPage() {
             revision: server.revision,
             isComplete: server.status === 'completed',
             hasUnsavedProgress: local.hasUnsavedProgress,
+            quizVariant: server.quiz_variant,
+            funnelVariant: server.funnel_variant,
+            source: server.source,
           });
 
           if (server.status === 'completed') {

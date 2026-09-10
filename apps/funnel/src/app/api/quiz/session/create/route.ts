@@ -9,9 +9,10 @@ import {
 import { getSupabaseAdminClient } from '@repo/shared/supabase/admin';
 import type { Json } from '@repo/shared/types/database';
 import {
-  FUNNEL_VARIANT,
   QUIZ_VARIANT,
 } from '@/features/quiz/server/quiz-definition';
+import { buildQuizClientContext } from '@/features/quiz/server/client-context';
+import { assignFunnelVariant } from '@/features/quiz/server/experiment-assignment';
 import { errorResponse } from '@/features/quiz/server/http';
 import { isKnownMetaCrawler } from '@/features/quiz/server/meta-crawler';
 
@@ -22,6 +23,9 @@ const allowedSources = [
   'special-offer',
   'special-offer-free',
 ] as const;
+
+const VISITOR_COOKIE_NAME = 'funnel_visitor_id';
+const VISITOR_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
 
 const attributionValue = z.string().min(1).max(500);
 const attributionTouchSchema = z
@@ -58,37 +62,25 @@ const attributionSchema = z
 const createSchema = z
   .object({
     sessionId: z.uuid().optional(),
-    visitorId: z.string().min(1).max(255).optional(),
     locale: z.string().min(1).max(35),
     source: z.enum(allowedSources).default('quiz'),
     attribution: attributionSchema.optional(),
   })
   .strict();
 
-function clientContext(request: Request): Json {
-  const userAgent = request.headers.get('user-agent') ?? '';
-  const deviceType = /ipad|tablet/i.test(userAgent)
-    ? 'tablet'
-    : /mobile|iphone|android/i.test(userAgent)
-      ? 'mobile'
-      : userAgent
-        ? 'desktop'
-        : 'unknown';
-  const browser = /edg\//i.test(userAgent)
-    ? 'Edge'
-    : /chrome\//i.test(userAgent)
-      ? 'Chrome'
-      : /safari\//i.test(userAgent)
-        ? 'Safari'
-        : /firefox\//i.test(userAgent)
-          ? 'Firefox'
-          : 'unknown';
-
-  return {
-    device_type: deviceType,
-    browser,
-    country: request.headers.get('x-vercel-ip-country'),
-  };
+function cookieValue(request: Request, name: string): string | null {
+  const cookie = request.headers.get('cookie');
+  if (!cookie) return null;
+  for (const item of cookie.split(';')) {
+    const [key, ...parts] = item.trim().split('=');
+    if (key !== name) continue;
+    try {
+      return decodeURIComponent(parts.join('='));
+    } catch {
+      return parts.join('=');
+    }
+  }
+  return null;
 }
 
 export async function POST(request: Request) {
@@ -124,6 +116,11 @@ export async function POST(request: Request) {
   }
 
   const sessionId = body.sessionId ?? crypto.randomUUID();
+  const existingVisitor = z.uuid().safeParse(cookieValue(request, VISITOR_COOKIE_NAME));
+  const visitorId = existingVisitor.success
+    ? existingVisitor.data
+    : crypto.randomUUID();
+  const funnelVariant = assignFunnelVariant(visitorId);
   let signedCookie: string;
   try {
     // Resolve configuration before inserting the row. A missing secret must
@@ -145,13 +142,13 @@ export async function POST(request: Request) {
   const { data, error } = await admin.rpc('create_quiz_session', {
     p_session_id: sessionId,
     p_email: null,
-    p_visitor_id: body.visitorId ?? null,
+    p_visitor_id: visitorId,
     p_quiz_variant: QUIZ_VARIANT,
-    p_funnel_variant: FUNNEL_VARIANT,
+    p_funnel_variant: funnelVariant,
     p_locale: body.locale,
     p_source: body.source,
     p_attribution: (body.attribution ?? {}) as Json,
-    p_client_context: clientContext(request),
+    p_client_context: buildQuizClientContext(request),
     p_event_id: crypto.randomUUID(),
   });
 
@@ -171,6 +168,9 @@ export async function POST(request: Request) {
         currentStepId: null,
         answers: {},
         revision: 0,
+        quizVariant: QUIZ_VARIANT,
+        funnelVariant,
+        source: body.source,
       },
       persisted: data,
     },
@@ -182,6 +182,13 @@ export async function POST(request: Request) {
     secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: QUIZ_SESSION_COOKIE_MAX_AGE,
+  });
+  response.cookies.set(VISITOR_COOKIE_NAME, visitorId, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: VISITOR_COOKIE_MAX_AGE,
   });
   return response;
 }

@@ -161,6 +161,9 @@ describe('QuizPage session bootstrap', () => {
       id: 'fresh-session-id',
       revision: 0,
       currentStepId: null,
+      quizVariant: 'boilerplate-v1',
+      funnelVariant: 'main-v1',
+      source: 'quiz',
     });
 
     Object.defineProperty(globalThis, 'crypto', {
@@ -193,6 +196,9 @@ describe('QuizPage session bootstrap', () => {
         revision: 0,
         isComplete: false,
         hasUnsavedProgress: false,
+        quizVariant: 'boilerplate-v1',
+        funnelVariant: 'main-v1',
+        source: 'quiz',
       });
     });
   });
@@ -204,6 +210,9 @@ describe('QuizPage session bootstrap', () => {
     await waitFor(() => {
       expect(mockTrack).toHaveBeenCalledWith('quiz_started', {
         session_id: 'fresh-session-id',
+        quiz_variant: 'boilerplate-v1',
+        funnel_variant: 'main-v1',
+        source: 'quiz',
       });
     });
   });
@@ -231,6 +240,7 @@ describe('QuizPage session bootstrap', () => {
       quiz_variant: 'boilerplate-v1',
       funnel_variant: 'main-v1',
       locale: 'en',
+      source: 'quiz',
       revision: 2,
       completed_at: null,
     });
@@ -259,6 +269,9 @@ describe('QuizPage session bootstrap', () => {
       id: 'missing-session-id',
       revision: 0,
       currentStepId: null,
+      quizVariant: 'boilerplate-v1',
+      funnelVariant: 'main-v1',
+      source: 'quiz',
     });
 
     const { QuizPage } = await import('../quiz-page');

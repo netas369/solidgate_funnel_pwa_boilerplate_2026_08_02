@@ -36,7 +36,10 @@ The hardened quiz backend is complete only when every required item below is tes
 - [x] A normal Quiz screen load creates a session before any click, preserving zero-interaction drop-off.
 - [x] Known Meta crawler User-Agents create no session, cookie, or `quiz_started` event.
 - [x] Facebook and Instagram in-app browsers remain treated as real visitors.
-- [ ] `quiz_variant`, `funnel_variant`, first-touch attribution, and original source remain immutable.
+- [x] A server-created HTTP-only visitor UUID remains stable across sessions in the same browser.
+- [x] Funnel A/B assignment is deterministic, weighted, server-owned, and falls back safely when unconfigured.
+- [x] Device type, browser, public request IP and available approximate geolocation are captured at session creation.
+- [x] `quiz_variant`, `funnel_variant`, first-touch attribution, and original source remain immutable during progress saves.
 - [x] Only active sessions accept normal progress saves at the API boundary.
 - [x] Completion validates all required reachable answers.
 - [x] Completion computes the result on the server.
@@ -68,7 +71,7 @@ The hardened quiz backend is complete only when every required item below is tes
 - [x] Campaign/click attribution is captured even when PostHog is disabled.
 - [x] Pixel and CAPI copies share the same event name and event ID.
 - [x] Lead CAPI matching reads persisted email and hashes it server-side.
-- [x] CAPI includes hashed `external_id`, `_fbp`, `_fbc`, IP, User-Agent, source URL, variant, locale, and safe campaign context when available.
+- [x] CAPI includes hashed `external_id`, `_fbp`, `_fbc`, IP, User-Agent, hashed country, source URL, variant, locale, and safe campaign/device/location context when available.
 - [x] AddToCart/checkout events include stable product context and price where available.
 - [x] Purchase/StartTrial amount, currency, order, and product are verified from server order state.
 - [x] Genuine OTO purchases are reported and have a distinct provider-order event ID.
@@ -77,7 +80,7 @@ The hardened quiz backend is complete only when every required item below is tes
 
 ## Local evidence
 
-- Funnel suite: 96 files and 1,048 tests passed.
+- Funnel suite: 99 files and 1,067 tests passed.
 - Shared package: 29 files and 342 tests passed.
 - Funnel TypeScript check passed.
 - Changed TypeScript/TSX files have zero ESLint errors; existing legacy OfferPage warnings remain non-blocking.

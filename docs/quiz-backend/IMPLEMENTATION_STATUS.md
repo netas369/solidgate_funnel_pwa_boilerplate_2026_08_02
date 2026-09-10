@@ -19,6 +19,7 @@ This file separates the Quiz module from compatibility behavior owned by other f
 ### Quiz-owned API namespace
 
 - `POST /api/quiz/session/create` creates a versioned session and sets a signed, HTTP-only Quiz cookie.
+- Session creation also creates or reuses a one-year HTTP-only anonymous visitor UUID, assigns a stable weighted funnel variant, and records server-observed device/network/location context.
 - `GET /api/quiz/session/read` returns authorized resumable Quiz fields only.
 - `POST /api/quiz/session/save` validates and saves the complete current answer object.
 - `POST /api/quiz/session/complete` validates required reachable answers and calculates the result on the server.
@@ -40,7 +41,7 @@ This file separates the Quiz module from compatibility behavior owned by other f
 - Facebook and Instagram in-app browsers are explicitly allowed; `fbclid`, Meta referrers, `FBAN`, `FBAV`, and `Instagram` are not treated as bot evidence.
 - A filtered crawler receives an empty `204` response and the client renders the public first screen without keeping the temporary session ID or emitting Quiz analytics.
 - The persisted Zustand store keeps the server revision and a local `hasUnsavedProgress` marker.
-- Persisted browser recovery data expires after seven days, and failed lead capture no longer creates a second permanent email-and-answers cache.
+- Persisted browser recovery data expires after seven days, and failed lead capture no longer creates a second permanent email-and-answers cache. This browser-cache TTL does not delete the server session or stop month-long email campaigns; backend retention is a separate product policy.
 - Existing journeys resume through the authorized Quiz read endpoint.
 - Forward progress sends the complete answer object to the Quiz save endpoint.
 - Saves are serialized per session and use the latest returned revision.
@@ -50,6 +51,8 @@ This file separates the Quiz module from compatibility behavior owned by other f
 - The terminal screen waits for the final save and server completion before navigating to the offer.
 - Server completion is the only source of the trusted result and `quiz_completed` milestone.
 - Locally unsaved progress is reconciled during resume.
+- The actual server-assigned Quiz/funnel variants and internal entry source are returned to the client, retained with the local session, and attached to `quiz_started` analytics.
+- Internal `source` is captured separately from external UTM source and remains stable for the browser tab.
 
 ### Meta analytics integration
 
@@ -58,7 +61,7 @@ This file separates the Quiz module from compatibility behavior owned by other f
 - `quiz_started`, step completion, quiz completion, lead, tier selection, checkout start, paid Purchase, and verified StartTrial are mapped to Meta.
 - Pixel and CAPI use the same event ID for deduplication; the main Purchase retains its durable outbox backstop.
 - Genuine OTO purchases are no longer suppressed from Meta.
-- CAPI adds hashed email when available, hashed session `external_id`, `_fbc`, `_fbp`, IP, User-Agent, source URL, variants, locale, safe campaign context, and product/revenue context.
+- CAPI adds hashed email when available, hashed stable visitor `external_id` (session fallback for legacy rows), `_fbc`, `_fbp`, current request IP, User-Agent, hashed country, source URL, internal entry source, variants, locale, safe campaign/device/location context, and product/revenue context.
 - Browser-provided Purchase revenue is ignored; order amount, currency, product, state, and session binding are verified server-side.
 - Answers, result segments, question keys, raw email, and raw identifiers are excluded from Meta payloads.
 - Known Meta crawlers neither create Quiz data nor load the Meta Pixel scripts.
@@ -76,14 +79,15 @@ The full reusable rules and Events Manager handoff check are in `META_TRACKING.m
 
 - Replace the neutral `boilerplate-v1` questions and scoring with the new product's versioned definition.
 - Create a new immutable `quiz_variant` whenever question meaning, branching, or scoring changes.
+- Configure a real funnel split with `FUNNEL_VARIANT_WEIGHTS` and a unique `FUNNEL_EXPERIMENT_KEY`; leaving it empty deliberately keeps every visitor on `main-v1`.
 - The product/privacy owner must decide retention and deletion periods.
 - The email owner must process `welcome_email_pending` and clear it only after a successful provider handoff.
 
 ## Verification status
 
-Local verification completed on 2026-09-11:
+Baseline local verification completed on 2026-09-11. The final counts below are refreshed after every full verification run:
 
-- Funnel Vitest suite: 96 files, 1,048 tests passed.
+- Funnel Vitest suite: 99 files, 1,067 tests passed.
 - Shared-package Vitest suite: 29 files, 342 tests passed.
 - Funnel TypeScript check passed.
 - Changed TypeScript/TSX files have zero ESLint errors; existing legacy OfferPage warnings remain non-blocking.

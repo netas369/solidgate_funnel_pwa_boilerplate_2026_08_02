@@ -3,7 +3,9 @@
 import { useQuizStore } from '@/stores/quiz-store';
 import {
   captureAttributionParams,
+  captureFunnelSource,
   type AttributionSnapshot,
+  type FunnelSource,
 } from '@/features/analytics/lib/attribution';
 
 export type QuizAnswers = Record<string, string | string[] | number>;
@@ -38,6 +40,7 @@ export interface QuizSessionResponse {
   result_segment: string | null;
   quiz_variant: string;
   funnel_variant: string;
+  source: FunnelSource;
   locale: string;
   revision: number;
   completed_at: string | null;
@@ -81,6 +84,9 @@ type CreatedQuizSession = {
   id: string;
   revision: number;
   currentStepId: string | null;
+  quizVariant: string;
+  funnelVariant: string;
+  source: FunnelSource;
 };
 const sessionCreations = new Map<
   string,
@@ -117,8 +123,8 @@ function enqueueSessionTask<T>(sessionId: string, task: () => Promise<T>): Promi
 export async function createQuizSession(input: {
   sessionId?: string;
   locale: string;
-  visitorId?: string;
   attribution?: AttributionSnapshot;
+  source?: FunnelSource;
 }): Promise<CreatedQuizSession | null> {
   const create = async () => {
     const attribution = input.attribution ?? captureAttributionParams() ?? undefined;
@@ -127,10 +133,9 @@ export async function createQuizSession(input: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...(input.sessionId ? { sessionId: input.sessionId } : {}),
-        ...(input.visitorId ? { visitorId: input.visitorId } : {}),
         ...(attribution ? { attribution } : {}),
         locale: input.locale,
-        source: 'quiz',
+        source: input.source ?? captureFunnelSource(),
       }),
     });
     // Known Meta crawlers receive the quiz HTML but no persistent session.
@@ -138,7 +143,7 @@ export async function createQuizSession(input: {
     // database, and third-party quiz_started tracking.
     if (response.status === 204) return null;
     const body = await requireJson<{
-      session: { id: string; revision: number; currentStepId: string | null };
+      session: CreatedQuizSession;
     }>(response);
     return body.session;
   };

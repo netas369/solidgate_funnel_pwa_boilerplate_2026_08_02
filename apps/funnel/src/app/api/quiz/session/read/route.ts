@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const { data: session, error } = await getSupabaseAdminClient()
     .from('sessions')
     .select(
-      'id, current_step_id, quiz_answers, quiz_result, result_segment, user_id, status, revision, quiz_variant, funnel_variant, locale, completed_at',
+      'id, current_step_id, quiz_answers, quiz_result, result_segment, user_id, status, revision, quiz_variant, funnel_variant, locale, source, completed_at',
     )
     .eq('id', parsedSessionId.data)
     .maybeSingle();

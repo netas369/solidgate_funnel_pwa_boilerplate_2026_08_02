@@ -29,8 +29,10 @@ type MetaUserData = {
   client_ip_address?: string;
   /** User-Agent header, unhashed. */
   client_user_agent?: string;
-  /** SHA-256 of a stable first-party visitor/session identifier. */
+  /** SHA-256 of a stable first-party visitor identifier (session fallback). */
   external_id?: string;
+  /** SHA-256 hashed ISO 3166-1 alpha-2 country code. */
+  country?: string;
 };
 
 export type MetaCustomData = {
@@ -50,8 +52,17 @@ export type MetaCustomData = {
   quiz_variant?: string;
   funnel_variant?: string;
   locale?: string;
+  source?: string;
   step_number?: number;
   content_category?: string;
+  device_type?: string;
+  browser?: string;
+  platform?: string;
+  browser_language?: string;
+  country?: string;
+  region?: string;
+  city?: string;
+  timezone?: string;
 };
 
 export type SendMetaCapiEventInput = {
@@ -79,6 +90,12 @@ export function hashMetaEmail(email: string): string {
 /** Hash a stable first-party identifier before using it for Meta matching. */
 export function hashMetaExternalId(id: string): string {
   return sha256Hex(id.trim());
+}
+
+/** Normalize and hash a two-letter country code for Meta Advanced Matching. */
+export function hashMetaCountry(country: string): string | undefined {
+  const normalized = country.trim().toLowerCase();
+  return /^[a-z]{2}$/.test(normalized) ? sha256Hex(normalized) : undefined;
 }
 
 /**

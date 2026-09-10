@@ -23,12 +23,14 @@ Real OTO purchases are included. They are separate paid orders with unique `purc
 The server adds the strongest safe identifiers it has:
 
 - normalized email as SHA-256 `em`, but only after the email was saved;
-- session ID as SHA-256 `external_id`;
+- stable anonymous visitor UUID as SHA-256 `external_id` (session ID fallback for legacy rows);
 - `_fbp` browser ID and `_fbc` Meta click ID;
 - client IP address and User-Agent on the server request;
+- hashed two-letter country code for CAPI matching when deployment geolocation is available;
 - same-origin `event_source_url`;
 - first- and last-touch UTM labels stored on the session;
 - server-owned `quiz_variant`, `funnel_variant`, and `locale`;
+- safe internal entry source, device type, browser, platform, browser language, country, region, city, and timezone context;
 - stable product ID/name, `content_ids`, `contents`, quantity, value, and currency where relevant;
 - verified provider order ID for a Purchase.
 
@@ -60,6 +62,8 @@ More data is useful only when it is safe and meaningful. The integration must no
 
 For quiz progress, Meta receives only the step number and safe session context. Raw email never appears in the browser CAPI request; the server reads it from the bound session and hashes it.
 
+The raw public request IP is sent only through Meta's standard `client_ip_address` matching field. It is not copied into `custom_data`. Country is hashed in Meta `user_data`; the plain two-letter code may also appear in safe `custom_data` for reporting. Approximate location can be wrong for VPN, proxy, carrier-NAT or shared-network traffic.
+
 ## Bot handling
 
 Known Meta link-preview and indexing User-Agents do not load Pixel scripts and do not create a Quiz session. Facebook and Instagram in-app browsers used by people remain allowed. Never classify `fbclid`, Meta referrer, `FBAN`, `FBAV`, or `Instagram` as bot proof.
@@ -82,7 +86,7 @@ META_CAPI_TEST_EVENT_CODE=temporary_test_code_only
 1. Open Meta Events Manager Test Events and temporarily configure `META_CAPI_TEST_EVENT_CODE`.
 2. Complete one human quiz journey and one real test checkout.
 3. Confirm the mapped events appear and Pixel/CAPI copies are deduplicated.
-4. Confirm Purchase value, currency, order ID, product ID, `_fbc`/`_fbp`, and event source URL are present.
+4. Confirm Purchase value, currency, order ID, product ID, `_fbc`/`_fbp`, event source URL, device type, country and hashed-country match data are present.
 5. Confirm no answer, result segment, raw email, or raw session ID appears.
 6. Open a URL containing a test `fbclid` and confirm it is retained as `_fbc`.
 7. Request the create route with a known Meta crawler User-Agent and confirm no session or Meta event is produced.

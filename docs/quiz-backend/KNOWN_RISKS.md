@@ -73,3 +73,19 @@ These are concrete risks when the full current answer object is saved into one s
 **Impact:** `sessions` and `quiz_started` counts increase without a person ever seeing or using the Quiz, making first-screen drop-off look worse.
 
 **Fix:** keep creating sessions when the screen becomes active so genuine zero-click exits remain visible, but reject explicit Meta crawler User-Agent tokens before cookie signing or database access. Do not use `fbclid`, a Meta referrer, `FBAN`, `FBAV`, or `Instagram` as bot evidence because real ad visitors carry them. User-Agent filtering improves reporting quality but is not a security boundary; use edge bot management or a challenge only if disguised automated abuse becomes material.
+
+## 10. Device or country reports are not exact
+
+**How it happens:** an iPad uses a desktop-style User-Agent, or a visitor uses a VPN, proxy, carrier NAT or privacy relay. Deployment geolocation headers can be absent locally.
+
+**Impact:** some device/country rows become `unknown` or are grouped under the network exit location.
+
+**Fix:** prefer Client Hints plus explicit tablet rules, retain `unknown` instead of guessing, use Vercel/Cloudflare country headers when available, and treat location as approximate analytics rather than identity or authorization.
+
+## 11. A/B variants change unexpectedly
+
+**How it happens:** the browser chooses its own variant, random assignment runs on every session, a visitor cookie is ignored, or weights are edited without changing the experiment name.
+
+**Impact:** one person can see different experiences and experiment results become hard to interpret.
+
+**Fix:** assign on the server from the stable visitor UUID, validate weighted configuration, persist the chosen variant on session creation, and change `FUNNEL_EXPERIMENT_KEY` only when starting a new experiment. Cookie deletion can still produce a new anonymous visitor and bucket.

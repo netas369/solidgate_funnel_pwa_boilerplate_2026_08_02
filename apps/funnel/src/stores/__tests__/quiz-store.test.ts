@@ -15,9 +15,31 @@ describe('useQuizStore', () => {
       answerLabels: {},
       isComplete: false,
       sessionId: null,
+      quizVariant: null,
+      funnelVariant: null,
+      source: null,
       revision: 0,
       hasUnsavedProgress: false,
       authorizedViaPurchase: false,
+    });
+  });
+
+  it('keeps the persisted server assignment and entry source with the session', () => {
+    useQuizStore.getState().restoreSession({
+      id: 'session-1',
+      currentStepId: 'step2',
+      answers: {},
+      revision: 1,
+      isComplete: false,
+      quizVariant: 'boilerplate-v1',
+      funnelVariant: 'treatment-v1',
+      source: 'advertorial',
+    });
+
+    expect(useQuizStore.getState()).toMatchObject({
+      quizVariant: 'boilerplate-v1',
+      funnelVariant: 'treatment-v1',
+      source: 'advertorial',
     });
   });
 

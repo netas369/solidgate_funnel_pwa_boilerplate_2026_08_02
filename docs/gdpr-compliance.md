@@ -51,6 +51,7 @@
 | **Email address** | `email` | Quiz email capture step (`apps/funnel/src/features/quiz/components/steps/email-capture-step.tsx`) | Supabase `sessions.email`; may also be part of the seven-day `quiz-store` recovery state | Indefinite on the server until a product retention policy is configured | Consent (Art. 6(1)(a)) |
 | **Health-related quiz answers** | `quiz_answers` (JSONB) | Quiz step selections (`apps/funnel/src/stores/quiz-store.ts`) | Supabase `sessions.quiz_answers`, localStorage `quiz-store` | Indefinite (no policy) | Explicit consent (Art. 9(2)(a))  -  special category |
 | **Behavioral segment** | `result_segment` | Quiz completion | Supabase `sessions.result_segment` | Indefinite (no policy) | Legitimate interest or consent |
+| **Quiz request context** | public IP, device/browser, approximate country/region/city/timezone | Quiz session creation | Supabase `sessions.client_context` | Indefinite until a product policy is configured | Consent or documented legitimate-interest assessment |
 | **Payment identifiers** | `stripe_customer_id`, `default_payment_method`, `stripe_payment_intent_id` | Stripe checkout | Supabase `sessions`, `stripe_customers`, `orders` | Indefinite (no policy) | Contract (Art. 6(1)(b)) |
 | **Order history** | `amount_cents`, `currency`, `status`, `product_name` | Purchases | Supabase `orders` | Indefinite (no policy) | Contract + legal obligation (Art. 6(1)(b), (c)) |
 | **Listening progress** | `day_number`, `listen_duration_seconds`, `language` | PWA session player | Supabase `user_progress` | Indefinite (no policy) | Contract (Art. 6(1)(b)) |
@@ -63,6 +64,7 @@
 | Identifier | Type | Data Stored | Duration | Essential? | Consent Required? |
 |------------|------|-------------|----------|------------|-------------------|
 | `payment_access` | HTTP cookie (HttpOnly, Secure, SameSite=Lax) | HMAC-signed `paymentIntentId:sessionId` | 90 minutes | Yes  -  payment flow | No (strictly necessary) |
+| `funnel_visitor_id` | HTTP cookie (HttpOnly, Secure in production, SameSite=Lax) | Anonymous UUID for stable funnel A/B assignment | 1 year | Product decision | Usually yes when used for analytics/experiments |
 | Supabase auth cookies | HTTP cookie | Auth session token | Session | Yes  -  authentication | No (strictly necessary) |
 | PostHog cookies | JS cookie | Analytics identifiers, session replay | Varies (up to 1 year) | No  -  analytics | **Yes** |
 | `_fbp`, `_fbc` | JS cookie | Meta browser identifier and ad-click attribution | Up to 90 days in this template | No - marketing attribution | **Yes** |
@@ -78,7 +80,7 @@
 |---------|------|-----------|-----------------|---------|
 | **PostHog** | Processor | Session ID, email (raw), event names, event metadata, page URLs | EU (`eu.i.posthog.com`) | Product analytics, funnel tracking |
 | **Google Tag Manager** | Processor / Controller | Hashed email (SHA-256), session ID, event names, metadata | US (Google) | Retargeting, conversion tracking, audience building |
-| **Meta Pixel / Conversions API** | Processor / Controller | Hashed email and session ID, `_fbp`, `_fbc`, IP, User-Agent, source URL, safe campaign/event/product/revenue context; no quiz answers or result profile | Verify the contracted Meta region/transfers | Attribution, retargeting, conversion optimization |
+| **Meta Pixel / Conversions API** | Processor / Controller | Hashed email, session ID and country; `_fbp`, `_fbc`, IP, User-Agent, source URL, safe campaign/device/location/event/product/revenue context; no quiz answers or result profile | Verify the contracted Meta region/transfers | Attribution, retargeting, conversion optimization |
 | **Stripe** | Processor | Email, payment card (tokenized), amounts, customer ID, metadata | US (Stripe Inc.) | Payment processing |
 | **Vercel Analytics** | Processor | Page URLs, Web Vitals, referrer, user agent | US (Vercel Inc.) | Performance monitoring |
 | **Vercel Speed Insights** | Processor | Page load metrics, connection type | US (Vercel Inc.) | Real User Monitoring |

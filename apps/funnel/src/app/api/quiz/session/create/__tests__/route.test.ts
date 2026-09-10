@@ -16,12 +16,12 @@ vi.mock('@repo/shared/quiz-session-cookie', () => ({
 
 const sessionId = '11111111-2222-4333-8444-555555555555';
 
-async function post(body: unknown, userAgent = 'Mobile Safari') {
+async function post(body: unknown, userAgent = 'Mobile Safari', headers: HeadersInit = {}) {
   const { POST } = await import('../route');
   return POST(
     new Request('http://localhost/api/quiz/session/create', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'User-Agent': userAgent },
+      headers: { 'Content-Type': 'application/json', 'User-Agent': userAgent, ...headers },
       body: JSON.stringify(body),
     }),
   );
@@ -30,14 +30,45 @@ async function post(body: unknown, userAgent = 'Mobile Safari') {
 describe('POST /api/quiz/session/create', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.FUNNEL_VARIANT_WEIGHTS;
+    delete process.env.FUNNEL_EXPERIMENT_KEY;
     mockRpc.mockResolvedValue({ data: { revision: 0 }, error: null });
     mockSignCookie.mockResolvedValue('signed-quiz-cookie');
+  });
+
+  it('assigns the configured funnel variant on the server', async () => {
+    process.env.FUNNEL_VARIANT_WEIGHTS = 'treatment-v1:100';
+    process.env.FUNNEL_EXPERIMENT_KEY = 'hero-layout-2026-09';
+
+    const response = await post({ sessionId, locale: 'en', source: 'quiz' });
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({
+      session: { funnelVariant: 'treatment-v1' },
+    });
+    expect(mockRpc).toHaveBeenCalledWith(
+      'create_quiz_session',
+      expect.objectContaining({ p_funnel_variant: 'treatment-v1' }),
+    );
+  });
+
+  it('does not accept a caller-selected visitor identity', async () => {
+    const response = await post({
+      sessionId,
+      visitorId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      locale: 'en',
+      source: 'quiz',
+    });
+
+    expect(response.status).toBe(400);
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it('creates one versioned session and sets the signed access cookie', async () => {
     const response = await post({ sessionId, locale: 'en', source: 'quiz' });
     expect(response.status).toBe(201);
     expect(response.headers.get('set-cookie')).toContain('quiz_session_access=signed-quiz-cookie');
+    expect(response.headers.get('set-cookie')).toContain('funnel_visitor_id=');
     await expect(response.json()).resolves.toMatchObject({
       session: { id: sessionId, revision: 0, status: 'active' },
     });
@@ -48,6 +79,37 @@ describe('POST /api/quiz/session/create', () => {
         p_quiz_variant: 'boilerplate-v1',
         p_funnel_variant: 'main-v1',
         p_source: 'quiz',
+        p_visitor_id: expect.any(String),
+      }),
+    );
+  });
+
+  it('reuses the stable visitor cookie and stores server-observed request context', async () => {
+    const visitorId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+    const response = await post(
+      { sessionId, locale: 'en', source: 'advertorial' },
+      'Mozilla/5.0 (iPhone) Mobile Safari/604.1',
+      {
+        cookie: `funnel_visitor_id=${visitorId}`,
+        'x-forwarded-for': '203.0.113.12, 10.0.0.1',
+        'x-vercel-ip-country': 'LT',
+        'x-vercel-ip-city': 'Vilnius',
+      },
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockRpc).toHaveBeenCalledWith(
+      'create_quiz_session',
+      expect.objectContaining({
+        p_visitor_id: visitorId,
+        p_source: 'advertorial',
+        p_client_context: expect.objectContaining({
+          device_type: 'mobile',
+          browser: 'Safari',
+          country: 'LT',
+          city: 'Vilnius',
+          ip_address: '203.0.113.12',
+        }),
       }),
     );
   });

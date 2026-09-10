@@ -28,6 +28,8 @@ funnel_events
 
 `sessions` saugo dabartinę quiz būseną. Viena quiz kelionė visada turi vieną eilutę.
 
+Pirmą kartą atidarius Quiz, backend sukuria anoniminį `visitor_id` UUID ir įrašo jį į vienerius metus galiojantį HTTP-only slapuką. Tas pats browser gauna tą patį `visitor_id` kitose sesijose. Jis naudojamas A/B varianto pastovumui ir analitikai, bet nesuteikia teisės skaityti ar keisti Quiz.
+
 Visi atsakymai laikomi viename `quiz_answers` JSON objekte. Atsakius į naują klausimą, sena eilutė atnaujinama. Nauja atsakymo eilutė nekuriama.
 
 Pavyzdys:
@@ -93,7 +95,9 @@ Meta Pixel ir serverio Conversions API gauna svarbiausius kelionės įvykius: Qu
 
 Naršyklė ir serveris tam pačiam įvykiui naudoja tą patį `event_id`, todėl Meta juos sujungia, o ne skaičiuoja du kartus. Pirkimo suma, valiuta ir produktas paimami iš backend patikrinto užsakymo, ne iš naršyklės pateiktų skaičių.
 
-Geresniam reklamos atpažinimui backend gali siųsti užhashintą el. paštą, užhashintą sesijos ID, `_fbp`, `_fbc`, IP, naršyklės `User-Agent`, puslapio adresą, UTM kampaniją, kalbą, Quiz/Funnel versiją bei produkto kainą ir kodą.
+Geresniam reklamos atpažinimui backend gali siųsti užhashintą el. paštą, užhashintą pastovų `visitor_id` (senoms eilutėms – sesijos ID), `_fbp`, `_fbc`, IP, naršyklės `User-Agent`, puslapio adresą, UTM kampaniją, kalbą, Quiz/Funnel versiją bei produkto kainą ir kodą.
+
+Sesijos pradžioje backend taip pat įrašo `device_type` (`desktop`, `mobile`, `tablet`), naršyklę, platformą, browser kalbą, šalį, regioną, miestą, laiko juostą ir viešą užklausos IP, jeigu deploy platforma šiuos duomenis pateikia. Šalis siunčiama į Meta užhashinta kaip matching duomuo; saugus įrenginio ir apytikslės vietos kontekstas siunčiamas kaip event kontekstas. VPN, proxy ir mobiliojo ryšio tinklai gali rodyti netikslią vietą.
 
 Meta negauna Quiz atsakymų, rezultato profilio, `result_segment`, klausimo rakto, tikro el. pašto ar tikro sesijos ID. Žingsnio statistikai siunčiamas tik jo numeris. Visos tikslios taisyklės ir patikrinimo žingsniai aprašyti `META_TRACKING.md`.
 
@@ -139,6 +143,21 @@ Quiz tiesiogiai nekviečia ActiveCampaign, Resend ar kito tiekėjo. Atskirai el.
 
 Naršyklėje saugoma nebaigto Quiz būsena automatiškai laikoma nebegaliojančia po 7 dienų. Jei el. pašto išsaugojimas nepavyksta, ekranas lieka atidarytas pakartojimui; atskira nuolatinė el. pašto ir atsakymų kopija nekuriama.
 
+Šios 7 dienos taikomos tik to browser vietinei nebaigto Quiz kopijai. Jos neištrina `sessions` eilutės serveryje, neištrina el. pašto ir nestabdo kelis mėnesius trunkančių el. pašto kampanijų. Serverio saugojimo terminą atskirai nustato produkto ir privatumo atsakingi žmonės.
+
+## Šaltinis ir A/B testai
+
+`source` parodo vidinį kelią, iš kurio žmogus atėjo į Quiz: `quiz`, `main`, `advertorial`, `special-offer` arba `special-offer-free`. `utm_source` yra kitas laukas ir parodo reklamos tiekėją, pavyzdžiui Meta arba Google. Šių dviejų laukų maišyti negalima.
+
+`funnel_variant` priskiria backend pagal `visitor_id`, todėl tas pats browser lieka tame pačiame A/B variante. Variantų svoriai nustatomi, pavyzdžiui:
+
+```env
+FUNNEL_VARIANT_WEIGHTS=control-v1:50,treatment-v1:50
+FUNNEL_EXPERIMENT_KEY=hero-layout-2026-09
+```
+
+Jei nustatymas tuščias ar blogas, saugiai naudojamas `main-v1`. `quiz_variant` nėra paprastas UI A/B pavadinimas: jis nurodo konkrečią klausimų, logikos ir rezultato skaičiavimo versiją.
+
 ## Ką keisti naujame projekte
 
 Naujo produkto programuotojas turi:
@@ -148,8 +167,9 @@ Naujo produkto programuotojas turi:
 3. Sukurti naują `quiz_variant` versiją.
 4. Pakeisti serverio scoring taisykles.
 5. Nustatyti naują `QUIZ_SESSION_COOKIE_SECRET`.
-6. Nuspręsti duomenų saugojimo ir ištrynimo terminus.
-7. Paleisti automatinius ir duomenų bazės testus.
+6. Jei reikia A/B testo, nustatyti `FUNNEL_VARIANT_WEIGHTS` ir naują `FUNNEL_EXPERIMENT_KEY`.
+7. Nuspręsti duomenų, įskaitant IP ir vietą, saugojimo ir ištrynimo terminus.
+8. Paleisti automatinius ir duomenų bazės testus.
 
 Jau naudotos `quiz_variant` versijos klausimų reikšmių ir scoring taisyklių tyliai keisti negalima. Seni vartotojai turi būti vertinami pagal tą versiją, su kuria pradėjo quiz.
 

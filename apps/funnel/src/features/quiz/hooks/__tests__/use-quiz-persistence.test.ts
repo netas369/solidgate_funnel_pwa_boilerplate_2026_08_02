@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useQuizStore } from '@/stores/quiz-store';
 
-const { mockCaptureAttributionParams } = vi.hoisted(() => ({
+const { mockCaptureAttributionParams, mockCaptureFunnelSource } = vi.hoisted(() => ({
   mockCaptureAttributionParams: vi.fn(),
+  mockCaptureFunnelSource: vi.fn(),
 }));
 
 vi.mock('@/features/analytics/lib/attribution', () => ({
   captureAttributionParams: mockCaptureAttributionParams,
+  captureFunnelSource: mockCaptureFunnelSource,
 }));
 
 import {
@@ -37,13 +39,21 @@ describe('hardened quiz session client', () => {
     useQuizStore.getState().setSessionId(SESSION_ID);
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(EVENT_ID);
     mockCaptureAttributionParams.mockReturnValue(null);
+    mockCaptureFunnelSource.mockReturnValue('quiz');
   });
 
   it('creates the session through the Quiz API namespace', async () => {
     mockFetch.mockResolvedValue(
       jsonResponse(
         {
-          session: { id: SESSION_ID, revision: 0, currentStepId: null },
+          session: {
+            id: SESSION_ID,
+            revision: 0,
+            currentStepId: null,
+            quizVariant: 'boilerplate-v1',
+            funnelVariant: 'main-v1',
+            source: 'quiz',
+          },
         },
         201,
       ),
@@ -53,12 +63,36 @@ describe('hardened quiz session client', () => {
       id: SESSION_ID,
       revision: 0,
       currentStepId: null,
+      quizVariant: 'boilerplate-v1',
+      funnelVariant: 'main-v1',
+      source: 'quiz',
     });
     expect(mockFetch).toHaveBeenCalledWith('/api/quiz/session/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: SESSION_ID, locale: 'lt', source: 'quiz' }),
     });
+  });
+
+  it('sends the detected internal funnel source independently of UTM source', async () => {
+    mockCaptureFunnelSource.mockReturnValue('advertorial');
+    mockFetch.mockResolvedValue(
+      jsonResponse({
+        session: {
+          id: SESSION_ID,
+          revision: 0,
+          currentStepId: null,
+          quizVariant: 'boilerplate-v1',
+          funnelVariant: 'main-v1',
+          source: 'advertorial',
+        },
+      }, 201),
+    );
+
+    await createQuizSession({ sessionId: SESSION_ID, locale: 'en' });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.source).toBe('advertorial');
   });
 
   it('returns no persistent session when the backend filters a known crawler', async () => {
@@ -134,6 +168,7 @@ describe('hardened quiz session client', () => {
       quiz_variant: 'boilerplate-v1',
       funnel_variant: 'main-v1',
       locale: 'lt',
+      source: 'quiz',
       revision: 2,
       completed_at: null,
     };

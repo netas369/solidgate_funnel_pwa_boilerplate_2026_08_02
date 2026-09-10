@@ -81,6 +81,7 @@ describe('GET /api/quiz/session/read', () => {
         quiz_variant: 'boilerplate-v1',
         funnel_variant: 'main-v1',
         locale: 'en',
+        source: 'advertorial',
         completed_at: null,
       },
     });

@@ -15,7 +15,7 @@ Routes parse HTTP requests, coordinate the use case, call a fixed database RPC, 
 
 ### Server helpers
 
-The helpers in `features/quiz/server` own session authorization, versioned answer validation, deterministic scoring, and standard error responses. Keeping those rules outside route files makes them reusable and directly testable.
+The helpers in `features/quiz/server` own session authorization, versioned answer validation, deterministic scoring, server-observed client context, stable experiment assignment, and standard error responses. Keeping those rules outside route files makes them reusable and directly testable.
 
 ### Authorization
 
@@ -55,6 +55,8 @@ apps/funnel/src/features/quiz/server/
   quiz-access.ts
   quiz-definition.ts
   quiz-scoring.ts
+  client-context.ts
+  experiment-assignment.ts
   meta-crawler.ts
   http.ts
 
@@ -74,7 +76,9 @@ Do not add repository or service wrapper files merely to mirror an abstract arch
 
 ### Create
 
-`createQuizSession()` is called when the Quiz screen becomes active, before the visitor must click anything. This keeps zero-interaction exits measurable. The route first rejects known Meta crawler User-Agent tokens without creating a row, cookie, or event. For a normal browser it validates the requested variants, captures entry attribution, creates one `sessions` row, issues an anonymous session credential, and emits `quiz_started`.
+`createQuizSession()` is called when the Quiz screen becomes active, before the visitor must click anything. This keeps zero-interaction exits measurable. The route first rejects known Meta crawler User-Agent tokens without creating a row, cookie, or event. For a normal browser it creates or reuses a stable anonymous visitor UUID, assigns the funnel variant on the server, captures entry/campaign attribution and request context, creates one `sessions` row, issues an anonymous session credential, and emits `quiz_started`.
+
+The stable visitor UUID is used for experiment consistency only. It never authorizes a read or write. Device type, browser, public IP and approximate Vercel/Cloudflare location are observations used for analytics, not trusted identity facts.
 
 This crawler check is an analytics-quality filter, not authentication. Real Facebook and Instagram in-app browsers are allowed, and every Quiz read or write still requires its normal signed-session or authenticated-owner credential.
 
@@ -84,7 +88,7 @@ This crawler check is an analytics-quality filter, not authentication. Real Face
 
 ### Read
 
-`readQuizSession()` authorizes the caller and returns safe resumable fields: answers, current step, variant, result when completed, and the current revision. Internal metadata and credentials are never returned.
+`readQuizSession()` authorizes the caller and returns safe resumable fields: answers, current step, variants, entry source, result when completed, and the current revision. Raw IP, User-Agent, internal metadata and credentials are never returned.
 
 ### Complete
 

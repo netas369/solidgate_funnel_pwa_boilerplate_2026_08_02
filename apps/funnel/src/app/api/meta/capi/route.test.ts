@@ -5,9 +5,21 @@ const mocks = vi.hoisted(() => ({
   session: {
     id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
     email: 'buyer@example.com',
+    visitor_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
     quiz_variant: 'boilerplate-v1',
     funnel_variant: 'main-v1',
     locale: 'en',
+    source: 'advertorial',
+    client_context: {
+      device_type: 'mobile',
+      browser: 'Safari',
+      platform: 'iOS',
+      browser_language: 'lt-LT',
+      country: 'LT',
+      region: 'VL',
+      city: 'Vilnius',
+      timezone: 'Europe/Vilnius',
+    },
     attribution: {
       first_touch: { utm_source: 'facebook', utm_campaign: 'summer' },
       last_touch: { utm_source: 'facebook', utm_campaign: 'retargeting' },
@@ -17,10 +29,13 @@ const mocks = vi.hoisted(() => ({
   } as {
     id: string;
     email: string | null;
+    visitor_id?: string | null;
     quiz_variant: string | null;
     funnel_variant: string | null;
     locale: string | null;
+    source?: string | null;
     attribution: Record<string, unknown> | null;
+    client_context?: Record<string, unknown> | null;
   } | null,
   sessionError: null as { message: string } | null,
   order: {
@@ -46,6 +61,7 @@ const mocks = vi.hoisted(() => ({
   sendMetaCapiEvent: vi.fn(),
   hashMetaEmail: vi.fn((email: string) => `hashed:${email}`),
   hashMetaExternalId: vi.fn((id: string) => `hashed-id:${id}`),
+  hashMetaCountry: vi.fn((country: string) => `hashed-country:${country}`),
 }));
 
 vi.mock('@repo/shared/supabase/admin', () => ({
@@ -86,6 +102,7 @@ vi.mock('@/features/analytics/lib/meta-capi', () => ({
   sendMetaCapiEvent: mocks.sendMetaCapiEvent,
   hashMetaEmail: mocks.hashMetaEmail,
   hashMetaExternalId: mocks.hashMetaExternalId,
+  hashMetaCountry: mocks.hashMetaCountry,
 }));
 
 import { POST } from './route';
@@ -132,9 +149,21 @@ describe('Meta CAPI ingress guard', () => {
     mocks.session = {
       id: SESSION_ID,
       email: 'buyer@example.com',
+      visitor_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
       quiz_variant: 'boilerplate-v1',
       funnel_variant: 'main-v1',
       locale: 'en',
+      source: 'advertorial',
+      client_context: {
+        device_type: 'mobile',
+        browser: 'Safari',
+        platform: 'iOS',
+        browser_language: 'lt-LT',
+        country: 'LT',
+        region: 'VL',
+        city: 'Vilnius',
+        timezone: 'Europe/Vilnius',
+      },
       attribution: {
         first_touch: { utm_source: 'facebook', utm_campaign: 'summer' },
         last_touch: { utm_source: 'facebook', utm_campaign: 'retargeting' },
@@ -202,17 +231,25 @@ describe('Meta CAPI ingress guard', () => {
         eventName: 'Lead',
         userData: expect.objectContaining({
           em: 'hashed:buyer@example.com',
-          external_id: `hashed-id:${SESSION_ID}`,
+          external_id: 'hashed-id:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
           fbc: 'fb.1.1789113600000.click-1',
           fbp: 'fb.1.1789113600000.browser-1',
+          country: 'hashed-country:LT',
         }),
         customData: expect.objectContaining({
           quiz_variant: 'boilerplate-v1',
           funnel_variant: 'main-v1',
           locale: 'en',
+          source: 'advertorial',
           utm_source: 'facebook',
           utm_campaign: 'summer',
           last_touch_utm_campaign: 'retargeting',
+          device_type: 'mobile',
+          browser: 'Safari',
+          platform: 'iOS',
+          browser_language: 'lt-LT',
+          country: 'LT',
+          city: 'Vilnius',
         }),
       }),
     );

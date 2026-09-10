@@ -11,6 +11,9 @@ interface QuizState {
   answerLabels: Record<string, string | string[]>;
   isComplete: boolean;
   sessionId: string | null;
+  quizVariant: string | null;
+  funnelVariant: string | null;
+  source: string | null;
   revision: number;
   hasUnsavedProgress: boolean;
   authLinked: boolean | null; // null = unknown/not-yet-determined, false = auth linking failed, true = linked
@@ -48,6 +51,9 @@ interface QuizState {
     revision: number;
     isComplete: boolean;
     hasUnsavedProgress?: boolean;
+    quizVariant?: string | null;
+    funnelVariant?: string | null;
+    source?: string | null;
   }) => void;
   reconcileProgress: (progress: {
     sessionId: string;
@@ -81,6 +87,9 @@ const initialState = {
   answerLabels: {} as Record<string, string | string[]>,
   isComplete: false,
   sessionId: null as string | null,
+  quizVariant: null as string | null,
+  funnelVariant: null as string | null,
+  source: null as string | null,
   revision: 0,
   hasUnsavedProgress: false,
   authLinked: null as boolean | null,
@@ -136,6 +145,9 @@ export const useQuizStore = create<QuizState>()(
         revision,
         isComplete,
         hasUnsavedProgress = false,
+        quizVariant,
+        funnelVariant,
+        source,
       }) =>
         set((state) => ({
           sessionId: id,
@@ -145,6 +157,9 @@ export const useQuizStore = create<QuizState>()(
           revision,
           isComplete,
           hasUnsavedProgress,
+          ...(quizVariant !== undefined ? { quizVariant } : {}),
+          ...(funnelVariant !== undefined ? { funnelVariant } : {}),
+          ...(source !== undefined ? { source } : {}),
         })),
 
       reconcileProgress: ({ sessionId, answers, revision }) => {
@@ -191,7 +206,7 @@ export const useQuizStore = create<QuizState>()(
     }),
     {
       name: 'quiz-store',
-      version: 2,
+      version: 3,
       migrate: (persistedState, version) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return {};
@@ -231,6 +246,9 @@ export const useQuizStore = create<QuizState>()(
         answerLabels: state.answerLabels,
         isComplete: state.isComplete,
         sessionId: state.sessionId,
+        quizVariant: state.quizVariant,
+        funnelVariant: state.funnelVariant,
+        source: state.source,
         revision: state.revision,
         hasUnsavedProgress: state.hasUnsavedProgress,
         authLinked: state.authLinked,

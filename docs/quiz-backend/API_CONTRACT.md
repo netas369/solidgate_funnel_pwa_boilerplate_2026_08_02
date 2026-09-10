@@ -40,7 +40,6 @@ Request:
 ```json
 {
   "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
-  "visitorId": "web_6f9938c8d8e94a6a",
   "locale": "en",
   "source": "quiz",
   "attribution": {
@@ -74,7 +73,10 @@ Response `201`:
     "status": "active",
     "currentStepId": null,
     "answers": {},
-    "revision": 0
+    "revision": 0,
+    "quizVariant": "boilerplate-v1",
+    "funnelVariant": "main-v1",
+    "source": "quiz"
   },
   "persisted": {
     "id": "0198d633-48df-7ca8-b728-c4339d29db47",
@@ -85,7 +87,13 @@ Response `201`:
 }
 ```
 
-`sessionId` is optional; the server generates it when omitted. Quiz and funnel variants are server-owned constants and are not accepted from the caller. A successful response also sets the signed, HTTP-only `quiz_session_access` cookie. Reusing a session ID returns `409 SESSION_ALREADY_EXISTS` rather than taking ownership of the existing session.
+`sessionId` is optional; the server generates it when omitted. The caller cannot supply `visitorId`: the server creates or reuses the one-year HTTP-only `funnel_visitor_id` cookie. A successful response also sets the signed, HTTP-only `quiz_session_access` cookie. Reusing a session ID returns `409 SESSION_ALREADY_EXISTS` rather than taking ownership of the existing session.
+
+`quizVariant` remains the server-owned immutable Quiz definition. `funnelVariant` is assigned server-side using the visitor cookie and optional `FUNNEL_VARIANT_WEIGHTS`; the caller cannot select either variant. The returned values are the source of truth for rendering and analytics.
+
+`source` describes the internal page that sent the visitor into Quiz and is separate from external `utm_source`. The supported values are `quiz`, `main`, `advertorial`, `special-offer`, and `special-offer-free`.
+
+The server also stores request-derived context in `client_context`: device type, browser, platform, browser language, country/region/city/timezone headers, public request IP and User-Agent. These values are not trusted authorization data and are not returned by the read endpoint.
 
 Known Meta crawler response `204` has no body, sets no cookie, and creates neither a `sessions` row nor a `quiz_started` event. The frontend treats it as a non-persistent public render and emits no Quiz analytics. A real visitor using the Facebook or Instagram in-app browser still receives the normal `201` response and is tracked even if they leave before clicking.
 
@@ -159,6 +167,7 @@ Response `200`:
   "quiz_variant": "boilerplate-v1",
   "funnel_variant": "main-v1",
   "locale": "en",
+  "source": "quiz",
   "revision": 3
 }
 ```

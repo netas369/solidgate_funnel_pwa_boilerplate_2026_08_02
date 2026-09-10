@@ -7,6 +7,7 @@ import {
   sendMetaCapiEvent,
   hashMetaEmail,
   hashMetaExternalId,
+  hashMetaCountry,
   type MetaCustomData,
 } from '@/features/analytics/lib/meta-capi';
 import { purchaseEventValue } from '@/features/analytics/lib/purchase-value';
@@ -155,6 +156,30 @@ function safeAttributionValue(value: unknown): string | undefined {
     : undefined;
 }
 
+function storedClientContext(value: unknown): Pick<
+  MetaCustomData,
+  | 'device_type'
+  | 'browser'
+  | 'platform'
+  | 'browser_language'
+  | 'country'
+  | 'region'
+  | 'city'
+  | 'timezone'
+> {
+  const context = objectRecord(value);
+  return {
+    device_type: safeAttributionValue(context.device_type),
+    browser: safeAttributionValue(context.browser),
+    platform: safeAttributionValue(context.platform),
+    browser_language: safeAttributionValue(context.browser_language),
+    country: safeAttributionValue(context.country),
+    region: safeAttributionValue(context.region),
+    city: safeAttributionValue(context.city),
+    timezone: safeAttributionValue(context.timezone),
+  };
+}
+
 function safeMetaCookie(value: unknown): string | undefined {
   const candidate = safeAttributionValue(value);
   return candidate && /^fb\.[0-9]+\.[0-9]{10,16}\.[A-Za-z0-9._-]{1,400}$/.test(candidate)
@@ -221,7 +246,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const supabase = getSupabaseAdminClient();
   const { data: session, error: sessionError } = await supabase
     .from('sessions')
-    .select('id, email, quiz_variant, funnel_variant, locale, attribution')
+    .select('id, email, visitor_id, quiz_variant, funnel_variant, locale, source, attribution, client_context')
     .eq('id', body.sessionId)
     .maybeSingle();
   if (sessionError) {
@@ -233,10 +258,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const email = session.email ?? undefined;
+  const clientContext = storedClientContext(session.client_context);
   const sessionContext = {
     quiz_variant: session.quiz_variant ?? undefined,
     funnel_variant: session.funnel_variant ?? undefined,
     locale: session.locale ?? undefined,
+    source: session.source ?? undefined,
+    ...clientContext,
     ...storedAttributionContext(session.attribution),
   };
   const storedAttribution = objectRecord(session.attribution);
@@ -328,7 +356,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     eventSourceUrl: safeSourceUrl(req, body.eventSourceUrl),
     userData: {
       em: email ? hashMetaEmail(email) : undefined,
-      external_id: hashMetaExternalId(session.id),
+      external_id: hashMetaExternalId(session.visitor_id ?? session.id),
+      country: clientContext.country ? hashMetaCountry(clientContext.country) : undefined,
       fbp:
         safeMetaCookie(req.cookies.get('_fbp')?.value) ??
         safeMetaCookie(storedAttribution.fbp),

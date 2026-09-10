@@ -1,12 +1,23 @@
 {
-  "visitorId": "web_6f9938c8d8e94a6a",
-  "quizVariant": "example-v1",
-  "funnelVariant": "main-a",
+  "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
   "locale": "en",
   "source": "quiz",
   "attribution": {
-    "utm_source": "meta",
-    "utm_medium": "paid_social",
-    "utm_campaign": "example_launch"
+    "first_touch": {
+      "utm_source": "meta",
+      "utm_medium": "paid_social",
+      "utm_campaign": "example_launch",
+      "utm_content": "video-a",
+      "utm_term": "audience-a",
+      "fbclid": "example_click_id"
+    },
+    "last_touch": {
+      "utm_source": "meta",
+      "utm_medium": "paid_social",
+      "utm_campaign": "example_launch",
+      "fbclid": "example_click_id"
+    },
+    "fbc": "fb.1.1789113600000.example_click_id",
+    "fbp": "fb.1.1789113600000.123456789"
   }
 }

@@ -19,7 +19,7 @@ A valid visitor receives this row when the Quiz screen becomes active, even when
 | ----------------------- | ----------- | -------: | ---------------------------------------------------------------- |
 | `id`                    | UUID        |      Yes | Session primary key                                              |
 | `user_id`               | UUID        |       No | Authenticated owner after linking                                |
-| `visitor_id`            | TEXT        |       No | Coarse anonymous visitor/install identifier; never authorization |
+| `visitor_id`            | TEXT        |       No | New Quiz API creates a stable browser UUID; never authorization  |
 | `email`                 | TEXT        |       No | Normalized captured email; not proof of ownership                |
 | `quiz_answers`          | JSONB       |      Yes | Complete current answer object                                   |
 | `quiz_result`           | JSONB       |       No | Final server-computed result                                     |
@@ -31,8 +31,8 @@ A valid visitor receives this row when the Quiz screen becomes active, even when
 | `funnel_variant`        | TEXT        |      Yes | Immutable funnel presentation/offer version                      |
 | `locale`                | TEXT        |      Yes | Current language/locale                                          |
 | `source`                | TEXT        |      Yes | Entry route such as `quiz` or `special-offer`                    |
-| `attribution`           | JSONB       |      Yes | First-touch campaign/UTM values                                  |
-| `client_context`        | JSONB       |      Yes | Bounded device/country/browser context                           |
+| `attribution`           | JSONB       |      Yes | First/last-touch campaign and click identifiers                  |
+| `client_context`        | JSONB       |      Yes | Bounded server-observed device, network and location context     |
 | `consent_given_at`      | TIMESTAMPTZ |       No | Recorded consent time                                            |
 | `consent_version`       | TEXT        |       No | Version of displayed consent copy                                |
 | `marketing_consent`     | BOOLEAN     |      Yes | Recorded marketing choice under product policy                   |
@@ -47,7 +47,7 @@ A valid visitor receives this row when the Quiz screen becomes active, even when
 {
   "id": "0198d633-48df-7ca8-b728-c4339d29db47",
   "user_id": null,
-  "visitor_id": "web_6f9938c8d8e94a6a",
+  "visitor_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
   "email": "alex@example.com",
   "quiz_answers": {
     "gender": "female",
@@ -66,14 +66,33 @@ A valid visitor receives this row when the Quiz screen becomes active, even when
   "locale": "en",
   "source": "quiz",
   "attribution": {
-    "utm_source": "meta",
-    "utm_medium": "paid_social",
-    "utm_campaign": "example_launch"
+    "first_touch": {
+      "utm_source": "meta",
+      "utm_medium": "paid_social",
+      "utm_campaign": "example_launch",
+      "utm_content": "video-a",
+      "utm_term": "audience-a",
+      "fbclid": "example_click_id"
+    },
+    "last_touch": {
+      "utm_source": "meta",
+      "utm_medium": "paid_social",
+      "utm_campaign": "retargeting"
+    },
+    "fbc": "fb.1.1789113600000.example_click_id",
+    "fbp": "fb.1.1789113600000.123456789"
   },
   "client_context": {
     "country": "LT",
+    "region": "VL",
+    "city": "Vilnius",
+    "timezone": "Europe/Vilnius",
     "device_type": "mobile",
-    "browser": "Safari"
+    "browser": "Safari",
+    "platform": "iOS",
+    "browser_language": "lt-LT",
+    "ip_address": "203.0.113.12",
+    "user_agent": "Mozilla/5.0 (...) Mobile Safari/604.1"
   },
   "consent_given_at": "2026-09-09T10:10:00Z",
   "consent_version": "2026-09-01",
@@ -103,6 +122,18 @@ A valid visitor receives this row when the Quiz screen becomes active, even when
 ### Immutable creation fields
 
 `quiz_variant`, `funnel_variant`, original `source`, and first-touch `attribution` must not be replaced by ordinary progress saves. `locale` may change when the product supports a mid-quiz language switch.
+
+`visitor_id` comes from a one-year HTTP-only first-party cookie. It lets multiple journeys from the same browser receive the same experiment assignment, but it is not login proof and can change when cookies are cleared.
+
+`source` is the internal entry surface (`quiz`, `main`, `advertorial`, `special-offer`, or `special-offer-free`). It is deliberately separate from `utm_source`, which names an external campaign provider such as Meta or Google.
+
+`client_context.ip_address` is the public IP observed by the deployment platform. It can represent a VPN, proxy, mobile carrier or shared network and must never be treated as an exact person or device identifier. Because IP and approximate location are personal data, production retention, access and deletion rules must cover this JSON field.
+
+### Funnel A/B assignment
+
+`funnel_variant` is assigned on the server from the stable visitor UUID. Configure weighted variants with `FUNNEL_VARIANT_WEIGHTS`, for example `control-v1:50,treatment-v1:50`, and identify the experiment with `FUNNEL_EXPERIMENT_KEY`. Missing or malformed configuration safely falls back to `main-v1`.
+
+The assignment is returned to the Quiz client and retained with the session, so the UI can choose the matching presentation without choosing its own bucket. `quiz_variant` has a different job: it identifies the immutable question, branching and scoring definition. A new question set must be implemented as a supported version before it can be assigned.
 
 ## `public.funnel_events`
 
