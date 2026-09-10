@@ -4,9 +4,8 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQuizStore } from '@/stores/quiz-store';
 import { quizConfig, quizStepMap } from '@/features/quiz/config/quiz-config';
 import type { QuizStep } from '@/features/quiz/config/quiz-schema';
-import { persistSessionSnapshot } from './use-quiz-persistence';
+import { saveQuizProgress } from './use-quiz-persistence';
 import { useAnalytics } from '@/features/analytics/hooks/use-analytics';
-import { trackFunnelEvent } from '@/features/quiz/lib/track-funnel-event';
 import { genderOf, resolveGenderTokens } from '@/features/quiz/lib/templated-text';
 
 /**
@@ -84,7 +83,7 @@ interface UseQuizNavigationReturn {
 }
 
 // locale is threaded from the page (it owns the next-intl context) so every
-// step snapshot can recreate an orphaned session row; see persistSessionSnapshot.
+// progress save can recreate an orphaned session row; see saveQuizProgress.
 export function useQuizNavigation(locale?: string): UseQuizNavigationReturn {
   const currentStepId = useQuizStore((s) => s.currentStepId);
   const history = useQuizStore((s) => s.history);
@@ -141,25 +140,38 @@ export function useQuizNavigation(locale?: string): UseQuizNavigationReturn {
   // Shared persistence + analytics for any forward move. `answeredStepId` is the
   // step the user is leaving (captured before the store mutates).
   const recordStepAdvance = useCallback(
-    (answeredStepId: string) => {
+    (answeredStepId: string, nextStepId: string) => {
       if (!sessionId) return;
       const answeredStepNum = quizConfig.stepPositions[answeredStepId] ?? 0;
-
-      // Fire-and-forget session snapshot (D-01, D-02)  -  records answered step
       const currentAnswers = useQuizStore.getState().answers;
-      persistSessionSnapshot(sessionId, answeredStepId, currentAnswers, locale);
+      const firstCompletion = !completedSteps.has(answeredStepId);
 
       // Only fire step_completed once per step per session to avoid inflated metrics
       // when users navigate back and forward through already-completed steps.
-      if (!completedSteps.has(answeredStepId)) {
+      if (firstCompletion) {
         completedSteps.add(answeredStepId);
 
         // Analytics: step_completed to PostHog + GTM + in-memory (D-08, D-09)
         track('step_completed', { step_id: answeredStepId, step_number: answeredStepNum, session_id: sessionId });
-
-        // Supabase funnel_events insert (ANLYT-01)
-        trackFunnelEvent(sessionId, 'step_completed', answeredStepNum, { step_id: answeredStepId });
       }
+
+      // The hardened save endpoint writes progress and its durable milestone
+      // in one transaction. Requests are serialized by saveQuizProgress,
+      // while UI navigation remains responsive.
+      void saveQuizProgress(sessionId, nextStepId, currentAnswers, {
+        locale,
+        ...(firstCompletion
+          ? {
+              event: {
+                type: 'step_completed' as const,
+                stepNumber: answeredStepNum,
+                metadata: { step_id: answeredStepId },
+              },
+            }
+          : {}),
+      }).catch((error) => {
+        console.error('[quiz/save] Progress save failed:', error);
+      });
     },
     [sessionId, track, completedSteps, locale]
   );
@@ -173,7 +185,7 @@ export function useQuizNavigation(locale?: string): UseQuizNavigationReturn {
       const next = useQuizStore.getState();
       writeNavEntry('push', { stepId: next.currentStepId, stack: next.history });
       pushedEntries.current += 1;
-      recordStepAdvance(answeredStepId);
+      recordStepAdvance(answeredStepId, stepId);
     },
     [storeGoToStep, recordStepAdvance]
   );
@@ -190,7 +202,7 @@ export function useQuizNavigation(locale?: string): UseQuizNavigationReturn {
       storeReplaceStep(stepId);
       const next = useQuizStore.getState();
       writeNavEntry('replace', { stepId: next.currentStepId, stack: next.history });
-      recordStepAdvance(answeredStepId);
+      recordStepAdvance(answeredStepId, stepId);
     },
     [storeReplaceStep, recordStepAdvance]
   );

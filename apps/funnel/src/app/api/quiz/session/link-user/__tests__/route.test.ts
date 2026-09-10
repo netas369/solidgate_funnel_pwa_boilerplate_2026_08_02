@@ -29,7 +29,7 @@ const sessionId = "11111111-2222-4333-8444-555555555555";
 async function post(body: unknown) {
   const { POST } = await import("../route");
   return POST(
-    new Request("http://localhost/api/session/link-user", {
+    new Request("http://localhost/api/quiz/session/link-user", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -37,7 +37,7 @@ async function post(body: unknown) {
   );
 }
 
-describe("POST /api/session/link-user", () => {
+describe("POST /api/quiz/session/link-user", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
@@ -75,5 +75,19 @@ describe("POST /api/session/link-user", () => {
     expect(response.status).toBe(401);
     expect(mockMaybeSingle).not.toHaveBeenCalled();
     expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("returns a conflict when the database prevents ownership reassignment", async () => {
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { message: "QUIZ_SESSION_OWNERSHIP_MISMATCH" },
+    });
+
+    const response = await post({ sessionId });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "SESSION_OWNERSHIP_MISMATCH" },
+    });
   });
 });

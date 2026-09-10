@@ -17,12 +17,14 @@ Database events are durable business milestones. Frontend analytics tools remain
 
 The server verifies session ownership, supplies `created_at`, bounds client-supplied `occurred_at`, and rejects unknown event names.
 
+Quiz-screen milestones use the session transaction that owns the matching state change: create writes `quiz_started`, save writes `step_completed` or `lead_captured`, and completion writes `quiz_completed`. The quiz browser does not insert these rows directly.
+
 ## Canonical events
 
 | Event | Emitted when | Owner | Idempotency |
 |---|---|---|---|
 | `quiz_started` | First quiz screen becomes active | Client request, backend validated | Once per session |
-| `step_completed` | A valid step snapshot is committed | Persist transaction | Unique `event_id`; normally once per session/step |
+| `step_completed` | Valid step progress is saved | Save transaction | Unique `event_id`; normally once per session/step |
 | `lead_captured` | Valid email/consent state is committed | Backend | Once per session |
 | `quiz_completed` | Result and completed session are committed | Completion transaction | Exactly once per session |
 | `results_viewed` | Results are first displayed | Client request, backend validated | Normally once per session |

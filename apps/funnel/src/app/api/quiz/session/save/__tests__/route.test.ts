@@ -1,13 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockMaybeSingle, mockRpc, mockAuthorize, mockAddContact } = vi.hoisted(
-  () => ({
-    mockMaybeSingle: vi.fn(),
-    mockRpc: vi.fn(),
-    mockAuthorize: vi.fn(),
-    mockAddContact: vi.fn(),
-  }),
-);
+const { mockMaybeSingle, mockRpc, mockAuthorize } = vi.hoisted(() => ({
+  mockMaybeSingle: vi.fn(),
+  mockRpc: vi.fn(),
+  mockAuthorize: vi.fn(),
+}));
 
 vi.mock("@repo/shared/supabase/admin", () => ({
   getSupabaseAdminClient: () => ({
@@ -22,16 +19,12 @@ vi.mock("@repo/shared/supabase/admin", () => ({
 vi.mock("@/features/quiz/server/quiz-access", () => ({
   authorizeQuizSession: mockAuthorize,
 }));
-vi.mock("@/lib/activecampaign/client", () => ({
-  addContactToEmailList: mockAddContact,
-}));
-
 const sessionId = "11111111-2222-4333-8444-555555555555";
 
 async function post(body: unknown) {
   const { POST } = await import("../route");
   return POST(
-    new Request("http://localhost/api/session/snapshot", {
+    new Request("http://localhost/api/quiz/session/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -39,7 +32,7 @@ async function post(body: unknown) {
   );
 }
 
-describe("POST /api/session/snapshot", () => {
+describe("POST /api/quiz/session/save", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockMaybeSingle.mockResolvedValue({
@@ -49,7 +42,7 @@ describe("POST /api/session/snapshot", () => {
         revision: 2,
         status: "active",
         quiz_variant: "boilerplate-v1",
-        locale: "en",
+        quiz_answers: {},
       },
       error: null,
     });
@@ -64,7 +57,7 @@ describe("POST /api/session/snapshot", () => {
     });
   });
 
-  it("updates one full snapshot through the revision-safe database function", async () => {
+  it("updates one complete answer object through the revision-safe database function", async () => {
     const response = await post({
       sessionId,
       expectedRevision: 2,
@@ -84,7 +77,7 @@ describe("POST /api/session/snapshot", () => {
       currentStepId: "step2",
     });
     expect(mockRpc).toHaveBeenCalledWith(
-      "persist_quiz_session_snapshot",
+      "save_quiz_session_progress",
       expect.objectContaining({
         p_session_id: sessionId,
         p_expected_revision: 2,
@@ -122,6 +115,35 @@ describe("POST /api/session/snapshot", () => {
     });
   });
 
+  it("rejects a partial client state that would erase saved answers", async () => {
+    mockMaybeSingle.mockResolvedValue({
+      data: {
+        id: sessionId,
+        user_id: null,
+        revision: 2,
+        status: "active",
+        quiz_variant: "boilerplate-v1",
+        quiz_answers: { gender: "female" },
+      },
+      error: null,
+    });
+
+    const response = await post({
+      sessionId,
+      expectedRevision: 2,
+      answers: {},
+    });
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: "INVALID_QUIZ_ANSWERS",
+        fields: { answers: "ANSWER_REMOVAL_NOT_ALLOWED" },
+      },
+    });
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
   it("rejects a caller without session access", async () => {
     mockAuthorize.mockResolvedValue({
       ok: false,
@@ -137,7 +159,33 @@ describe("POST /api/session/snapshot", () => {
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
-  it("does not record lead capture without an email in the same snapshot", async () => {
+  it("rejects progress updates after the session becomes terminal", async () => {
+    mockMaybeSingle.mockResolvedValue({
+      data: {
+        id: sessionId,
+        user_id: null,
+        revision: 3,
+        status: "completed",
+        quiz_variant: "boilerplate-v1",
+        quiz_answers: { gender: "female" },
+      },
+      error: null,
+    });
+
+    const response = await post({
+      sessionId,
+      expectedRevision: 3,
+      answers: { gender: "female" },
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "SESSION_ALREADY_COMPLETED" },
+    });
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("does not record lead capture without an email in the same save", async () => {
     const response = await post({
       sessionId,
       expectedRevision: 2,
@@ -149,6 +197,26 @@ describe("POST /api/session/snapshot", () => {
     });
 
     expect(response.status).toBe(422);
+    expect(mockMaybeSingle).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("rejects sensitive metadata on a Quiz milestone", async () => {
+    const response = await post({
+      sessionId,
+      expectedRevision: 2,
+      answers: { gender: "female" },
+      event: {
+        eventId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        type: "step_completed",
+        metadata: { answers: { gender: "female" } },
+      },
+    });
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "SENSITIVE_EVENT_METADATA" },
+    });
     expect(mockMaybeSingle).not.toHaveBeenCalled();
     expect(mockRpc).not.toHaveBeenCalled();
   });

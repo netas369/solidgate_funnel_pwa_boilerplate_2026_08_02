@@ -32,7 +32,7 @@ Validation loads the immutable definition named by `sessions.quiz_variant`. It v
 
 ### Scoring
 
-Scoring is deterministic server code. It reads the validated stored snapshot and the matching versioned quiz definition. The client never supplies a trusted final result.
+Scoring is deterministic server code. It reads the validated stored answers and the matching versioned quiz definition. The client never supplies a trusted final result.
 
 ### Database RPCs
 
@@ -44,11 +44,11 @@ The implemented backend is intentionally compact:
 
 ```text
 apps/funnel/src/app/api/
-  session/create/route.ts
-  session/snapshot/route.ts
-  session/read/route.ts
-  session/complete/route.ts
-  session/link-user/route.ts
+  quiz/session/create/route.ts
+  quiz/session/save/route.ts
+  quiz/session/read/route.ts
+  quiz/session/complete/route.ts
+  quiz/session/link-user/route.ts
   funnel-events/route.ts
 
 apps/funnel/src/features/quiz/server/
@@ -75,9 +75,9 @@ Do not add repository or service wrapper files merely to mirror an abstract arch
 
 `createQuizSession()` validates the requested variants, captures entry attribution, creates one `sessions` row, issues an anonymous session credential, and emits `quiz_started` when the quiz actually begins.
 
-### Persist
+### Save progress
 
-`persistQuizSession()` authorizes the session, checks its revision and active status, validates the complete answer snapshot, updates the same session row, increments the revision, and optionally inserts one idempotent milestone event.
+`saveQuizProgress()` authorizes the session, checks its revision and active status, validates the complete answer object, updates the same session row, increments the revision, and optionally inserts one idempotent milestone event.
 
 ### Read
 
@@ -100,10 +100,10 @@ Do not add repository or service wrapper files merely to mirror an abstract arch
 ```text
 1. User selects an answer.
 2. Frontend updates the local answer object.
-3. Frontend queues a snapshot save.
+3. Frontend queues a progress save.
 4. Backend authorizes the session.
 5. Backend checks expected revision.
-6. Backend validates all submitted answers against quiz_variant.
+6. Backend validates all submitted answers against quiz_variant and rejects accidental key removal.
 7. Backend updates sessions.quiz_answers and current_step_id.
 8. Backend increments sessions.revision.
 9. Backend inserts the milestone event when requested.
@@ -132,10 +132,10 @@ Stable error codes are part of the API contract:
 |    401 | `UNAUTHORIZED_SESSION`       | Missing or invalid session credential            |
 |    403 | `SESSION_OWNERSHIP_MISMATCH` | Authenticated caller does not own the session    |
 |    404 | `SESSION_NOT_FOUND`          | No accessible session exists                     |
-|    409 | `STALE_SESSION_REVISION`     | A newer snapshot already won                     |
+|    409 | `STALE_SESSION_REVISION`     | Newer quiz progress was already saved            |
 |    409 | `SESSION_ALREADY_COMPLETED`  | Normal writes are not allowed after completion   |
-|    422 | `INVALID_QUIZ_ANSWERS`       | Answer snapshot does not match its definition    |
+|    422 | `INVALID_QUIZ_ANSWERS`       | Saved answers do not match their definition      |
 |    413 | `PAYLOAD_TOO_LARGE`          | A configured JSON or metadata limit was exceeded |
 |    500 | `PERSISTENCE_FAILED`         | Unexpected storage failure                       |
 
-Logs may include request IDs, session IDs, revisions, route names, and error codes. They must not include full answer snapshots, raw tokens, email addresses, payment data, or consent payloads.
+Logs may include request IDs, session IDs, revisions, route names, and error codes. They must not include full answer objects, raw tokens, email addresses, payment data, or consent payloads.

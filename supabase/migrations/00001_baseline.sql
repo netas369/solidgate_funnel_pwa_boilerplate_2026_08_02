@@ -385,7 +385,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_quiz_reporting
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Anyone can create a session" ON public.sessions;
--- Session creation goes through /api/session/create so the server can pin the
+-- Quiz session creation goes through /api/quiz/session/create so the server can pin the
 -- quiz version, mint the signed access cookie and create quiz_started in the
 -- same transaction. There is intentionally no direct anonymous INSERT policy.
 
@@ -500,24 +500,22 @@ BEGIN
   )
   RETURNING * INTO v_session;
 
-  IF p_source = 'quiz' THEN
-    INSERT INTO public.funnel_events (
-      event_id,
-      session_id,
-      event_type,
-      step_number,
-      metadata,
-      occurred_at
-    ) VALUES (
-      p_event_id,
-      p_session_id,
-      'quiz_started',
-      1,
-      '{}'::JSONB,
-      now()
-    )
-    ON CONFLICT DO NOTHING;
-  END IF;
+  INSERT INTO public.funnel_events (
+    event_id,
+    session_id,
+    event_type,
+    step_number,
+    metadata,
+    occurred_at
+  ) VALUES (
+    p_event_id,
+    p_session_id,
+    'quiz_started',
+    1,
+    '{}'::JSONB,
+    now()
+  )
+  ON CONFLICT DO NOTHING;
 
   RETURN jsonb_build_object(
     'id', v_session.id,
@@ -528,7 +526,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.persist_quiz_session_snapshot(
+CREATE OR REPLACE FUNCTION public.save_quiz_session_progress(
   p_session_id UUID,
   p_expected_revision INTEGER,
   p_quiz_answers JSONB,
@@ -794,13 +792,13 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.create_quiz_session(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, JSONB, UUID) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.persist_quiz_session_snapshot(UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, BOOLEAN, UUID, TEXT, INTEGER, JSONB) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.save_quiz_session_progress(UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, BOOLEAN, UUID, TEXT, INTEGER, JSONB) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.complete_quiz_session(UUID, INTEGER, JSONB, TEXT, UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.record_funnel_event(UUID, UUID, TEXT, INTEGER, JSONB, TIMESTAMPTZ) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.link_quiz_session_user(UUID, UUID) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION public.create_quiz_session(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, JSONB, UUID) TO service_role;
-GRANT EXECUTE ON FUNCTION public.persist_quiz_session_snapshot(UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, BOOLEAN, UUID, TEXT, INTEGER, JSONB) TO service_role;
+GRANT EXECUTE ON FUNCTION public.save_quiz_session_progress(UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, BOOLEAN, UUID, TEXT, INTEGER, JSONB) TO service_role;
 GRANT EXECUTE ON FUNCTION public.complete_quiz_session(UUID, INTEGER, JSONB, TEXT, UUID) TO service_role;
 GRANT EXECUTE ON FUNCTION public.record_funnel_event(UUID, UUID, TEXT, INTEGER, JSONB, TIMESTAMPTZ) TO service_role;
 GRANT EXECUTE ON FUNCTION public.link_quiz_session_user(UUID, UUID) TO service_role;

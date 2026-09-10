@@ -3,7 +3,6 @@ import { z } from "zod";
 import { routing } from "@repo/i18n/routing";
 import { getSupabaseAdminClient } from "@repo/shared/supabase/admin";
 import type { Json } from "@repo/shared/types/database";
-import { addContactToEmailList } from "@/lib/activecampaign/client";
 import { authorizeQuizSession } from "@/features/quiz/server/quiz-access";
 import {
   isKnownQuizStep,
@@ -14,6 +13,7 @@ import {
   databaseErrorResponse,
   errorResponse,
 } from "@/features/quiz/server/http";
+import { validateEventMetadata } from "@/features/quiz/server/event-metadata";
 
 const eventSchema = z
   .object({
@@ -24,7 +24,7 @@ const eventSchema = z
   })
   .strict();
 
-const persistSchema = z
+const saveSchema = z
   .object({
     sessionId: z.uuid(),
     expectedRevision: z.number().int().nonnegative(),
@@ -51,12 +51,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const parsed = persistSchema.safeParse(rawBody);
+  const parsed = saveSchema.safeParse(rawBody);
   if (!parsed.success) {
     return errorResponse(
       400,
       "INVALID_REQUEST",
-      "Quiz snapshot request is invalid.",
+      "Quiz progress data is invalid.",
     );
   }
   const body = parsed.data;
@@ -85,39 +85,43 @@ export async function POST(request: Request) {
       tooLarge ? 413 : 422,
       tooLarge ? "PAYLOAD_TOO_LARGE" : "INVALID_QUIZ_ANSWERS",
       tooLarge
-        ? "The answer snapshot is too large."
-        : "The answer snapshot is invalid.",
+        ? "The saved answers are too large."
+        : "The saved answers are invalid.",
       answerValidation.errors,
     );
   }
 
-  if (
-    body.event &&
-    JSON.stringify(body.event.metadata ?? {}).length > 8 * 1024
-  ) {
-    return errorResponse(
-      413,
-      "PAYLOAD_TOO_LARGE",
-      "Event metadata is too large.",
-    );
+  if (body.event) {
+    const metadataValidation = validateEventMetadata(body.event.metadata ?? {});
+    if (!metadataValidation.ok) {
+      const tooLarge = metadataValidation.code === "PAYLOAD_TOO_LARGE";
+      return errorResponse(
+        tooLarge ? 413 : 422,
+        metadataValidation.code,
+        tooLarge
+          ? "Event metadata is too large."
+          : "Event metadata contains a sensitive field.",
+        metadataValidation.field ? { metadata: metadataValidation.field } : undefined,
+      );
+    }
   }
   if (body.event?.type === "lead_captured" && !body.email) {
     return errorResponse(
       422,
       "INVALID_LEAD_CAPTURE",
-      "A lead-captured event requires a valid email in the same snapshot.",
+      "A lead-captured event requires a valid email in the same save.",
     );
   }
 
   const admin = getSupabaseAdminClient();
   const { data: session, error: readError } = await admin
     .from("sessions")
-    .select("id, user_id, revision, status, quiz_variant, locale")
+    .select("id, user_id, revision, status, quiz_variant, quiz_answers")
     .eq("id", body.sessionId)
     .maybeSingle();
 
   if (readError) {
-    console.error("[session/persist] lookup failed:", readError.message);
+    console.error("[quiz/session/save] lookup failed:", readError.message);
     return errorResponse(
       500,
       "PERSISTENCE_FAILED",
@@ -154,8 +158,26 @@ export async function POST(request: Request) {
     );
   }
 
+  const storedAnswers =
+    session.quiz_answers &&
+    typeof session.quiz_answers === "object" &&
+    !Array.isArray(session.quiz_answers)
+      ? session.quiz_answers
+      : {};
+  const removedKeys = Object.keys(storedAnswers).filter(
+    (key) => !Object.prototype.hasOwnProperty.call(body.answers, key),
+  );
+  if (removedKeys.length > 0) {
+    return errorResponse(
+      422,
+      "INVALID_QUIZ_ANSWERS",
+      "Previously saved answers cannot be removed by a normal progress save.",
+      { answers: "ANSWER_REMOVAL_NOT_ALLOWED" },
+    );
+  }
+
   const normalizedEmail = body.email?.trim().toLowerCase() ?? null;
-  const { data, error } = await admin.rpc("persist_quiz_session_snapshot", {
+  const { data, error } = await admin.rpc("save_quiz_session_progress", {
     p_session_id: body.sessionId,
     p_expected_revision: body.expectedRevision,
     p_quiz_answers: body.answers as Json,
@@ -172,18 +194,6 @@ export async function POST(request: Request) {
   });
 
   if (error) return databaseErrorResponse(error);
-
-  if (normalizedEmail) {
-    const effectiveLocale = body.locale ?? session.locale;
-    void addContactToEmailList(normalizedEmail, effectiveLocale).catch(
-      (contactError) => {
-        console.error(
-          "[session/persist] ActiveCampaign add failed:",
-          contactError instanceof Error ? contactError.message : contactError,
-        );
-      },
-    );
-  }
 
   const persisted = data as {
     revision?: number;

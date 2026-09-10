@@ -8,9 +8,12 @@ Route paths may be adapted to the host framework, but the behavior below is the 
 - Server timestamps are ISO-8601 UTC.
 - The server derives `user_id`, timestamps, completion state, and result values.
 - Anonymous reads and writes require a signed, expiring session credential.
+- The Quiz credential is signed only with `QUIZ_SESSION_COOKIE_SECRET`, which must contain at least 32 characters and must not be reused as `PAYMENT_COOKIE_SECRET`.
+- A Payment cookie does not grant access to Quiz sessions.
 - Every update to current state supplies `expectedRevision`.
 - A stale revision returns `409 STALE_SESSION_REVISION`; it never silently overwrites newer data.
 - Size and quiz-definition validation run before a database write.
+- Event metadata containing answer/result payloads, email, IP, credentials, or card/payment-secret fields is rejected before a database write.
 
 Standard error:
 
@@ -18,13 +21,15 @@ Standard error:
 {
   "error": {
     "code": "INVALID_QUIZ_ANSWERS",
-    "message": "The answer snapshot is invalid.",
+    "message": "The saved answers are invalid.",
     "fields": { "primaryGoal": "INVALID_OPTION" }
   }
 }
 ```
 
-## `POST /api/session/create`
+The reference quiz frontend persists the returned `revision`, serializes saves per session, requires a successful lead save before leaving the email screen, and waits for the final save plus completion before leaving the quiz. It never writes quiz milestones directly to `funnel_events`.
+
+## `POST /api/quiz/session/create`
 
 Creates exactly one session row.
 
@@ -66,9 +71,9 @@ Response `201`:
 
 `sessionId` is optional; the server generates it when omitted. Quiz and funnel variants are server-owned constants and are not accepted from the caller. A successful response also sets the signed, HTTP-only `quiz_session_access` cookie. Reusing a session ID returns `409 SESSION_ALREADY_EXISTS` rather than taking ownership of the existing session.
 
-## `POST /api/session/snapshot`
+## `POST /api/quiz/session/save`
 
-Updates the existing row with the complete current answer snapshot.
+Updates the existing row with the complete current answer object. Despite the full object being sent, this remains one row in `sessions`.
 
 Request:
 
@@ -96,10 +101,11 @@ Successful backend flow:
 1. Authenticate or verify the signed session credential.
 2. Load the session and require `status = active`.
 3. Compare `expectedRevision` with `sessions.revision`.
-4. Validate the entire snapshot against `sessions.quiz_variant`.
-5. Update `quiz_answers`, `current_step_id`, `updated_at`, and `revision = revision + 1`.
-6. Insert the optional allowed event using its unique `event_id`.
-7. Commit the state and event together.
+4. Validate all submitted answers against `sessions.quiz_variant`.
+5. Reject a normal save that removes a previously saved answer key.
+6. Update `quiz_answers`, `current_step_id`, `updated_at`, and `revision = revision + 1`.
+7. Insert the optional allowed event using its unique `event_id`.
+8. Commit the state and event together.
 
 Response `200`:
 
@@ -114,7 +120,7 @@ Response `200`:
 
 If `expectedRevision` is stale, response `409` includes `currentRevision`. The client can then perform an authorized read and reconcile. The client should normally serialize saves, making this conflict exceptional rather than routine.
 
-## `GET /api/session/read?sessionId=:sessionId`
+## `GET /api/quiz/session/read?sessionId=:sessionId`
 
 Requires authenticated ownership or the signed session credential.
 
@@ -141,7 +147,7 @@ Response `200`:
 
 Do not return event history by default. It is not required to resume the quiz.
 
-## `POST /api/session/complete`
+## `POST /api/quiz/session/complete`
 
 Request:
 
@@ -188,7 +194,7 @@ Response `200`:
 }
 ```
 
-## `POST /api/session/link-user`
+## `POST /api/quiz/session/link-user`
 
 Requires authentication. The server reads the user from the trusted authentication context; the request cannot provide a different user ID.
 
@@ -222,7 +228,7 @@ The backend validates authorization, event name, metadata, size, and any client 
 
 | Item                             |          Limit |
 | -------------------------------- | -------------: |
-| Complete `quiz_answers` snapshot |         64 KiB |
+| Complete `quiz_answers` object   |         64 KiB |
 | Complete `quiz_result`           |         64 KiB |
 | Event metadata                   |          8 KiB |
 | Email                            | 320 characters |

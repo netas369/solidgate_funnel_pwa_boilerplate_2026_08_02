@@ -6,18 +6,24 @@ import { useQuizNavigation } from '../use-quiz-navigation';
 const {
   mockGoToStep,
   mockGoBack,
-  mockSetStepAnswer,
   mockTrack,
   mockState,
-  mockTrackFunnelEvent,
-  mockPersistSessionSnapshot,
+  mockSaveQuizProgress,
 } = vi.hoisted(() => {
   const mockGoToStep = vi.fn();
   const mockGoBack = vi.fn();
   const mockSetStepAnswer = vi.fn();
   const mockTrack = vi.fn();
-  const mockTrackFunnelEvent = vi.fn();
-  const mockPersistSessionSnapshot = vi.fn();
+  const mockSaveQuizProgress = vi
+    .fn<
+      (
+        sessionId: string,
+        currentStepId: string,
+        answers: Record<string, unknown>,
+        options?: Record<string, unknown>,
+      ) => Promise<{ ok: boolean }>
+    >()
+    .mockResolvedValue({ ok: true });
   const mockState = {
     currentStepId: 'step-a',
     history: [] as string[],
@@ -31,11 +37,9 @@ const {
   return {
     mockGoToStep,
     mockGoBack,
-    mockSetStepAnswer,
     mockTrack,
     mockState,
-    mockTrackFunnelEvent,
-    mockPersistSessionSnapshot,
+    mockSaveQuizProgress,
   };
 });
 
@@ -55,14 +59,7 @@ vi.mock('@/features/analytics/hooks/use-analytics', () => ({
 
 // ─── Mock persistence ────────────────────────────────────────────────────────
 vi.mock('../use-quiz-persistence', () => ({
-  persistSessionSnapshot: mockPersistSessionSnapshot,
-}));
-
-// ─── Mock the shared funnel-event tracker ────────────────────────────────────
-// trackFunnelEvent now lives in its own lib module (it was previously an inline
-// Supabase insert). The hook fires it for step_completed analytics.
-vi.mock('@/features/quiz/lib/track-funnel-event', () => ({
-  trackFunnelEvent: mockTrackFunnelEvent,
+  saveQuizProgress: mockSaveQuizProgress,
 }));
 
 // ─── Mock quiz config with minimal test steps ──────────────────────────────────
@@ -222,7 +219,7 @@ describe('useQuizNavigation', () => {
     expect(result.current.resolvedCopy('{{unknown}}')).toBe('unknown');
   });
 
-  it('on goToStep, records step_completed analytics + funnel event for the answered step', () => {
+  it('on goToStep, records step_completed analytics for the answered step', () => {
     mockState.currentStepId = 'step-d';
 
     const { result } = renderHook(() => useQuizNavigation());
@@ -237,16 +234,9 @@ describe('useQuizNavigation', () => {
       step_number: 4,
       session_id: 'test-session-123',
     });
-    // Supabase funnel_events insert, now routed through the shared lib module.
-    expect(mockTrackFunnelEvent).toHaveBeenCalledWith(
-      'test-session-123',
-      'step_completed',
-      4,
-      { step_id: 'step-d' },
-    );
   });
 
-  it('fires a session snapshot for the answered step on goToStep', () => {
+  it('saves the complete answer state for the answered step on goToStep', () => {
     mockState.currentStepId = 'step-d';
     mockState.answers = { goal: 'opt1' };
 
@@ -256,11 +246,18 @@ describe('useQuizNavigation', () => {
       result.current.goToStep('step-e');
     });
 
-    expect(mockPersistSessionSnapshot).toHaveBeenCalledWith(
+    expect(mockSaveQuizProgress).toHaveBeenCalledWith(
       'test-session-123',
-      'step-d',
+      'step-e',
       { goal: 'opt1' },
-      'lt',
+      {
+        locale: 'lt',
+        event: {
+          type: 'step_completed',
+          stepNumber: 4,
+          metadata: { step_id: 'step-d' },
+        },
+      },
     );
   });
 
@@ -276,14 +273,15 @@ describe('useQuizNavigation', () => {
       result.current.goToStep('step-e');
     });
 
-    // completedSteps de-dupes by stepId — track/trackFunnelEvent fire once.
+    // completedSteps de-dupes the durable event while both progress states save.
     const stepDCompletions = mockTrack.mock.calls.filter(
       ([event, payload]) =>
         event === 'step_completed' &&
         (payload as { step_id?: string }).step_id === 'step-d',
     );
     expect(stepDCompletions).toHaveLength(1);
-    expect(mockTrackFunnelEvent).toHaveBeenCalledTimes(1);
+    expect(mockSaveQuizProgress).toHaveBeenCalledTimes(2);
+    expect(mockSaveQuizProgress.mock.calls[1]?.[3]).not.toHaveProperty('event');
   });
 
   it('skips analytics entirely when there is no sessionId', () => {
@@ -297,7 +295,6 @@ describe('useQuizNavigation', () => {
     });
 
     expect(mockTrack).not.toHaveBeenCalled();
-    expect(mockTrackFunnelEvent).not.toHaveBeenCalled();
-    expect(mockPersistSessionSnapshot).not.toHaveBeenCalled();
+    expect(mockSaveQuizProgress).not.toHaveBeenCalled();
   });
 });

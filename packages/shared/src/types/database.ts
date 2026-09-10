@@ -1379,7 +1379,7 @@ export type Database = {
         Args: { p_session_id: string; p_user_id: string }
         Returns: Json
       }
-      persist_quiz_session_snapshot: {
+      save_quiz_session_progress: {
         Args: {
           p_consent_given_at: string | null
           p_consent_version: string | null

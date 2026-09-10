@@ -124,6 +124,7 @@
     "consentProcessingAria": "I agree to the processing of my email address to save my results and send account information",
     "dataSecure": "Encrypted · GDPR compliant",
     "submitting": "Saving…",
+    "saveFailed": "We couldn't save your progress. Check your connection and try again.",
     "footer": "© Acme. Tagline goes here.",
     "datePicker": {
       "day": "Day",

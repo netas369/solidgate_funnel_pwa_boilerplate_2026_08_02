@@ -1,6 +1,6 @@
 # Realistic Failure Modes and Fixes
 
-These are concrete risks in a full-snapshot quiz implementation.
+These are concrete risks when the full current answer object is saved into one session row.
 
 ## 1. A normal step save is lost
 
@@ -8,23 +8,23 @@ These are concrete risks in a full-snapshot quiz implementation.
 
 **Impact:** resuming can return the visitor to an older step with missing recent answers.
 
-**Fix:** serialize saves in a per-session queue, keep failed snapshots locally, retry on reconnect, and await the final lead/completion save before routing away.
+**Fix:** serialize saves in a per-session queue, keep failed progress locally, retry on reconnect, and await the final lead/completion save before routing away.
 
-## 2. An older request overwrites a newer snapshot
+## 2. An older request overwrites newer answers
 
-**How it happens:** two full-snapshot requests are in flight. The newer one reaches the database first, then the older one arrives and replaces `quiz_answers`.
+**How it happens:** two complete-answer save requests are in flight. The newer one reaches the database first, then the older one arrives and replaces `quiz_answers`.
 
 **Impact:** recently answered questions disappear.
 
 **Fix:** add `sessions.revision`; update with `WHERE id = :id AND revision = :expectedRevision`, increment atomically, and return `409` when no row matches. Also serialize frontend saves.
 
-## 3. An empty or malformed snapshot wipes valid answers
+## 3. An empty or malformed save wipes valid answers
 
-**How it happens:** a store hydration bug or bad client submits `{}` or wrong value types. The current route trusts and replaces the JSON object.
+**How it happens:** a store hydration bug or bad client submits `{}` or wrong value types. An unsafe route trusts and replaces the JSON object.
 
 **Impact:** valid progress is destroyed or later scoring breaks.
 
-**Fix:** validate the entire snapshot against the session's immutable quiz definition. Reject unexplained key removal after the session has progressed unless the product explicitly supports branch cleanup.
+**Fix:** validate the entire answer object against the session's immutable quiz definition. Reject unexplained key removal after the session has progressed unless the product explicitly supports branch cleanup.
 
 ## 4. Duplicate funnel events inflate reports
 
@@ -64,4 +64,4 @@ These are concrete risks in a full-snapshot quiz implementation.
 
 **Impact:** offer segmentation, reporting, or personalization can be falsified.
 
-**Fix:** the completion service calculates results from the stored, validated snapshot and a versioned scoring definition. The client only requests completion.
+**Fix:** the completion service calculates results from the stored, validated answers and a versioned scoring definition. The client only requests completion.

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (readError) {
-    console.error('[session/complete] lookup failed:', readError.message);
+    console.error('[quiz/session/complete] lookup failed:', readError.message);
     return errorResponse(500, 'PERSISTENCE_FAILED', 'The quiz session could not be loaded.');
   }
   if (!session) return errorResponse(404, 'SESSION_NOT_FOUND', 'Quiz session was not found.');

@@ -19,8 +19,8 @@ This is the current truth. Every save updates the same row.
 | `user_id`               | UUID        |       No | Authenticated owner after linking                                |
 | `visitor_id`            | TEXT        |       No | Coarse anonymous visitor/install identifier; never authorization |
 | `email`                 | TEXT        |       No | Normalized captured email; not proof of ownership                |
-| `quiz_answers`          | JSONB       |      Yes | Complete current answer snapshot                                 |
-| `quiz_result`           | JSONB       |       No | Final server-computed result snapshot                            |
+| `quiz_answers`          | JSONB       |      Yes | Complete current answer object                                   |
+| `quiz_result`           | JSONB       |       No | Final server-computed result                                     |
 | `result_segment`        | TEXT        |       No | Stable top-level result code used by funnel consumers            |
 | `current_step_id`       | TEXT        |       No | Current or last persisted stable step key                        |
 | `status`                | TEXT        |      Yes | `active`, `completed`, `abandoned`, or `expired`                 |
@@ -29,7 +29,7 @@ This is the current truth. Every save updates the same row.
 | `funnel_variant`        | TEXT        |      Yes | Immutable funnel presentation/offer version                      |
 | `locale`                | TEXT        |      Yes | Current language/locale                                          |
 | `source`                | TEXT        |      Yes | Entry route such as `quiz` or `special-offer`                    |
-| `attribution`           | JSONB       |      Yes | First-touch campaign/UTM snapshot                                |
+| `attribution`           | JSONB       |      Yes | First-touch campaign/UTM values                                  |
 | `client_context`        | JSONB       |      Yes | Bounded device/country/browser context                           |
 | `consent_given_at`      | TIMESTAMPTZ |       No | Recorded consent time                                            |
 | `consent_version`       | TEXT        |       No | Version of displayed consent copy                                |
@@ -89,7 +89,7 @@ This is the current truth. Every save updates the same row.
 - Values are JSON strings, numbers, booleans, or bounded arrays/objects allowed by the versioned definition.
 - Store canonical units, for example centimeters rather than a locale-formatted height string.
 - Do not store labels translated for the UI as canonical values.
-- A snapshot replaces the previous snapshot only after full validation and a successful revision check.
+- A save replaces the previous answer object only after full validation and a successful revision check.
 - Maximum recommended serialized size is 64 KiB per session unless a product explicitly documents another bound.
 
 ### Result JSON rules
@@ -143,7 +143,7 @@ This table stores history, not current state.
 ### Event JSON rules
 
 - Maximum recommended metadata size is 8 KiB.
-- Never include the full answer snapshot, email, IP address, session credential, auth token, or payment data.
+- Never include the full answer object, email, IP address, session credential, auth token, or payment data.
 - A unique `event_id` makes retry safe.
 - Events are append-only. Correct an analytical mistake with a new deliberate event or reporting rule, not by rewriting history.
 

@@ -19,7 +19,7 @@ const sessionId = '11111111-2222-4333-8444-555555555555';
 async function post(body: unknown) {
   const { POST } = await import('../route');
   return POST(
-    new Request('http://localhost/api/session/create', {
+    new Request('http://localhost/api/quiz/session/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mobile Safari' },
       body: JSON.stringify(body),
@@ -27,7 +27,7 @@ async function post(body: unknown) {
   );
 }
 
-describe('POST /api/session/create', () => {
+describe('POST /api/quiz/session/create', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRpc.mockResolvedValue({ data: { revision: 0 }, error: null });
@@ -62,6 +62,18 @@ describe('POST /api/session/create', () => {
     mockRpc.mockResolvedValue({ data: null, error: { code: '23505', message: 'duplicate' } });
     const response = await post({ sessionId, locale: 'en', source: 'quiz' });
     expect(response.status).toBe(409);
-    expect(mockSignCookie).not.toHaveBeenCalled();
+    expect(response.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('does not create an inaccessible row when Quiz cookie configuration fails', async () => {
+    mockSignCookie.mockRejectedValue(new Error('QUIZ_SESSION_COOKIE_SECRET env var is not set'));
+
+    const response = await post({ sessionId, locale: 'en', source: 'quiz' });
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'QUIZ_SESSION_CONFIGURATION_ERROR' },
+    });
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 });

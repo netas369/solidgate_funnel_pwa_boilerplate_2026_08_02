@@ -11,6 +11,8 @@ interface QuizState {
   answerLabels: Record<string, string | string[]>;
   isComplete: boolean;
   sessionId: string | null;
+  revision: number;
+  hasUnsavedProgress: boolean;
   authLinked: boolean | null; // null = unknown/not-yet-determined, false = auth linking failed, true = linked
 
   // Post-purchase OTO authorization for buyers who arrive through a direct
@@ -39,12 +41,38 @@ interface QuizState {
   ) => void;
   reset: () => void;
   setSessionId: (id: string) => void;
-  completeQuiz: () => void;
+  restoreSession: (session: {
+    id: string;
+    currentStepId: string | null;
+    answers: Record<string, string | string[] | number>;
+    revision: number;
+    isComplete: boolean;
+    hasUnsavedProgress?: boolean;
+  }) => void;
+  reconcileProgress: (progress: {
+    sessionId: string;
+    answers: Record<string, string | string[] | number>;
+    revision: number;
+  }) => Record<string, string | string[] | number>;
+  markProgressSaved: (progress: {
+    sessionId: string;
+    currentStepId: string | null;
+    answers: Record<string, unknown>;
+    revision: number;
+  }) => void;
+  completeQuiz: (revision?: number) => void;
 
   // Atomic grant - sets sessionId + flips authorizedViaPurchase=true in one
   // set() so OTO guards never see a mixed intermediate state.
   grantPurchaseAuthorization: (sessionId: string) => void;
 }
+
+type PersistedQuizState = Partial<QuizState> & {
+  persistedAt?: number;
+  hasPendingSnapshot?: boolean;
+};
+
+const QUIZ_STORAGE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const initialState = {
   currentStepId: FIRST_STEP_ID,
@@ -53,12 +81,14 @@ const initialState = {
   answerLabels: {} as Record<string, string | string[]>,
   isComplete: false,
   sessionId: null as string | null,
+  revision: 0,
+  hasUnsavedProgress: false,
   authLinked: null as boolean | null,
   authorizedViaPurchase: false,
 };
 
 export const useQuizStore = create<QuizState>()(
-  persist(
+  persist<QuizState, [], [], PersistedQuizState>(
     (set) => ({
       ...initialState,
 
@@ -66,9 +96,10 @@ export const useQuizStore = create<QuizState>()(
         set((state) => ({
           history: [...state.history, state.currentStepId],
           currentStepId: stepId,
+          hasUnsavedProgress: true,
         })),
 
-      replaceStep: (stepId) => set({ currentStepId: stepId }),
+      replaceStep: (stepId) => set({ currentStepId: stepId, hasUnsavedProgress: true }),
 
       goBack: () =>
         set((state) => {
@@ -77,14 +108,17 @@ export const useQuizStore = create<QuizState>()(
           return {
             history: state.history.slice(0, -1),
             currentStepId: prev,
+            hasUnsavedProgress: true,
           };
         }),
 
-      restoreNavigation: (stepId, history) => set({ currentStepId: stepId, history }),
+      restoreNavigation: (stepId, history) =>
+        set({ currentStepId: stepId, history, hasUnsavedProgress: true }),
 
       setStepAnswer: (storeAs, value, label) =>
         set((state) => ({
           answers: { ...state.answers, [storeAs]: value },
+          hasUnsavedProgress: true,
           answerLabels:
             label !== undefined
               ? { ...state.answerLabels, [storeAs]: label }
@@ -93,7 +127,51 @@ export const useQuizStore = create<QuizState>()(
 
       reset: () => set(initialState),
 
-      setSessionId: (id) => set({ sessionId: id }),
+      setSessionId: (id) => set({ sessionId: id, revision: 0 }),
+
+      restoreSession: ({
+        id,
+        currentStepId,
+        answers,
+        revision,
+        isComplete,
+        hasUnsavedProgress = false,
+      }) =>
+        set((state) => ({
+          sessionId: id,
+          currentStepId: currentStepId ?? state.currentStepId,
+          history: currentStepId === state.currentStepId ? state.history : [],
+          answers,
+          revision,
+          isComplete,
+          hasUnsavedProgress,
+        })),
+
+      reconcileProgress: ({ sessionId, answers, revision }) => {
+        let reconciled = answers;
+        set((state) => {
+          if (state.sessionId !== sessionId) return {};
+          reconciled = { ...answers, ...state.answers };
+          return {
+            answers: reconciled,
+            revision,
+            hasUnsavedProgress: true,
+          };
+        });
+        return reconciled;
+      },
+
+      markProgressSaved: ({ sessionId, currentStepId, answers, revision }) =>
+        set((state) => {
+          if (state.sessionId !== sessionId) return {};
+          const savedCurrentState =
+            (currentStepId === null || state.currentStepId === currentStepId) &&
+            JSON.stringify(state.answers) === JSON.stringify(answers);
+          return {
+            revision,
+            ...(savedCurrentState ? { hasUnsavedProgress: false } : {}),
+          };
+        }),
 
       // Atomic grant for the direct-offer post-purchase path. Sets sessionId +
       // authorizedViaPurchase=true in one set() so the OTO guards (which widen
@@ -102,12 +180,49 @@ export const useQuizStore = create<QuizState>()(
       grantPurchaseAuthorization: (sessionId) =>
         set({ sessionId, authorizedViaPurchase: true }),
 
-      completeQuiz: () => set({ isComplete: true }),
+      completeQuiz: (revision) =>
+        set((state) => ({
+          isComplete: true,
+          hasUnsavedProgress: false,
+          revision: revision ?? state.revision,
+        })),
 
       setAuthLinked: (value) => set({ authLinked: value }),
     }),
     {
       name: 'quiz-store',
+      version: 2,
+      migrate: (persistedState, version) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return {};
+        }
+
+        const legacy = persistedState as PersistedQuizState;
+        const { hasPendingSnapshot, ...current } = legacy;
+        return {
+          ...current,
+          persistedAt: Date.now(),
+          ...(version === 0
+            ? {
+                hasUnsavedProgress:
+                  hasPendingSnapshot ?? legacy.hasUnsavedProgress ?? false,
+              }
+            : {}),
+        };
+      },
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as PersistedQuizState;
+        if (
+          typeof persisted.persistedAt === 'number' &&
+          Date.now() - persisted.persistedAt > QUIZ_STORAGE_TTL_MS
+        ) {
+          return currentState;
+        }
+        const rest = { ...persisted };
+        delete rest.persistedAt;
+        delete rest.hasPendingSnapshot;
+        return { ...currentState, ...rest };
+      },
       skipHydration: true,
       partialize: (state) => ({
         currentStepId: state.currentStepId,
@@ -116,8 +231,11 @@ export const useQuizStore = create<QuizState>()(
         answerLabels: state.answerLabels,
         isComplete: state.isComplete,
         sessionId: state.sessionId,
+        revision: state.revision,
+        hasUnsavedProgress: state.hasUnsavedProgress,
         authLinked: state.authLinked,
         authorizedViaPurchase: state.authorizedViaPurchase,
+        persistedAt: Date.now(),
       }),
     }
   )

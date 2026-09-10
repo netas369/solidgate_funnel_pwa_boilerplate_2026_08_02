@@ -3,7 +3,7 @@ import { signQuizSessionCookie, verifyQuizSessionCookie } from '../quiz-session-
 
 describe('quiz session cookie', () => {
   beforeEach(() => {
-    vi.stubEnv('PAYMENT_COOKIE_SECRET', 'test-secret-that-is-long-enough-for-hmac');
+    vi.stubEnv('QUIZ_SESSION_COOKIE_SECRET', 'test-secret-that-is-long-enough-for-hmac');
   });
 
   it('round-trips the bound session id', async () => {
@@ -19,5 +19,21 @@ describe('quiz session cookie', () => {
 
   it('rejects malformed input', async () => {
     await expect(verifyQuizSessionCookie('not-a-cookie')).resolves.toBeNull();
+  });
+
+  it('fails closed when the Quiz secret is missing', async () => {
+    vi.stubEnv('QUIZ_SESSION_COOKIE_SECRET', '');
+
+    await expect(signQuizSessionCookie('session-123')).rejects.toThrow(
+      'QUIZ_SESSION_COOKIE_SECRET env var is not set',
+    );
+  });
+
+  it('rejects a Quiz secret that is too short', async () => {
+    vi.stubEnv('QUIZ_SESSION_COOKIE_SECRET', 'too-short');
+
+    await expect(signQuizSessionCookie('session-123')).rejects.toThrow(
+      'QUIZ_SESSION_COOKIE_SECRET must contain at least 32 characters',
+    );
   });
 });

@@ -6,7 +6,7 @@ import { waitForSession } from './session-ready';
  * Best-effort, fire-and-forget Supabase funnel_events insert (ANLYT-01).
  *
  * Awaits the session-ready gate first so the insert never races ahead of the
- * /api/session/persist call that creates the sessions row
+ * /api/quiz/session/create call that creates the sessions row
  * (funnel_events.session_id references sessions.id). The wait is capped at 8s
  * so a stuck gate degrades to a best-effort insert rather than dropping the
  * event silently. Returns void — callers treat it as fire-and-forget.

@@ -237,7 +237,8 @@ npx supabase gen types typescript --linked > packages/shared/src/types/database.
 
 - [ ] `ADMIN_EMAILS` set — the admin dashboard is unreachable until it is
 - [ ] `RESEND_FROM_ADDRESS` set to a sender verified in Resend
-- [ ] `PAYMENT_COOKIE_SECRET` and `INTERNAL_API_SECRET` are fresh random values
+- [ ] `QUIZ_SESSION_COOKIE_SECRET`, `PAYMENT_COOKIE_SECRET`, and
+  `INTERNAL_API_SECRET` are fresh, independent random values
 - [ ] `SOLIDGATE_ENVIRONMENT=production` **only** in the Vercel Production scope
 - [ ] Solidgate catalog seeded against the **live** channel and `--verify` clean
 - [ ] Apple Pay domain association files in place for your domains

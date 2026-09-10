@@ -12,7 +12,7 @@ interface EmailCaptureStepProps {
   t: ReturnType<typeof useTranslations>;
   tRaw?: (key: string) => string;
   resolvedCopy?: (template: string) => string;
-  onSubmit: (data: EmailConsentData) => void | Promise<void>;
+  onSubmit: (data: EmailConsentData) => void | boolean | Promise<void | boolean>;
   onBack?: () => void;
 }
 
@@ -45,7 +45,7 @@ export function EmailCaptureStep({ step, t, tRaw, resolvedCopy, onSubmit, onBack
       setError('');
       setSubmitting(true);
       try {
-        await onSubmit({
+        const saved = await onSubmit({
           email: email.trim(),
           consentGivenAt: new Date().toISOString(),
           consentVersion: EMAIL_CONSENT_VERSION,
@@ -53,6 +53,7 @@ export function EmailCaptureStep({ step, t, tRaw, resolvedCopy, onSubmit, onBack
           // granted — the opt-out checkbox was removed from the funnel.
           marketingConsent: true,
         });
+        if (saved === false) setError(t('ui.saveFailed'));
       } finally {
         setSubmitting(false);
       }

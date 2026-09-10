@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from '@repo/i18n/navigation';
 import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -9,7 +9,14 @@ import { useQuizStore } from '@/stores/quiz-store';
 import { useQuizNavigation } from '@/features/quiz/hooks/use-quiz-navigation';
 import { useQuizHydration } from '@/features/quiz/hooks/use-quiz-hydration';
 import { useImagePrefetch } from '@/features/quiz/hooks/use-image-prefetch';
-import { captureLeadRecord } from '@/features/quiz/hooks/use-quiz-persistence';
+import {
+  QuizSessionApiError,
+  captureLeadRecord,
+  completeQuizSession,
+  createQuizSession,
+  saveQuizProgress,
+  readQuizSession,
+} from '@/features/quiz/hooks/use-quiz-persistence';
 import { useAnalytics } from '@/features/analytics/hooks/use-analytics';
 import { identifyPostHogUser, capturePostHogEvent } from '@/features/analytics/lib/posthog';
 import { hashEmail } from '@/features/analytics/lib/hash-email';
@@ -17,7 +24,6 @@ import { setMetaUserData } from '@/features/analytics/lib/meta-pixel';
 import { pushDataLayerEvent } from '@/features/analytics/lib/gtm';
 import { useFunnelStore } from '@/stores/funnel-store';
 import { NAME_KEYS, titleCase } from '@/features/quiz/lib/name';
-import { trackFunnelEvent } from '@/features/quiz/lib/track-funnel-event';
 import { markSessionReady, resetSessionGate } from '@/features/quiz/lib/session-ready';
 import { QuizProgressHeader } from './quiz-progress-header';
 import { StepTransition } from './step-transition';
@@ -109,6 +115,7 @@ const STEP_BACKGROUND: Partial<Record<QuizStep['type'], string>> = {
 
 export function QuizPage() {
   const hydrated = useQuizHydration();
+  const [sessionInitialized, setSessionInitialized] = useState(false);
   const isComplete = useQuizStore((s) => s.isComplete);
   const setSessionId = useQuizStore((s) => s.setSessionId);
   const { track } = useAnalytics();
@@ -118,63 +125,134 @@ export function QuizPage() {
 
   useEffect(() => {
     if (!hydrated) return;
-    // Close the funnel-event gate before deciding whether to create a session.
+    let cancelled = false;
     resetSessionGate();
-    const restart = searchParams.get('restart') === 'true';
-    const existingSessionId = useQuizStore.getState().sessionId;
-    const existingIsComplete = useQuizStore.getState().isComplete;
 
-    if (!restart && existingSessionId && !existingIsComplete) {
-      // Resuming an in-progress quiz — the sessions row already exists in the DB.
-      markSessionReady();
-      return;
-    }
-
-    // A finished quiz arriving back at /quiz almost always means the visitor
-    // pressed browser Back out of the offer, not that they want to retake it.
-    // Resetting here used to wipe the answers AND mint a new sessionId — which
-    // is the id the offer, the OTOs and the purchase all key off, so Forward
-    // landed on a dead offer page. Send them back to their result instead and
-    // leave the session alone; `?restart=true` stays the deliberate redo.
-    if (!restart && existingIsComplete) {
-      markSessionReady();
+    const routeToOffer = () => {
       const tier = useQuizStore.getState().answers['trialTier'];
       bootstrapRouter.replace(
         typeof tier === 'string' && tier
           ? `/offer/details?tier=${encodeURIComponent(tier)}`
           : '/offer',
       );
-      return;
-    }
+    };
 
-    if (restart) useQuizStore.getState().reset();
+    const createFreshSession = async (
+      recovery?: {
+        currentStepId: string;
+        answers: Record<string, string | string[] | number>;
+      },
+      requestedSessionId?: string,
+    ) => {
+      const sid = requestedSessionId ?? crypto.randomUUID();
+      setSessionId(sid);
+      const created = await createQuizSession({ sessionId: sid, locale });
+      if (cancelled) return;
+      const recoveredAnswers = recovery?.answers ?? {};
+      const recoveredStep = recovery?.currentStepId ?? null;
+      useQuizStore.getState().restoreSession({
+        id: created.id,
+        currentStepId: recoveredStep,
+        answers: recoveredAnswers,
+        revision: created.revision,
+        isComplete: false,
+        hasUnsavedProgress: Boolean(recovery),
+      });
+      track('quiz_started', { session_id: created.id });
+      if (recovery) {
+        await saveQuizProgress(created.id, recovery.currentStepId, recoveredAnswers, {
+          locale,
+        });
+      }
+    };
 
-    const sid = crypto.randomUUID();
-    setSessionId(sid);
-    track('quiz_started', { session_id: sid });
+    const initialize = async () => {
+      const restart = searchParams.get('restart') === 'true';
+      if (restart) useQuizStore.getState().reset();
 
-    fetch('/api/session/persist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: sid, locale, source: 'quiz' }),
-    })
-      .then((res) => {
-        if (!res.ok) {
-          console.error('[session] Create failed:', res.statusText);
-          // Open the gate anyway so funnel events fall back to best-effort.
-          markSessionReady();
+      const local = useQuizStore.getState();
+
+      // Browser Back from the offer is not a new quiz. The explicit restart
+      // query remains the only way to discard a completed journey.
+      if (!restart && local.isComplete && local.sessionId) {
+        routeToOffer();
+        return;
+      }
+
+      if (!restart && local.sessionId) {
+        try {
+          const server = await readQuizSession(local.sessionId);
+          if (cancelled) return;
+          const pendingAnswers = local.hasUnsavedProgress
+            ? { ...server.quiz_answers, ...local.answers }
+            : server.quiz_answers;
+          const resumeStep = local.hasUnsavedProgress
+            ? local.currentStepId
+            : server.current_step_id;
+          useQuizStore.getState().restoreSession({
+            id: server.id,
+            currentStepId: resumeStep,
+            answers: pendingAnswers,
+            revision: server.revision,
+            isComplete: server.status === 'completed',
+            hasUnsavedProgress: local.hasUnsavedProgress,
+          });
+
+          if (server.status === 'completed') {
+            routeToOffer();
+            return;
+          }
+          if (local.hasUnsavedProgress) {
+            await saveQuizProgress(server.id, resumeStep ?? local.currentStepId, pendingAnswers, {
+              locale,
+            });
+          }
+          return;
+        } catch (error) {
+          const inaccessible = error instanceof QuizSessionApiError && [401, 403].includes(error.status);
+          const missing = error instanceof QuizSessionApiError && error.status === 404;
+          if (missing) {
+            // A previous create request may have been interrupted before its
+            // response arrived. Reuse the same client-generated ID; the
+            // creation helper also deduplicates React Strict Mode replays.
+            const recovery = local.hasUnsavedProgress
+              ? { currentStepId: local.currentStepId, answers: local.answers }
+              : undefined;
+            await createFreshSession(recovery, local.sessionId);
+            return;
+          }
+          if (!inaccessible) throw error;
+          // A local UUID without its signed cookie cannot take ownership of an
+          // old anonymous session. Start an authorized replacement and carry
+          // forward only this browser's explicitly unsaved local progress.
+          const recovery = local.hasUnsavedProgress
+            ? { currentStepId: local.currentStepId, answers: local.answers }
+            : undefined;
+          useQuizStore.getState().reset();
+          await createFreshSession(recovery);
           return;
         }
-        markSessionReady();
-        trackFunnelEvent(sid, 'quiz_started');
+      }
+
+      await createFreshSession();
+    };
+
+    void initialize()
+      .catch((error) => {
+        console.error('[session] Quiz initialization failed:', error);
       })
-      .catch((err) => {
-        console.error('[session] Create failed:', err);
+      .finally(() => {
+        if (cancelled) return;
         markSessionReady();
+        setSessionInitialized(true);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [hydrated, setSessionId, track, searchParams, locale, bootstrapRouter]);
 
-  if (!hydrated) {
+  if (!hydrated || !sessionInitialized) {
     return (
       <main className="lmRoot quizType" style={{ minHeight: '100dvh', background: 'var(--paper)' }}>
         <div style={{ height: 60, borderBottom: '1px solid var(--ink)' }} />
@@ -334,7 +412,7 @@ function QuizPageContent() {
           consentGivenAt,
           consentVersion,
           marketingConsent,
-        }, locale);
+        }, locale, currentStep.stepId, stepPosition);
         if (result.success) {
           // Hash email up front so we can attach it to the Meta Pixel as
           // advanced-matching userData BEFORE firing the Lead event. Without
@@ -346,49 +424,56 @@ function QuizPageContent() {
           const emailHashed = await hashEmail(email);
           setMetaUserData(emailHashed);
           track('lead_captured', { session_id: sessionId, capi_email: email });
-          trackFunnelEvent(sessionId, 'lead_captured');
           identifyPostHogUser(sessionId, email, { locale, currency });
           pushDataLayerEvent('lead_captured', { session_id: sessionId, email_hashed: emailHashed });
         } else {
-          track('lead_capture_error', { session_id: sessionId, saved_locally: true });
+          track('lead_capture_error', { session_id: sessionId, retry_required: true });
+          return false;
         }
+      } else {
+        return false;
       }
       setStage('lead_capture');
       // Continue to whichever step is configured next on the email step.
       goToStep((currentStep as { nextStepId: string }).nextStepId);
+      return true;
     },
-    [setStepAnswer, sessionId, track, setStage, goToStep, locale, currency, currentStep],
+    [
+      setStepAnswer,
+      sessionId,
+      track,
+      setStage,
+      goToStep,
+      locale,
+      currency,
+      currentStep,
+      stepPosition,
+    ],
   );
 
-  // Finalize the quiz (fire completion analytics, sync the full answers
-  // snapshot to sessions.quiz_answers, flip isComplete) and navigate onward.
-  //
-  // The answers sync is the canonical write that the post-payment provisioning
-  // path reads from. Without it, a user who clears localStorage between the
-  // offer and paying loses everything the quiz collected.
-  // /api/session/persist upserts { sessionId, answers } → sessions.quiz_answers
-  // (idempotent, safe to call repeatedly). Errors are logged but non-blocking.
+  // Save the complete final answer state, then ask the backend to validate, score,
+  // and complete the session atomically before the offer becomes reachable.
   const finalizeAndNavigate = useCallback(
     async (path: string) => {
-      if (sessionId) {
-        track('quiz_completed', { session_id: sessionId });
-        trackFunnelEvent(sessionId, 'quiz_completed');
-        try {
-          const answers = useQuizStore.getState().answers;
-          const res = await fetch('/api/session/persist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, answers }),
-          });
-          if (!res.ok) console.error('[quiz] final answer sync failed', res.status);
-        } catch (err) {
-          console.error('[quiz] final answer sync error', err);
-        }
+      if (!sessionId) return;
+      try {
+        const answers = useQuizStore.getState().answers;
+        await saveQuizProgress(sessionId, currentStep.stepId, answers, { locale });
+        const completed = await completeQuizSession(sessionId);
+        completeQuiz(completed.revision);
+        track('quiz_completed', {
+          session_id: sessionId,
+          result_segment: completed.resultSegment,
+        });
+        router.push(path);
+      } catch (error) {
+        // Do not expose the offer while required quiz state is uncommitted.
+        // The terminal screen stays mounted, allowing a reload to resume and
+        // retry from the locally retained answers.
+        console.error('[quiz] Completion failed:', error);
       }
-      completeQuiz();
-      router.push(path);
     },
-    [completeQuiz, sessionId, track, router],
+    [completeQuiz, currentStep.stepId, locale, sessionId, track, router],
   );
 
   const handleLoadingComplete = useCallback(() => finalizeAndNavigate('/offer'), [finalizeAndNavigate]);
@@ -474,7 +559,7 @@ interface StepHandlers {
   onMultiToggle: (storeAs: string, value: string, maxSelection?: number) => void;
   onMultiContinue: (nextStepId: string, storeAs: string, values: string[], labels: string[]) => void;
   onInputContinue: (nextStepId: string, fieldValues: Record<string, string | number>) => void;
-  onEmailSubmit: (data: EmailConsentData) => void;
+  onEmailSubmit: (data: EmailConsentData) => void | boolean | Promise<void | boolean>;
   onInfoContinue: (nextStepId: string) => void;
   // Auto-advancing steps REPLACE themselves in history — otherwise browser-Back
   // from the next step lands on a screen that instantly moves forward again.

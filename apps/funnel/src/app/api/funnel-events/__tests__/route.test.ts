@@ -90,4 +90,20 @@ describe("POST /api/funnel-events", () => {
     expect(response.status).toBe(422);
     expect(mockRpc).not.toHaveBeenCalled();
   });
+
+  it("rejects sensitive event metadata before loading the session", async () => {
+    const response = await post({
+      eventId,
+      sessionId,
+      type: "offer_viewed",
+      metadata: { context: { email: "test@example.com" } },
+    });
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "SENSITIVE_EVENT_METADATA" },
+    });
+    expect(mockMaybeSingle).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
 });

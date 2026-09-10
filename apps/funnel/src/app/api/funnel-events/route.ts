@@ -7,6 +7,7 @@ import {
   databaseErrorResponse,
   errorResponse,
 } from "@/features/quiz/server/http";
+import { validateEventMetadata } from "@/features/quiz/server/event-metadata";
 
 const clientEventTypes = [
   "results_viewed",
@@ -46,11 +47,16 @@ export async function POST(request: Request) {
   const parsed = eventSchema.safeParse(rawBody);
   if (!parsed.success)
     return errorResponse(400, "INVALID_REQUEST", "Funnel event is invalid.");
-  if (JSON.stringify(parsed.data.metadata ?? {}).length > 8 * 1024) {
+  const metadataValidation = validateEventMetadata(parsed.data.metadata ?? {});
+  if (!metadataValidation.ok) {
+    const tooLarge = metadataValidation.code === "PAYLOAD_TOO_LARGE";
     return errorResponse(
-      413,
-      "PAYLOAD_TOO_LARGE",
-      "Event metadata is too large.",
+      tooLarge ? 413 : 422,
+      metadataValidation.code,
+      tooLarge
+        ? "Event metadata is too large."
+        : "Event metadata contains a sensitive field.",
+      metadataValidation.field ? { metadata: metadataValidation.field } : undefined,
     );
   }
   if (parsed.data.occurredAt) {

@@ -25,7 +25,7 @@ export function databaseErrorResponse(error: { message: string; code?: string | 
       {
         error: {
           code: 'STALE_SESSION_REVISION',
-          message: 'A newer quiz snapshot has already been saved.',
+          message: 'Newer quiz progress has already been saved.',
         },
         currentRevision: Number.isInteger(revision) ? revision : undefined,
       },

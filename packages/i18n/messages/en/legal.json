@@ -964,20 +964,12 @@
           "duration": "Up to 1 year"
         },
         {
-          "name": "quiz_store",
+          "name": "quiz-store",
           "provider": "ACME",
           "purpose": "Stores quiz answers and allows recovery of unfinished sessions",
           "type": "localStorage",
           "essential": false,
-          "duration": "Persistent"
-        },
-        {
-          "name": "funnel_pending_leads",
-          "provider": "ACME",
-          "purpose": "Stores email and quiz data for retry mechanisms",
-          "type": "localStorage",
-          "essential": false,
-          "duration": "Persistent"
+          "duration": "Up to 7 days"
         },
         {
           "name": "_fbp, _fbc",

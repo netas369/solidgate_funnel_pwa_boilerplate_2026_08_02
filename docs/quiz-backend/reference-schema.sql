@@ -14,7 +14,7 @@ create table public.sessions (
   visitor_id text,
   email text,
 
-  -- Current quiz truth: one full answer snapshot and one final result snapshot.
+  -- Current quiz truth: one complete answer object and one final result.
   quiz_answers jsonb not null default '{}'::jsonb,
   quiz_result jsonb,
   result_segment text,

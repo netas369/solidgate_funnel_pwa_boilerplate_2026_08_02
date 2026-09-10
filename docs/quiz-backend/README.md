@@ -1,6 +1,6 @@
 # Quiz Backend Documentation
 
-This package documents the reusable backend for the funnel quiz. It is intentionally based on the boilerplate's existing snapshot model: one database row per quiz session, not one row per answer.
+This package documents the reusable backend for the funnel quiz. It uses one database row per quiz session, not one row per answer.
 
 ## Final architecture decision
 
@@ -9,7 +9,7 @@ The quiz backend owns two database tables:
 1. `public.sessions` stores the current state of one quiz journey, including all current answers and the final result.
 2. `public.funnel_events` stores append-only milestone history for that journey.
 
-Do not add separate `quiz_responses`, `quiz_results`, or `funnel_inputs` tables for the standard boilerplate. The JSONB snapshot on `sessions` is deliberate: quiz structures change between products, while the table shape remains stable.
+Do not add separate `quiz_responses`, `quiz_results`, or `funnel_inputs` tables for the standard boilerplate. The complete JSONB answer object on `sessions` is deliberate: quiz structures change between products, while the table shape remains stable.
 
 ## How data moves
 
@@ -21,18 +21,21 @@ Quiz frontend
   -> funnel_events rows (history only)
 ```
 
-When a visitor answers a question, the frontend updates its local answer object and sends the complete current snapshot. The backend validates it and updates the same `sessions` row. A milestone event may be inserted separately, but no answer row is created.
+When a visitor answers a question, the frontend updates its local answer object and sends the complete current answers. The backend validates them and updates the same `sessions` row. A milestone event may be inserted separately, but no answer row is created.
+
+“Save” always means updating the existing session row. It does not create a screenshot, a second session, or an answer row.
 
 ## Required reading order
 
-1. [Backend structure](BACKEND_STRUCTURE.md)
-2. [Data model](DATA_MODEL.md)
-3. [API contract](API_CONTRACT.md)
-4. [Event catalog](EVENT_CATALOG.md)
-5. [Implementation status](IMPLEMENTATION_STATUS.md)
-6. [Realistic failure modes](KNOWN_RISKS.md)
-7. [Acceptance checklist](ACCEPTANCE_CHECKLIST.md)
-8. [Reference schema](reference-schema.sql)
+1. [Human handoff in Lithuanian](HANDOFF.lt.md)
+2. [Backend structure](BACKEND_STRUCTURE.md)
+3. [Data model](DATA_MODEL.md)
+4. [API contract](API_CONTRACT.md)
+5. [Event catalog](EVENT_CATALOG.md)
+6. [Implementation status](IMPLEMENTATION_STATUS.md)
+7. [Realistic failure modes](KNOWN_RISKS.md)
+8. [Acceptance checklist](ACCEPTANCE_CHECKLIST.md)
+9. [Reference schema](reference-schema.sql)
 
 AI coding agents must also follow the repository's root `AGENTS.md` and `CLAUDE.md`.
 
@@ -41,7 +44,7 @@ AI coding agents must also follow the repository's root `AGENTS.md` and `CLAUDE.
 This module owns:
 
 - session creation and resume;
-- progressive saving of the full current answer snapshot;
+- progressive saving of the complete current answer object;
 - current-step progress;
 - captured email and consent state used by the funnel;
 - versioned quiz validation;
@@ -60,4 +63,4 @@ It does not own:
 
 ## Documentation status
 
-The hardened backend is implemented on `quiz-branch-`, while frontend integration is deliberately deferred. See `IMPLEMENTATION_STATUS.md` for the exact boundary. `reference-schema.sql` remains explanatory; the implemented schema lives in `supabase/migrations/00001_baseline.sql`.
+The hardened backend and the main quiz-screen integration are implemented on `quiz-branch-`. See `IMPLEMENTATION_STATUS.md` for the exact boundary and the legacy non-quiz callers that still use the compatibility route. `reference-schema.sql` remains explanatory; the implemented schema lives in `supabase/migrations/00001_baseline.sql`.

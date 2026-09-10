@@ -29,7 +29,7 @@ const completeAnswers = {
 async function post(body: unknown) {
   const { POST } = await import('../route');
   return POST(
-    new Request('http://localhost/api/session/complete', {
+    new Request('http://localhost/api/quiz/session/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -37,7 +37,7 @@ async function post(body: unknown) {
   );
 }
 
-describe('POST /api/session/complete', () => {
+describe('POST /api/quiz/session/complete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthorize.mockResolvedValue({ ok: true, userId: null, via: 'quiz_cookie' });

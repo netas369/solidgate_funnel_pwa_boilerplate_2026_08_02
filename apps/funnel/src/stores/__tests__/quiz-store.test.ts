@@ -15,6 +15,8 @@ describe('useQuizStore', () => {
       answerLabels: {},
       isComplete: false,
       sessionId: null,
+      revision: 0,
+      hasUnsavedProgress: false,
       authorizedViaPurchase: false,
     });
   });
@@ -27,6 +29,8 @@ describe('useQuizStore', () => {
     expect(state.answerLabels).toEqual({});
     expect(state.isComplete).toBe(false);
     expect(state.sessionId).toBeNull();
+    expect(state.revision).toBe(0);
+    expect(state.hasUnsavedProgress).toBe(false);
   });
 
   it('goToStep updates currentStepId and pushes previous to history', () => {
@@ -62,6 +66,7 @@ describe('useQuizStore', () => {
   it('setStepAnswer stores answer by storeAs key', () => {
     useQuizStore.getState().setStepAnswer('motivation', 'patterns');
     expect(useQuizStore.getState().answers.motivation).toBe('patterns');
+    expect(useQuizStore.getState().hasUnsavedProgress).toBe(true);
   });
 
   it('setStepAnswer stores array answers for multi-select', () => {
@@ -114,6 +119,79 @@ describe('useQuizStore', () => {
   it('completeQuiz sets isComplete to true', () => {
     useQuizStore.getState().completeQuiz();
     expect(useQuizStore.getState().isComplete).toBe(true);
+  });
+
+  it('marks progress saved only when the saved values still match local state', () => {
+    useQuizStore.getState().setSessionId('session-1');
+    useQuizStore.getState().setStepAnswer('motivation', 'patterns');
+
+    useQuizStore.getState().markProgressSaved({
+      sessionId: 'session-1',
+      currentStepId: INITIAL_STEP_ID,
+      answers: { motivation: 'patterns' },
+      revision: 1,
+    });
+
+    expect(useQuizStore.getState().revision).toBe(1);
+    expect(useQuizStore.getState().hasUnsavedProgress).toBe(false);
+  });
+
+  it('keeps the unsaved marker when local answers changed during a request', () => {
+    useQuizStore.getState().setSessionId('session-1');
+    useQuizStore.getState().setStepAnswer('motivation', 'patterns');
+    useQuizStore.getState().setStepAnswer('focusAreas', ['career']);
+
+    useQuizStore.getState().markProgressSaved({
+      sessionId: 'session-1',
+      currentStepId: INITIAL_STEP_ID,
+      answers: { motivation: 'patterns' },
+      revision: 1,
+    });
+
+    expect(useQuizStore.getState().revision).toBe(1);
+    expect(useQuizStore.getState().hasUnsavedProgress).toBe(true);
+  });
+
+  it('migrates the old pending-save field without losing local progress', async () => {
+    const migrate = useQuizStore.persist.getOptions().migrate;
+    expect(migrate).toBeDefined();
+
+    const migrated = await migrate?.(
+      {
+        sessionId: 'session-1',
+        hasPendingSnapshot: true,
+      },
+      0,
+    );
+
+    expect(migrated).toMatchObject({
+      sessionId: 'session-1',
+      hasUnsavedProgress: true,
+      persistedAt: expect.any(Number),
+    });
+    expect(migrated).not.toHaveProperty('hasPendingSnapshot');
+  });
+
+  it('discards locally persisted Quiz data after seven days', () => {
+    const merge = useQuizStore.persist.getOptions().merge;
+    expect(merge).toBeDefined();
+
+    const current = useQuizStore.getState();
+    const merged = merge?.(
+      {
+        sessionId: 'expired-session',
+        answers: { sensitiveAnswer: 'expired' },
+        currentStepId: 'step2',
+        persistedAt: Date.now() - 8 * 24 * 60 * 60 * 1000,
+      },
+      current,
+    );
+
+    expect(merged).toMatchObject({
+      sessionId: null,
+      answers: {},
+      currentStepId: INITIAL_STEP_ID,
+    });
   });
 
   it('setAuthLinked sets the auth-linked tri-state', () => {

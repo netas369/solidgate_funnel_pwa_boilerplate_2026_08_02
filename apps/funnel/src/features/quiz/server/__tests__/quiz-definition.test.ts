@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { validateQuizAnswers } from '../quiz-definition';
+import { MAX_QUIZ_ANSWERS_BYTES, validateQuizAnswers } from '../quiz-definition';
 
 describe('validateQuizAnswers', () => {
-  it('accepts a valid partial snapshot', () => {
+  it('accepts a valid partial answer set', () => {
     expect(validateQuizAnswers({ gender: 'female', primaryGoal: 'a' })).toEqual({
       ok: true,
       errors: {},
@@ -15,6 +15,19 @@ describe('validateQuizAnswers', () => {
     expect(result.errors).toEqual({
       gender: 'INVALID_OPTION',
       invented: 'UNKNOWN_ANSWER',
+    });
+  });
+
+  it('rejects wrong answer types and oversized answer state', () => {
+    expect(validateQuizAnswers({ gender: true })).toMatchObject({
+      ok: false,
+      errors: { gender: 'INVALID_OPTION' },
+    });
+    expect(
+      validateQuizAnswers({ fullName: 'x'.repeat(MAX_QUIZ_ANSWERS_BYTES) }),
+    ).toEqual({
+      ok: false,
+      errors: { answers: 'PAYLOAD_TOO_LARGE' },
     });
   });
 

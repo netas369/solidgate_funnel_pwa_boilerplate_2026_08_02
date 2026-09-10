@@ -1,70 +1,78 @@
-# Implementation Status
+# Quiz Implementation Status
 
-This file separates implemented backend behavior from frontend integration that is deliberately deferred.
+This file separates the Quiz module from compatibility behavior owned by other funnel modules. The changes described here are currently local on `quiz-branch-`; they have not been pushed, merged, or deployed.
 
-## Implemented on `quiz-branch-`
+## Implemented Quiz module
 
 ### Database
 
-- The existing two-table model remains: `public.sessions` and `public.funnel_events`.
-- `sessions` now includes `visitor_id`, `quiz_result`, `status`, `revision`, `quiz_variant`, `funnel_variant`, `attribution`, `client_context`, and `completed_at`.
-- `funnel_events` now includes unique `event_id` and `occurred_at`.
-- Unique milestone indexes prevent duplicate `quiz_started`, `lead_captured`, `quiz_completed`, and per-step `step_completed` rows.
-- `create_quiz_session` creates a session and `quiz_started` atomically.
-- `persist_quiz_session_snapshot` updates the same session row, enforces optimistic revision, and writes an optional milestone atomically.
-- `complete_quiz_session` saves the result on the same row and emits `quiz_completed` atomically and idempotently.
-- `record_funnel_event` provides retry-safe event insertion.
+- The two-table model remains: `public.sessions` and `public.funnel_events`.
+- One quiz journey creates one `sessions` row. Every answer save updates `sessions.quiz_answers` on that row.
+- The final server-calculated result is stored in `sessions.quiz_result` and `sessions.result_segment`.
+- `funnel_events` contains durable milestones rather than one row per answer.
+- `create_quiz_session` creates the session and `quiz_started` together.
+- `save_quiz_session_progress` updates the same session row, enforces the expected revision, and can write `step_completed` or `lead_captured` in the same transaction.
+- `complete_quiz_session` stores the result and emits `quiz_completed` atomically and idempotently.
+- `record_funnel_event` provides retry-safe milestone insertion.
 - `link_quiz_session_user` prevents ownership reassignment.
-- Generated TypeScript database types include the new columns and RPC signatures.
 
-### Backend API
+### Quiz-owned API namespace
 
-- `POST /api/session/create` creates a versioned session and sets a signed, HTTP-only session cookie.
-- `POST /api/session/snapshot` validates a full answer snapshot and saves it with `expectedRevision`.
-- `GET /api/session/read` accepts authenticated ownership, the quiz-session cookie, or the existing verified payment cookie.
-- `POST /api/session/complete` validates required reachable answers and computes the result on the server.
-- `POST /api/session/link-user` links only to the authenticated principal.
-- `POST /api/funnel-events` validates client-allowed event names, ownership, metadata, event IDs, and bounded occurrence times; payment-confirmed events are server-only.
-- Quiz answers are validated against the current immutable `boilerplate-v1` definition.
-- Request limits and stable error codes are implemented.
+- `POST /api/quiz/session/create` creates a versioned session and sets a signed, HTTP-only Quiz cookie.
+- `GET /api/quiz/session/read` returns authorized resumable Quiz fields only.
+- `POST /api/quiz/session/save` validates and saves the complete current answer object.
+- `POST /api/quiz/session/complete` validates required reachable answers and calculates the result on the server.
+- `POST /api/quiz/session/link-user` links only to the authenticated principal.
+- `POST /api/funnel-events` remains the shared downstream milestone endpoint until the Funnel/Payment/OTO owners complete their event integration.
 
-### Tests
+### Module isolation
 
-- Route tests cover create, snapshot, completion, event rejection, authorization, invalid answers, and stale revisions.
-- Unit tests cover versioned answer validation and signed-cookie tamper resistance.
-- `supabase/tests/quiz_backend.sql` covers one-row snapshots, atomic events, stale revisions, event idempotency, and immutable completion.
+- Quiz authorization accepts an authenticated Quiz owner or the signed Quiz session cookie. It does not accept a Payment cookie.
+- Quiz session creation does not inspect Payment environment, entitlements, orders, or Solidgate catalog data.
+- Quiz session reads do not append Payment subscription details.
+- Quiz cookie signing uses the independent `QUIZ_SESSION_COOKIE_SECRET`; it does not use `PAYMENT_COOKIE_SECRET`.
+- Quiz lead capture records email, consent, and `welcome_email_pending` in the database. It does not call ActiveCampaign or another email provider directly.
 
-## Deliberately not changed: frontend integration
+### Existing Quiz screens
 
-The user requested backend-only work. Therefore the current quiz frontend still uses its legacy behavior:
+- Fresh journeys call the Quiz create endpoint before accepting progress.
+- The persisted Zustand store keeps the server revision and a local `hasUnsavedProgress` marker.
+- Persisted browser recovery data expires after seven days, and failed lead capture no longer creates a second permanent email-and-answers cache.
+- Existing journeys resume through the authorized Quiz read endpoint.
+- Forward progress sends the complete answer object to the Quiz save endpoint.
+- Saves are serialized per session and use the latest returned revision.
+- A stale revision triggers one authorized read, merges unsaved local values over stored values, and retries once.
+- `step_completed` and `lead_captured` are committed with their matching session update.
+- If both lead-save attempts fail, the email screen remains open with a retry message.
+- The terminal screen waits for the final save and server completion before navigating to the offer.
+- Server completion is the only source of the trusted result and `quiz_completed` milestone.
+- Locally unsaved progress is reconciled during resume.
 
-- It creates and updates sessions through `POST /api/session/persist`.
-- It does not yet store or send `revision`.
-- It does not yet use `POST /api/session/create`, `/api/session/snapshot`, or `/api/session/complete`.
-- It still inserts some funnel events directly from the browser.
-- It does not yet serialize progress saves or retry the latest failed normal snapshot.
+## Compatibility behavior outside Quiz ownership
 
-The legacy `/api/session/persist` route and temporary direct-event RLS policies remain so this backend commit does not break the existing frontend. The legacy special-offer path also retains email-based answer hydration. Do not describe those legacy paths as hardened.
+- `/api/session/persist` remains because Special Offer and Checkout flows still use it. New Quiz-screen code must not use it.
+- Post-quiz Offer/OTO/Checkout analytics still contains a legacy direct `funnel_events` browser insert. Removing its database policy before those owners migrate would silently lose downstream conversion events.
+- `checkout_completed` must ultimately be written by a trusted Payment backend after provider confirmation. The Quiz browser must not claim that a payment completed.
+- Payment, OTO, PWA, Support, Admin, the CPO/CRO API Gate, and PMC Hub behavior are not implemented or changed by the Quiz module.
 
-## Required frontend follow-up
+## Boilerplate customization still required
 
-When frontend work is explicitly authorized:
+- Replace the neutral `boilerplate-v1` questions and scoring with the new product's versioned definition.
+- Create a new immutable `quiz_variant` whenever question meaning, branching, or scoring changes.
+- The product/privacy owner must decide retention and deletion periods.
+- The email owner must process `welcome_email_pending` and clear it only after a successful provider handoff.
 
-1. Add `revision` to the persisted quiz store.
-2. Create sessions through `/api/session/create`.
-3. Serialize progress saves through `/api/session/snapshot`.
-4. Include step and lead events in the snapshot transaction.
-5. Complete through `/api/session/complete` before navigating to the offer.
-6. Send remaining allowed events through `/api/funnel-events`.
-7. Remove direct browser database inserts and their RLS policies.
-8. Remove the legacy `/api/session/persist` path and email-only hydration after all callers migrate.
+## Verification status
 
-## Product customization still required
+Local verification completed on 2026-09-11:
 
-- Replace the neutral `boilerplate-v1` scoring function with product rules.
-- Create a new immutable quiz variant whenever question meaning, branching, or scoring changes.
-- Decide retention and deletion periods with the product/privacy owner.
+- Funnel Vitest suite: 94 files, 1,018 tests passed.
+- Shared-package Vitest suite: 29 files, 342 tests passed.
+- Funnel TypeScript check passed.
+- Changed TypeScript/TSX files have zero ESLint errors or file-level warnings.
+- Next.js production build passed and exposed all five `/api/quiz/session/*` routes.
+- The full baseline migration applied successfully to isolated local Supabase.
+- `supabase/tests/quiz_backend.sql` passed, including ten saves into one session row, stale-write protection, event idempotency, and idempotent completion; its transaction rolled back all test data.
+- `git diff --check` passed.
 
-## Verification note
-
-TypeScript compilation and backend-focused Vitest suites pass. The SQL behavior test is committed but was not executed locally because the Docker daemon/Postgres server was unavailable; run it with the disposable database instructions in `supabase/tests/README.md` before merging or deployment.
+A browser smoke test through the running application remains the final optional end-to-end check. No remote database, deployment, commit, merge, or push was performed.

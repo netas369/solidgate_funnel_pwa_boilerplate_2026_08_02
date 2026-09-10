@@ -2,7 +2,8 @@
 //
 // Four independent payment gates used to hand-maintain their own copy of this
 // list (proxy.ts, lib/payment/solidgate-access.ts, api/solidgate/grant and
-// api/session/read). Renaming a tier in the price map while missing one of them
+// the former mixed-purpose session read route). Renaming a tier in the price
+// map while missing one of them
 // fails CLOSED and silently: solidgate-access starts answering 409
 // 'no_saved_card' for every OTO charge, and proxy.ts redirects paid buyers back
 // to /offer. Nothing throws, nothing logs. Derive once, import everywhere.

@@ -14,9 +14,12 @@ interface QuizSessionCookiePayload {
 }
 
 function getSecret(): string {
-  const secret = process.env.PAYMENT_COOKIE_SECRET;
-  if (!secret) throw new Error('PAYMENT_COOKIE_SECRET env var is not set');
-  return `quiz-session:${secret}`;
+  const secret = process.env.QUIZ_SESSION_COOKIE_SECRET;
+  if (!secret) throw new Error('QUIZ_SESSION_COOKIE_SECRET env var is not set');
+  if (secret.length < 32) {
+    throw new Error('QUIZ_SESSION_COOKIE_SECRET must contain at least 32 characters');
+  }
+  return secret;
 }
 
 function bytesToBase64url(bytes: Uint8Array): string {
