@@ -87,6 +87,16 @@ Tikri žmonės, atidarę reklamą Facebook arba Instagram vidinėje naršyklėje
 
 Šis filtras skirtas švaresnei analitikai, o ne saugumui. Botas gali apsimesti įprasta naršykle, todėl sesijos autorizacija, rate limiting ir kitos apsaugos vis tiek turi veikti atskirai.
 
+## Kokie duomenys siunčiami į Meta
+
+Meta Pixel ir serverio Conversions API gauna svarbiausius kelionės įvykius: Quiz pradžią, žingsnio užbaigimą, viso Quiz užbaigimą, el. pašto išsaugojimą, plano pasirinkimą, checkout pradžią, pirkimą ir tikrą nemokamos prenumeratos pradžią. Tikri OTO pirkimai taip pat siunčiami.
+
+Naršyklė ir serveris tam pačiam įvykiui naudoja tą patį `event_id`, todėl Meta juos sujungia, o ne skaičiuoja du kartus. Pirkimo suma, valiuta ir produktas paimami iš backend patikrinto užsakymo, ne iš naršyklės pateiktų skaičių.
+
+Geresniam reklamos atpažinimui backend gali siųsti užhashintą el. paštą, užhashintą sesijos ID, `_fbp`, `_fbc`, IP, naršyklės `User-Agent`, puslapio adresą, UTM kampaniją, kalbą, Quiz/Funnel versiją bei produkto kainą ir kodą.
+
+Meta negauna Quiz atsakymų, rezultato profilio, `result_segment`, klausimo rakto, tikro el. pašto ar tikro sesijos ID. Žingsnio statistikai siunčiamas tik jo numeris. Visos tikslios taisyklės ir patikrinimo žingsniai aprašyti `META_TRACKING.md`.
+
 ## Quiz API
 
 ```text

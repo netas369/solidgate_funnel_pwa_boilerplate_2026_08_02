@@ -52,6 +52,49 @@ describe('POST /api/quiz/session/create', () => {
     );
   });
 
+  it('persists structured first/last-touch attribution for later Meta matching', async () => {
+    const attribution = {
+      first_touch: {
+        utm_source: 'facebook',
+        utm_campaign: 'summer',
+        fbclid: 'click-1',
+        landing_url: 'https://funnel.example/en/quiz?utm_source=facebook',
+        captured_at: '2026-09-11T08:00:00.000Z',
+      },
+      last_touch: {
+        utm_source: 'facebook',
+        fbclid: 'click-1',
+        captured_at: '2026-09-11T08:00:00.000Z',
+      },
+      fbc: 'fb.1.1789113600000.click-1',
+      fbp: 'fb.1.1789113600000.browser-1',
+    };
+
+    const response = await post({ sessionId, locale: 'en', source: 'quiz', attribution });
+
+    expect(response.status).toBe(201);
+    expect(mockRpc).toHaveBeenCalledWith(
+      'create_quiz_session',
+      expect.objectContaining({ p_attribution: attribution }),
+    );
+  });
+
+  it('rejects malformed Meta attribution cookies instead of persisting bad match data', async () => {
+    const response = await post({
+      sessionId,
+      locale: 'en',
+      source: 'quiz',
+      attribution: {
+        first_touch: { utm_source: 'facebook' },
+        last_touch: { utm_source: 'facebook' },
+        fbc: 'not-a-meta-cookie',
+      },
+    });
+
+    expect(response.status).toBe(400);
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
   it.each([
     'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
     'meta-webindexer/1.1',

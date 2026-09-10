@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useQuizStore } from '@/stores/quiz-store';
+
+const { mockCaptureAttributionParams } = vi.hoisted(() => ({
+  mockCaptureAttributionParams: vi.fn(),
+}));
+
+vi.mock('@/features/analytics/lib/attribution', () => ({
+  captureAttributionParams: mockCaptureAttributionParams,
+}));
+
 import {
   captureLeadRecord,
   completeQuizSession,
@@ -27,6 +36,7 @@ describe('hardened quiz session client', () => {
     useQuizStore.getState().reset();
     useQuizStore.getState().setSessionId(SESSION_ID);
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(EVENT_ID);
+    mockCaptureAttributionParams.mockReturnValue(null);
   });
 
   it('creates the session through the Quiz API namespace', async () => {
@@ -57,6 +67,33 @@ describe('hardened quiz session client', () => {
     await expect(
       createQuizSession({ sessionId: SESSION_ID, locale: 'lt' }),
     ).resolves.toBeNull();
+  });
+
+  it('attaches captured campaign attribution when creating a quiz session', async () => {
+    const attribution = {
+      first_touch: {
+        utm_source: 'facebook',
+        utm_campaign: 'summer',
+        fbclid: 'click-1',
+        landing_url: 'https://funnel.example/en/quiz?utm_source=facebook',
+      },
+      last_touch: {
+        utm_source: 'facebook',
+        utm_campaign: 'summer',
+        fbclid: 'click-1',
+      },
+      fbc: 'fb.1.1789113600000.click-1',
+      fbp: 'fb.1.1789113600000.browser-1',
+    };
+    mockCaptureAttributionParams.mockReturnValue(attribution);
+    mockFetch.mockResolvedValue(
+      jsonResponse({ session: { id: SESSION_ID, revision: 0, currentStepId: null } }, 201),
+    );
+
+    await createQuizSession({ sessionId: SESSION_ID, locale: 'en' });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.attribution).toEqual(attribution);
   });
 
   it('deduplicates concurrent creation for the same client-generated session id', async () => {

@@ -15,12 +15,14 @@ type ClientCapiInput = {
   eventName: string;
   eventId: string;
   sessionId?: string;
-  email?: string;
   customData?: {
     value?: number;
     currency?: string;
     content_ids?: string[];
     content_type?: string;
+    content_name?: string;
+    step_number?: number;
+    content_category?: string;
   };
 };
 
@@ -32,7 +34,6 @@ export function sendCapiFromBrowser(input: ClientCapiInput): void {
     eventId: input.eventId,
     sessionId: input.sessionId,
     eventSourceUrl: window.location.href,
-    email: input.email,
     customData: input.customData,
   });
 

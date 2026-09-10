@@ -1,6 +1,10 @@
 'use client';
 
 import { useQuizStore } from '@/stores/quiz-store';
+import {
+  captureAttributionParams,
+  type AttributionSnapshot,
+} from '@/features/analytics/lib/attribution';
 
 export type QuizAnswers = Record<string, string | string[] | number>;
 
@@ -114,16 +118,17 @@ export async function createQuizSession(input: {
   sessionId?: string;
   locale: string;
   visitorId?: string;
-  attribution?: Record<string, string | null>;
+  attribution?: AttributionSnapshot;
 }): Promise<CreatedQuizSession | null> {
   const create = async () => {
+    const attribution = input.attribution ?? captureAttributionParams() ?? undefined;
     const response = await fetch('/api/quiz/session/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...(input.sessionId ? { sessionId: input.sessionId } : {}),
         ...(input.visitorId ? { visitorId: input.visitorId } : {}),
-        ...(input.attribution ? { attribution: input.attribution } : {}),
+        ...(attribution ? { attribution } : {}),
         locale: input.locale,
         source: 'quiz',
       }),

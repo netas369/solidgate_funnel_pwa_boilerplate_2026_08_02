@@ -32,10 +32,11 @@ When a visitor answers a question, the frontend updates its local answer object 
 3. [Data model](DATA_MODEL.md)
 4. [API contract](API_CONTRACT.md)
 5. [Event catalog](EVENT_CATALOG.md)
-6. [Implementation status](IMPLEMENTATION_STATUS.md)
-7. [Realistic failure modes](KNOWN_RISKS.md)
-8. [Acceptance checklist](ACCEPTANCE_CHECKLIST.md)
-9. [Reference schema](reference-schema.sql)
+6. [Meta tracking contract](META_TRACKING.md)
+7. [Implementation status](IMPLEMENTATION_STATUS.md)
+8. [Realistic failure modes](KNOWN_RISKS.md)
+9. [Acceptance checklist](ACCEPTANCE_CHECKLIST.md)
+10. [Reference schema](reference-schema.sql)
 
 AI coding agents must also follow the repository's root `AGENTS.md` and `CLAUDE.md`.
 
@@ -51,6 +52,7 @@ This module owns:
 - server-side completion and result calculation;
 - anonymous-to-authenticated user linking;
 - durable funnel milestones.
+- safe Meta Pixel/CAPI quiz and conversion event integration.
 
 It does not own:
 

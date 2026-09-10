@@ -1,9 +1,16 @@
 'use client';
 
 import Script from 'next/script';
+import { useSyncExternalStore } from 'react';
+import { isKnownMetaCrawler } from '@/features/quiz/server/meta-crawler';
 import { initMetaPixel } from '../lib/meta-pixel';
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+
+const subscribeToBrowserIdentity = () => () => undefined;
+const serverDisallowsPixel = () => false;
+const browserAllowsPixel = () =>
+  !isKnownMetaCrawler(window.navigator.userAgent);
 
 /**
  * fbq queue setup snippet  -  queues fbq() calls until fbevents.js finishes loading.
@@ -16,7 +23,15 @@ const FBQ_QUEUE_SNIPPET = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=func
  * Renders nothing if NEXT_PUBLIC_META_PIXEL_ID is not set.
  */
 export function MetaPixel() {
-  if (!PIXEL_ID) return null;
+  // Render nothing on the server, then expose the scripts only after hydration
+  // confirms this is not a known Meta link-preview/indexing crawler.
+  const allowPixel = useSyncExternalStore(
+    subscribeToBrowserIdentity,
+    browserAllowsPixel,
+    serverDisallowsPixel,
+  );
+
+  if (!PIXEL_ID || !allowPixel) return null;
 
   return (
     <>
@@ -43,18 +58,6 @@ export function MetaPixel() {
           console.warn('[meta-pixel] fbevents.js failed to load from CDN')
         }
       />
-
-      {/* noscript fallback */}
-      <noscript>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          height="1"
-          width="1"
-          style={{ display: 'none' }}
-          src={`https://www.facebook.com/tr?id=${PIXEL_ID}&ev=PageView&noscript=1`}
-          alt=""
-        />
-      </noscript>
     </>
   );
 }

@@ -15,7 +15,7 @@
 >
 > The predecessor's owner decided to ship **without a cookie-consent banner**:
 > analytics/marketing consent was treated as granted by default and all
-> trackers (PostHog, GTM, Meta Pixel, Vercel Analytics) load unconditionally.
+> trackers (PostHog, GTM, Meta Pixel/CAPI, Vercel Analytics) load unconditionally.
 > **The boilerplate still behaves that way.**
 >
 > That was one company's risk decision for one product, taken with their own
@@ -65,6 +65,7 @@
 | `payment_access` | HTTP cookie (HttpOnly, Secure, SameSite=Lax) | HMAC-signed `paymentIntentId:sessionId` | 90 minutes | Yes  -  payment flow | No (strictly necessary) |
 | Supabase auth cookies | HTTP cookie | Auth session token | Session | Yes  -  authentication | No (strictly necessary) |
 | PostHog cookies | JS cookie | Analytics identifiers, session replay | Varies (up to 1 year) | No  -  analytics | **Yes** |
+| `_fbp`, `_fbc` | JS cookie | Meta browser identifier and ad-click attribution | Up to 90 days in this template | No - marketing attribution | **Yes** |
 | `quiz-store` | localStorage | Full quiz answers, session ID, step history | 7 days from the latest persisted change | Debatable  -  UX recovery | **Yes** (contains PII + health data) |
 | `solidgate_main_recovery_v1` | localStorage | Payment recovery handle | Until cleared | Yes  -  payment recovery | No (no PII) |
 
@@ -77,6 +78,7 @@
 |---------|------|-----------|-----------------|---------|
 | **PostHog** | Processor | Session ID, email (raw), event names, event metadata, page URLs | EU (`eu.i.posthog.com`) | Product analytics, funnel tracking |
 | **Google Tag Manager** | Processor / Controller | Hashed email (SHA-256), session ID, event names, metadata | US (Google) | Retargeting, conversion tracking, audience building |
+| **Meta Pixel / Conversions API** | Processor / Controller | Hashed email and session ID, `_fbp`, `_fbc`, IP, User-Agent, source URL, safe campaign/event/product/revenue context; no quiz answers or result profile | Verify the contracted Meta region/transfers | Attribution, retargeting, conversion optimization |
 | **Stripe** | Processor | Email, payment card (tokenized), amounts, customer ID, metadata | US (Stripe Inc.) | Payment processing |
 | **Vercel Analytics** | Processor | Page URLs, Web Vitals, referrer, user agent | US (Vercel Inc.) | Performance monitoring |
 | **Vercel Speed Insights** | Processor | Page load metrics, connection type | US (Vercel Inc.) | Real User Monitoring |

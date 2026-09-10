@@ -44,9 +44,23 @@ Request:
   "locale": "en",
   "source": "quiz",
   "attribution": {
-    "utm_source": "meta",
-    "utm_medium": "paid_social",
-    "utm_campaign": "example_launch"
+    "first_touch": {
+      "utm_source": "meta",
+      "utm_medium": "paid_social",
+      "utm_campaign": "example_launch",
+      "fbclid": "example_click_id",
+      "landing_url": "https://example.com/en/quiz?utm_source=meta",
+      "captured_at": "2026-09-11T08:00:00.000Z"
+    },
+    "last_touch": {
+      "utm_source": "meta",
+      "utm_medium": "paid_social",
+      "utm_campaign": "example_launch",
+      "fbclid": "example_click_id",
+      "captured_at": "2026-09-11T08:00:00.000Z"
+    },
+    "fbc": "fb.1.1789113600000.example_click_id",
+    "fbp": "fb.1.1789113600000.123456789"
   }
 }
 ```
@@ -238,4 +252,4 @@ The backend validates authorization, event name, metadata, size, and any client 
 | Email                            | 320 characters |
 | Locale                           |  35 characters |
 | Variant/source/step key          | 100 characters |
-| One attribution string           | 255 characters |
+| One attribution string           | 500 characters |

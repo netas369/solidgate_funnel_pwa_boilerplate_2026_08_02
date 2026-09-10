@@ -22,6 +22,7 @@ vi.mock('@repo/shared/email/send-welcome-email', () => ({
 vi.mock('@/features/analytics/lib/meta-capi', () => ({
   sendMetaCapiEvent: metaCapiMocks.sendMetaCapiEvent,
   hashMetaEmail: (email: string) => `hashed:${email.trim().toLowerCase()}`,
+  hashMetaExternalId: (id: string) => `hashed-id:${id}`,
 }));
 
 const {
@@ -291,6 +292,7 @@ describe('durable Solidgate fulfillment', () => {
       eventTimeSec: Math.floor(Date.parse(RECENT_ORDER_CREATED_AT) / 1000),
       userData: {
         em: 'hashed:paid-buyer@example.com',
+        external_id: 'hashed-id:session-1',
         fbp: 'fb.1.111.222',
         fbc: 'fb.1.111.CLICKID',
         client_ip_address: '203.0.113.7',
@@ -299,7 +301,12 @@ describe('durable Solidgate fulfillment', () => {
       customData: {
         value: 5,
         currency: 'EUR',
+        content_ids: ['BRAND_000000_SUB'],
         content_type: 'product',
+        content_name: 'BRAND_000000_SUB',
+        contents: [{ id: 'BRAND_000000_SUB', quantity: 1, item_price: 5 }],
+        num_items: 1,
+        order_id: 'session-1:trial3:1',
       },
     });
   });

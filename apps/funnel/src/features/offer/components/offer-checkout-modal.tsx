@@ -66,10 +66,11 @@ export function OfferCheckoutModal({
     if (!open || !tier || firedForTier.current === tier.id) return;
     firedForTier.current = tier.id;
     track('checkout_opened', {
+      session_id: sessionId ?? undefined,
       ...(checkoutProductContext(tier.productId, locale) ?? { product: tier.productId }),
       ...attributionEventProperties(),
     });
-  }, [open, tier, locale, track]);
+  }, [open, tier, sessionId, locale, track]);
 
   // Close on Escape key
   useEffect(() => {

@@ -53,3 +53,7 @@ Existing implementations may use `oto_viewed`, `oto_accepted`, and `oto_declined
 - frontend performance timings;
 - raw device fingerprints;
 - debug logs.
+
+## Meta analytics mirror
+
+Selected browser analytics events are also mirrored to Meta Pixel and CAPI with one shared event ID. `quiz_started` becomes `ViewContent`; step and completion milestones become the custom `QuizStepCompleted` and `QuizCompleted` events; lead, tier, checkout, Purchase, and StartTrial use Meta standard events. This analytics mirror does not create extra database answer rows. See [Meta tracking contract](META_TRACKING.md) for the exact fields, order verification, bot filtering, and privacy boundary.

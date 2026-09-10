@@ -8,6 +8,7 @@ import { useQuizStore } from '@/stores/quiz-store';
 import { useFunnelStore } from '@/stores/funnel-store';
 import { useQuizHydration } from '@/features/quiz/hooks/use-quiz-hydration';
 import { useAnalytics } from '@/features/analytics/hooks/use-analytics';
+import { checkoutProductContext } from '@/features/analytics/lib/checkout-context';
 import { purchaseEventValue } from '@/features/analytics/lib/purchase-value';
 import { useScrollToTop } from '@/lib/hooks/use-scroll-to-top';
 import { OFFER_PRICING_TIERS, type OfferPickerId } from '../config/offer-data';
@@ -211,7 +212,17 @@ export function OfferPage({ variant = 'main', preview = false }: OfferPageProps 
             selectedId={(selectedTierId as OfferPickerId) ?? 'trial4'}
             onSelect={(id) => {
               setSelectedTierId(id);
-              if (!preview) track('tier_selected', { product: id });
+              if (!preview) {
+                const selected = OFFER_PRICING_TIERS.find((tier) => tier.id === id);
+                track('tier_selected', {
+                  session_id: effectiveSessionId ?? undefined,
+                  ...(selected
+                    ? (checkoutProductContext(selected.productId, locale) ?? {
+                        product: selected.productId,
+                      })
+                    : { product: id }),
+                });
+              }
             }}
             onContinue={() => {
               if (preview) {

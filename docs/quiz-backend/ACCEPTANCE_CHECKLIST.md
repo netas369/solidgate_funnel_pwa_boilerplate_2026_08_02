@@ -62,12 +62,25 @@ The hardened quiz backend is complete only when every required item below is tes
 - [x] `IMPLEMENTATION_STATUS.md` accurately distinguishes completed and proposed behavior.
 - [x] No deployment or remote migration was performed.
 
+## Meta tracking
+
+- [x] Known Meta crawlers do not load the Pixel or create a Quiz session.
+- [x] Campaign/click attribution is captured even when PostHog is disabled.
+- [x] Pixel and CAPI copies share the same event name and event ID.
+- [x] Lead CAPI matching reads persisted email and hashes it server-side.
+- [x] CAPI includes hashed `external_id`, `_fbp`, `_fbc`, IP, User-Agent, source URL, variant, locale, and safe campaign context when available.
+- [x] AddToCart/checkout events include stable product context and price where available.
+- [x] Purchase/StartTrial amount, currency, order, and product are verified from server order state.
+- [x] Genuine OTO purchases are reported and have a distinct provider-order event ID.
+- [x] Answers, result profiles, question keys, raw email, and raw identifiers are excluded from Meta payloads.
+- [ ] A maintainer has confirmed event receipt, match data, and deduplication in Meta Events Manager Test Events using real configured credentials.
+
 ## Local evidence
 
-- Funnel suite: 95 files and 1,038 tests passed.
+- Funnel suite: 96 files and 1,048 tests passed.
 - Shared package: 29 files and 342 tests passed.
 - Funnel TypeScript check passed.
-- Changed TypeScript/TSX files have zero ESLint errors or file-level warnings.
+- Changed TypeScript/TSX files have zero ESLint errors; existing legacy OfferPage warnings remain non-blocking.
 - Next.js production build passed and lists all five `/api/quiz/session/*` routes.
 - The full baseline migration applied successfully to isolated local Supabase.
 - `supabase/tests/quiz_backend.sql` passed and rolled back its test data. It covers one-row persistence across ten saves, revision conflicts, event idempotency, and idempotent completion.

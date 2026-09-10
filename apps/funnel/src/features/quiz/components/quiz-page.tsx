@@ -424,9 +424,9 @@ function QuizPageContent() {
           // advanced-matching userData BEFORE firing the Lead event. Without
           // this, Meta has no PII to match the pageview/lead → iOS 14+ user,
           // and match quality drops dramatically. The same hash also goes to
-          // GTM for downstream pixels. capi_email passes the raw value to the
-          // server-side Conversions API route, which hashes it there — the
-          // raw email never reaches PostHog/GTM/fbq.
+          // GTM for downstream pixels. The CAPI route reads the just-persisted
+          // email from the session and hashes it server-side; raw email never
+          // reaches PostHog/GTM/fbq or the browser request body.
           const emailHashed = await hashEmail(email);
           setMetaUserData(emailHashed);
           track('lead_captured', { session_id: sessionId, capi_email: email });

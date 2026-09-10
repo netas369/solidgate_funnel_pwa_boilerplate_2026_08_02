@@ -51,6 +51,20 @@ This file separates the Quiz module from compatibility behavior owned by other f
 - Server completion is the only source of the trusted result and `quiz_completed` milestone.
 - Locally unsaved progress is reconciled during resume.
 
+### Meta analytics integration
+
+- Campaign/click attribution is captured even when PostHog is disabled and is attached to session creation.
+- First/last-touch UTM data, `fbclid`, `_fbc`, and `_fbp` survive in `sessions.attribution` for later conversion matching.
+- `quiz_started`, step completion, quiz completion, lead, tier selection, checkout start, paid Purchase, and verified StartTrial are mapped to Meta.
+- Pixel and CAPI use the same event ID for deduplication; the main Purchase retains its durable outbox backstop.
+- Genuine OTO purchases are no longer suppressed from Meta.
+- CAPI adds hashed email when available, hashed session `external_id`, `_fbc`, `_fbp`, IP, User-Agent, source URL, variants, locale, safe campaign context, and product/revenue context.
+- Browser-provided Purchase revenue is ignored; order amount, currency, product, state, and session binding are verified server-side.
+- Answers, result segments, question keys, raw email, and raw identifiers are excluded from Meta payloads.
+- Known Meta crawlers neither create Quiz data nor load the Meta Pixel scripts.
+
+The full reusable rules and Events Manager handoff check are in `META_TRACKING.md`.
+
 ## Compatibility behavior outside Quiz ownership
 
 - `/api/session/persist` remains because Special Offer and Checkout flows still use it. New Quiz-screen code must not use it.
@@ -69,13 +83,13 @@ This file separates the Quiz module from compatibility behavior owned by other f
 
 Local verification completed on 2026-09-11:
 
-- Funnel Vitest suite: 95 files, 1,038 tests passed.
+- Funnel Vitest suite: 96 files, 1,048 tests passed.
 - Shared-package Vitest suite: 29 files, 342 tests passed.
 - Funnel TypeScript check passed.
-- Changed TypeScript/TSX files have zero ESLint errors or file-level warnings.
+- Changed TypeScript/TSX files have zero ESLint errors; existing legacy OfferPage warnings remain non-blocking.
 - Next.js production build passed and exposed all five `/api/quiz/session/*` routes.
 - The full baseline migration applied successfully to isolated local Supabase.
 - `supabase/tests/quiz_backend.sql` passed, including ten saves into one session row, stale-write protection, event idempotency, and idempotent completion; its transaction rolled back all test data.
 - `git diff --check` passed.
 
-A browser smoke test through the running application remains the final optional end-to-end check. No remote database, deployment, commit, merge, or push was performed.
+A browser smoke test through the running application and Meta Events Manager Test Events remain the final environment-dependent checks. No remote database migration, deployment, or merge was performed. The implementation is maintained only on `quiz-branch-` until the team deliberately merges it.

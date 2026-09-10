@@ -23,9 +23,37 @@ const allowedSources = [
   'special-offer-free',
 ] as const;
 
+const attributionValue = z.string().min(1).max(500);
+const attributionTouchSchema = z
+  .object({
+    utm_source: attributionValue.optional(),
+    utm_medium: attributionValue.optional(),
+    utm_campaign: attributionValue.optional(),
+    utm_content: attributionValue.optional(),
+    utm_term: attributionValue.optional(),
+    fbclid: attributionValue.optional(),
+    gclid: attributionValue.optional(),
+    gbraid: attributionValue.optional(),
+    wbraid: attributionValue.optional(),
+    ttclid: attributionValue.optional(),
+    msclkid: attributionValue.optional(),
+    landing_url: attributionValue.optional(),
+    referrer: attributionValue.optional(),
+    captured_at: z.iso.datetime({ offset: true }).optional(),
+  })
+  .strict();
 const attributionSchema = z
-  .record(z.string().max(100), z.string().max(255).nullable())
-  .refine((value) => Object.keys(value).length <= 20, 'Too many attribution fields');
+  .object({
+    first_touch: attributionTouchSchema,
+    last_touch: attributionTouchSchema,
+    fbc: attributionValue
+      .regex(/^fb\.[0-9]+\.[0-9]{10,16}\.[A-Za-z0-9._-]{1,400}$/)
+      .optional(),
+    fbp: attributionValue
+      .regex(/^fb\.[0-9]+\.[0-9]{10,16}\.[A-Za-z0-9._-]{1,400}$/)
+      .optional(),
+  })
+  .strict();
 
 const createSchema = z
   .object({

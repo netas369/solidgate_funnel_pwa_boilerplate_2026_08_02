@@ -1,7 +1,7 @@
 /**
  * Generate an event ID used to dedupe a browser pixel event against the
  * matching server-side Conversions API event. Meta dedupes by (event_name,
- * eventID) within a 28-day window, so the same UUID must be passed to both
+ * eventID), so the same UUID must be passed to both
  * fbq('track', name, params, { eventID }) on the client AND the CAPI POST
  * server-side.
  *
