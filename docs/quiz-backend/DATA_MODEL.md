@@ -13,6 +13,8 @@ sessions (one row per quiz journey)
 
 This is the current truth. Every save updates the same row.
 
+A valid visitor receives this row when the Quiz screen becomes active, even when they close it without clicking. That empty, inactive row is intentional evidence for first-screen drop-off. Known Meta crawlers are rejected by the create API before reaching this table; real Facebook and Instagram in-app browsers remain valid visitors.
+
 | Column                  | Type        | Required | Purpose                                                          |
 | ----------------------- | ----------- | -------: | ---------------------------------------------------------------- |
 | `id`                    | UUID        |      Yes | Session primary key                                              |

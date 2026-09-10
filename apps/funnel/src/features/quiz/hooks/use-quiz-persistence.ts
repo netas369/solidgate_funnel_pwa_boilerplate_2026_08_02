@@ -73,9 +73,14 @@ export interface CompletionResponse {
 }
 
 const sessionQueues = new Map<string, Promise<unknown>>();
+type CreatedQuizSession = {
+  id: string;
+  revision: number;
+  currentStepId: string | null;
+};
 const sessionCreations = new Map<
   string,
-  Promise<{ id: string; revision: number; currentStepId: string | null }>
+  Promise<CreatedQuizSession | null>
 >();
 
 async function readApiError(response: Response): Promise<QuizSessionApiError> {
@@ -110,7 +115,7 @@ export async function createQuizSession(input: {
   locale: string;
   visitorId?: string;
   attribution?: Record<string, string | null>;
-}): Promise<{ id: string; revision: number; currentStepId: string | null }> {
+}): Promise<CreatedQuizSession | null> {
   const create = async () => {
     const response = await fetch('/api/quiz/session/create', {
       method: 'POST',
@@ -123,6 +128,10 @@ export async function createQuizSession(input: {
         source: 'quiz',
       }),
     });
+    // Known Meta crawlers receive the quiz HTML but no persistent session.
+    // Returning null keeps their page render quiet while suppressing local,
+    // database, and third-party quiz_started tracking.
+    if (response.status === 204) return null;
     const body = await requireJson<{
       session: { id: string; revision: number; currentStepId: string | null };
     }>(response);
@@ -245,6 +254,13 @@ export function saveQuizProgress(
         // start. Recreate only the same client-minted ID, receive its signed
         // credential, and then save the locally retained complete answer set.
         const created = await createQuizSession({ sessionId, locale: options.locale });
+        if (!created) {
+          throw new QuizSessionApiError(
+            403,
+            'AUTOMATED_TRAFFIC',
+            'Automated traffic cannot create a persistent quiz session.',
+          );
+        }
         answersToSave = useQuizStore.getState().reconcileProgress({
           sessionId,
           answers: submittedAnswers,

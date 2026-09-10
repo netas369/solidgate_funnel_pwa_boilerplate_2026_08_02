@@ -13,6 +13,7 @@ import {
   QUIZ_VARIANT,
 } from '@/features/quiz/server/quiz-definition';
 import { errorResponse } from '@/features/quiz/server/http';
+import { isKnownMetaCrawler } from '@/features/quiz/server/meta-crawler';
 
 const allowedSources = [
   'quiz',
@@ -63,6 +64,20 @@ function clientContext(request: Request): Json {
 }
 
 export async function POST(request: Request) {
+  // Keep session creation tied to page activation so zero-interaction exits
+  // remain measurable. Exclude only explicit Meta crawler UAs before signing a
+  // cookie or writing quiz_started/session data. Do not use fbclid, referrer,
+  // FBAN, FBAV, or Instagram as bot signals: real ad visitors contain them.
+  if (isKnownMetaCrawler(request.headers.get('user-agent'))) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        'Cache-Control': 'no-store',
+        Vary: 'User-Agent',
+      },
+    });
+  }
+
   let rawBody: unknown;
   try {
     rawBody = await request.json();

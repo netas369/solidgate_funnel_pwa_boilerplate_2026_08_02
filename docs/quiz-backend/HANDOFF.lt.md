@@ -77,6 +77,16 @@ Kiekvieno atsakymo paspaudimo į `funnel_events` rašyti nereikia.
 
 Žodis „snapshot“ Quiz API nebenaudojamas. `save` paprasčiausiai reiškia esamos `sessions` eilutės atnaujinimą.
 
+## Meta botų filtravimas
+
+Tikram lankytojui sesija sukuriama iškart, kai aktyvuojamas Quiz ekranas. Nereikia laukti pirmo mygtuko paspaudimo. Todėl žmogus, kuris atidarė Quiz ir išėjo nieko nepaspaudęs, lieka matomas pirmo ekrano drop-off statistikoje.
+
+Prieš kuriant sesiją backend patikrina `User-Agent`. Žinomi Meta crawleriai, pavyzdžiui `facebookexternalhit`, `meta-webindexer`, `meta-externalads`, `meta-externalagent`, `meta-externalfetcher` ir senas `Facebot`, gauna tuščią `204` atsakymą. Jiems nekuriama `sessions` eilutė, slapukas arba `quiz_started` įvykis.
+
+Tikri žmonės, atidarę reklamą Facebook arba Instagram vidinėje naršyklėje, nėra blokuojami. `fbclid`, Meta referrer, `FBAN`, `FBAV` ir `Instagram` nėra laikomi boto įrodymu.
+
+Šis filtras skirtas švaresnei analitikai, o ne saugumui. Botas gali apsimesti įprasta naršykle, todėl sesijos autorizacija, rate limiting ir kitos apsaugos vis tiek turi veikti atskirai.
+
 ## Quiz API
 
 ```text
@@ -136,6 +146,9 @@ Jau naudotos `quiz_variant` versijos klausimų reikšmių ir scoring taisyklių 
 ## Ką patikrinti prieš perdavimą
 
 - Naujas quiz sukuria tik vieną `sessions` eilutę.
+- Tikro lankytojo sesija sukuriama nelaukiant pirmo paspaudimo.
+- Žinomas Meta crawleris nesukuria sesijos ar `quiz_started` įvykio.
+- Facebook ir Instagram vidinės naršyklės nėra klaidingai užblokuojamos.
 - Dešimt atsakymų vis tiek palieka tik vieną sesijos eilutę.
 - Perkrovus puslapį atsakymai ir žingsnis atsistato.
 - Greiti išsaugojimai nepraranda naujausių atsakymų.

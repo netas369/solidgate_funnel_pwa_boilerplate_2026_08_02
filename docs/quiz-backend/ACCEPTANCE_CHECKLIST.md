@@ -33,6 +33,9 @@ The hardened quiz backend is complete only when every required item below is tes
 
 ## Session lifecycle
 
+- [x] A normal Quiz screen load creates a session before any click, preserving zero-interaction drop-off.
+- [x] Known Meta crawler User-Agents create no session, cookie, or `quiz_started` event.
+- [x] Facebook and Instagram in-app browsers remain treated as real visitors.
 - [ ] `quiz_variant`, `funnel_variant`, first-touch attribution, and original source remain immutable.
 - [x] Only active sessions accept normal progress saves at the API boundary.
 - [x] Completion validates all required reachable answers.
@@ -61,7 +64,7 @@ The hardened quiz backend is complete only when every required item below is tes
 
 ## Local evidence
 
-- Funnel suite: 94 files and 1,018 tests passed.
+- Funnel suite: 95 files and 1,038 tests passed.
 - Shared package: 29 files and 342 tests passed.
 - Funnel TypeScript check passed.
 - Changed TypeScript/TSX files have zero ESLint errors or file-level warnings.

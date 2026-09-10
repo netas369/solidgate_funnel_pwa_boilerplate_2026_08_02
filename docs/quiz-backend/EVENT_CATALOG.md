@@ -23,7 +23,7 @@ Quiz-screen milestones use the session transaction that owns the matching state 
 
 | Event | Emitted when | Owner | Idempotency |
 |---|---|---|---|
-| `quiz_started` | First quiz screen becomes active | Client request, backend validated | Once per session |
+| `quiz_started` | First quiz screen becomes active for a non-crawler visitor, before any click is required | Client request, backend validated | Once per session |
 | `step_completed` | Valid step progress is saved | Save transaction | Unique `event_id`; normally once per session/step |
 | `lead_captured` | Valid email/consent state is committed | Backend | Once per session |
 | `quiz_completed` | Result and completed session are committed | Completion transaction | Exactly once per session |
@@ -43,6 +43,7 @@ Existing implementations may use `oto_viewed`, `oto_accepted`, and `oto_declined
 - Do not include email, full answers, result payloads, IP addresses, auth/session credentials, payment card data, or message content.
 - Add a new event only when it represents a durable business fact used by recovery, operations, or reporting.
 - Update this catalog, runtime allowlist, database constraint, reporting queries, and tests together.
+- Known Meta crawlers are filtered before session creation, so they cannot create `quiz_started` or later Quiz milestones. Do not filter on `fbclid`, Meta referrers, `FBAN`, `FBAV`, or `Instagram`; those signals also belong to real visitors.
 
 ## Keep these in product analytics instead
 

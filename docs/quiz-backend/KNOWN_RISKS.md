@@ -65,3 +65,11 @@ These are concrete risks when the full current answer object is saved into one s
 **Impact:** offer segmentation, reporting, or personalization can be falsified.
 
 **Fix:** the completion service calculates results from the stored, validated answers and a versioned scoring definition. The client only requests completion.
+
+## 9. Meta crawlers inflate first-screen traffic
+
+**How it happens:** a Meta link-preview, ad, indexing, or AI crawler reaches the Quiz and is treated like a real visitor during automatic session creation.
+
+**Impact:** `sessions` and `quiz_started` counts increase without a person ever seeing or using the Quiz, making first-screen drop-off look worse.
+
+**Fix:** keep creating sessions when the screen becomes active so genuine zero-click exits remain visible, but reject explicit Meta crawler User-Agent tokens before cookie signing or database access. Do not use `fbclid`, a Meta referrer, `FBAN`, `FBAV`, or `Instagram` as bot evidence because real ad visitors carry them. User-Agent filtering improves reporting quality but is not a security boundary; use edge bot management or a challenge only if disguised automated abuse becomes material.

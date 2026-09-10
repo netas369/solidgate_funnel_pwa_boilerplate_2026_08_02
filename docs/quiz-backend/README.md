@@ -61,6 +61,8 @@ It does not own:
 - raw product analytics;
 - deployment.
 
+The reference implementation creates a session as soon as the Quiz screen becomes active. This deliberately preserves visitors who leave before their first click as measurable first-screen drop-off. The create API excludes only known Meta crawler User-Agent tokens before any session or event write; Facebook and Instagram in-app browsers used by real visitors are not excluded.
+
 ## Documentation status
 
 The hardened backend and the main quiz-screen integration are implemented on `quiz-branch-`. See `IMPLEMENTATION_STATUS.md` for the exact boundary and the legacy non-quiz callers that still use the compatibility route. `reference-schema.sql` remains explanatory; the implemented schema lives in `supabase/migrations/00001_baseline.sql`.

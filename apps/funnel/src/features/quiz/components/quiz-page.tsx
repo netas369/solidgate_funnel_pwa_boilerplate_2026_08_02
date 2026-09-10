@@ -148,6 +148,12 @@ export function QuizPage() {
       setSessionId(sid);
       const created = await createQuizSession({ sessionId: sid, locale });
       if (cancelled) return;
+      if (!created) {
+        // The API identified a known Meta crawler. Remove the temporary local
+        // ID, render the public quiz screen normally, and emit no quiz events.
+        useQuizStore.getState().reset();
+        return;
+      }
       const recoveredAnswers = recovery?.answers ?? {};
       const recoveredStep = recovery?.currentStepId ?? null;
       useQuizStore.getState().restoreSession({

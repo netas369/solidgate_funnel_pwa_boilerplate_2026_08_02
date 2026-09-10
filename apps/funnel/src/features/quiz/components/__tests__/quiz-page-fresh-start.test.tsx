@@ -208,6 +208,17 @@ describe('QuizPage session bootstrap', () => {
     });
   });
 
+  it('renders without persisting or tracking when a known Meta crawler is filtered', async () => {
+    mockCreateQuizSession.mockResolvedValue(null);
+    const { QuizPage } = await import('../quiz-page');
+    const { findByTestId } = render(<QuizPage />);
+
+    expect(await findByTestId('radio-step')).toBeInTheDocument();
+    expect(mockQuizStoreState.reset).toHaveBeenCalled();
+    expect(mockRestoreSession).not.toHaveBeenCalled();
+    expect(mockTrack).not.toHaveBeenCalledWith('quiz_started', expect.anything());
+  });
+
   it('resumes an existing session through the authorized read endpoint', async () => {
     mockQuizStoreState.sessionId = 'existing-session-id';
     mockReadQuizSession.mockResolvedValue({

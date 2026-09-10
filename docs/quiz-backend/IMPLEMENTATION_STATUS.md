@@ -1,6 +1,6 @@
 # Quiz Implementation Status
 
-This file separates the Quiz module from compatibility behavior owned by other funnel modules. The changes described here are currently local on `quiz-branch-`; they have not been pushed, merged, or deployed.
+This file separates the Quiz module from compatibility behavior owned by other funnel modules. The Quiz implementation is maintained on `quiz-branch-`; it is not merged into `main` or deployed by this documentation.
 
 ## Implemented Quiz module
 
@@ -35,7 +35,10 @@ This file separates the Quiz module from compatibility behavior owned by other f
 
 ### Existing Quiz screens
 
-- Fresh journeys call the Quiz create endpoint before accepting progress.
+- Fresh journeys call the Quiz create endpoint when the screen becomes active, before accepting progress or requiring a click. This preserves genuine zero-interaction drop-off.
+- The create endpoint filters known Meta crawler User-Agent tokens before signing a cookie or calling the database, so they create no session or `quiz_started` event.
+- Facebook and Instagram in-app browsers are explicitly allowed; `fbclid`, Meta referrers, `FBAN`, `FBAV`, and `Instagram` are not treated as bot evidence.
+- A filtered crawler receives an empty `204` response and the client renders the public first screen without keeping the temporary session ID or emitting Quiz analytics.
 - The persisted Zustand store keeps the server revision and a local `hasUnsavedProgress` marker.
 - Persisted browser recovery data expires after seven days, and failed lead capture no longer creates a second permanent email-and-answers cache.
 - Existing journeys resume through the authorized Quiz read endpoint.
@@ -66,7 +69,7 @@ This file separates the Quiz module from compatibility behavior owned by other f
 
 Local verification completed on 2026-09-11:
 
-- Funnel Vitest suite: 94 files, 1,018 tests passed.
+- Funnel Vitest suite: 95 files, 1,038 tests passed.
 - Shared-package Vitest suite: 29 files, 342 tests passed.
 - Funnel TypeScript check passed.
 - Changed TypeScript/TSX files have zero ESLint errors or file-level warnings.

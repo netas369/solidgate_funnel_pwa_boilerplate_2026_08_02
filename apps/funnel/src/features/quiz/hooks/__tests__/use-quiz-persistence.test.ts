@@ -51,6 +51,14 @@ describe('hardened quiz session client', () => {
     });
   });
 
+  it('returns no persistent session when the backend filters a known crawler', async () => {
+    mockFetch.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await expect(
+      createQuizSession({ sessionId: SESSION_ID, locale: 'lt' }),
+    ).resolves.toBeNull();
+  });
+
   it('deduplicates concurrent creation for the same client-generated session id', async () => {
     let resolveCreate!: (response: Response) => void;
     mockFetch.mockImplementationOnce(

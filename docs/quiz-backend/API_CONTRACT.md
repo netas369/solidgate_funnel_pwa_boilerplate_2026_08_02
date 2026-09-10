@@ -14,6 +14,8 @@ Route paths may be adapted to the host framework, but the behavior below is the 
 - A stale revision returns `409 STALE_SESSION_REVISION`; it never silently overwrites newer data.
 - Size and quiz-definition validation run before a database write.
 - Event metadata containing answer/result payloads, email, IP, credentials, or card/payment-secret fields is rejected before a database write.
+- Session creation remains tied to Quiz screen activation, not the first click, so visitors who leave without interacting remain measurable.
+- Known Meta crawler User-Agent tokens are rejected before cookie signing and database access. `fbclid`, Meta referrers, and Facebook/Instagram in-app browser tokens are not bot signals.
 
 Standard error:
 
@@ -70,6 +72,8 @@ Response `201`:
 ```
 
 `sessionId` is optional; the server generates it when omitted. Quiz and funnel variants are server-owned constants and are not accepted from the caller. A successful response also sets the signed, HTTP-only `quiz_session_access` cookie. Reusing a session ID returns `409 SESSION_ALREADY_EXISTS` rather than taking ownership of the existing session.
+
+Known Meta crawler response `204` has no body, sets no cookie, and creates neither a `sessions` row nor a `quiz_started` event. The frontend treats it as a non-persistent public render and emits no Quiz analytics. A real visitor using the Facebook or Instagram in-app browser still receives the normal `201` response and is tracked even if they leave before clicking.
 
 ## `POST /api/quiz/session/save`
 

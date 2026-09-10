@@ -55,6 +55,7 @@ apps/funnel/src/features/quiz/server/
   quiz-access.ts
   quiz-definition.ts
   quiz-scoring.ts
+  meta-crawler.ts
   http.ts
 
 packages/shared/src/
@@ -73,7 +74,9 @@ Do not add repository or service wrapper files merely to mirror an abstract arch
 
 ### Create
 
-`createQuizSession()` validates the requested variants, captures entry attribution, creates one `sessions` row, issues an anonymous session credential, and emits `quiz_started` when the quiz actually begins.
+`createQuizSession()` is called when the Quiz screen becomes active, before the visitor must click anything. This keeps zero-interaction exits measurable. The route first rejects known Meta crawler User-Agent tokens without creating a row, cookie, or event. For a normal browser it validates the requested variants, captures entry attribution, creates one `sessions` row, issues an anonymous session credential, and emits `quiz_started`.
+
+This crawler check is an analytics-quality filter, not authentication. Real Facebook and Instagram in-app browsers are allowed, and every Quiz read or write still requires its normal signed-session or authenticated-owner credential.
 
 ### Save progress
 

@@ -16,12 +16,12 @@ vi.mock('@repo/shared/quiz-session-cookie', () => ({
 
 const sessionId = '11111111-2222-4333-8444-555555555555';
 
-async function post(body: unknown) {
+async function post(body: unknown, userAgent = 'Mobile Safari') {
   const { POST } = await import('../route');
   return POST(
     new Request('http://localhost/api/quiz/session/create', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mobile Safari' },
+      headers: { 'Content-Type': 'application/json', 'User-Agent': userAgent },
       body: JSON.stringify(body),
     }),
   );
@@ -50,6 +50,34 @@ describe('POST /api/quiz/session/create', () => {
         p_source: 'quiz',
       }),
     );
+  });
+
+  it.each([
+    'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+    'meta-webindexer/1.1',
+    'meta-externalads/1.1',
+    'meta-externalagent/1.1',
+    'meta-externalfetcher/1.1',
+    'Facebot',
+  ])('does not persist a session for Meta crawler UA %s', async (userAgent) => {
+    const response = await post({ sessionId, locale: 'en', source: 'quiz' }, userAgent);
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(mockSignCookie).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'Mozilla/5.0 Mobile Safari [FBAN/FB4A;FBAV/500.0.0.0]',
+    'Mozilla/5.0 Mobile Instagram 350.0.0.0',
+  ])('persists real visitors using a Meta in-app browser UA %s', async (userAgent) => {
+    const response = await post({ sessionId, locale: 'en', source: 'quiz' }, userAgent);
+
+    expect(response.status).toBe(201);
+    expect(mockSignCookie).toHaveBeenCalledWith(sessionId);
+    expect(mockRpc).toHaveBeenCalledTimes(1);
   });
 
   it('rejects unsupported locales before creating a row', async () => {
