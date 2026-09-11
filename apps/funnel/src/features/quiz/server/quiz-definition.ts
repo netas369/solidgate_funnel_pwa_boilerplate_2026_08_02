@@ -1,6 +1,7 @@
 import type { Json } from '@repo/shared/types/database';
 import { FIRST_STEP_ID, TERMINAL_STEP_TYPES, quizConfig, quizStepMap } from '../config/quiz-config';
 import type { QuizStep } from '../config/quiz-schema';
+import { allowedKeysForStep } from '../config/step-answer-keys';
 
 export const QUIZ_VARIANT = 'boilerplate-v1';
 export const FUNNEL_VARIANT = 'main-v1';
@@ -31,36 +32,6 @@ function isEmail(value: unknown): value is string {
     value.length <= 320 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
   );
-}
-
-function allowedKeysForStep(step: QuizStep): string[] {
-  switch (step.type) {
-    case 'radio':
-    case 'picture_select':
-    case 'text_select':
-    case 'chip_select':
-    case 'multi_select':
-    case 'email_capture':
-    case 'likert':
-    case 'slider':
-    case 'trial_price':
-      return [step.storeAs];
-    case 'input_group':
-      return step.fields.map((field) => field.storeAs);
-    case 'date_wheel':
-      return [
-        step.storeAs,
-        `${step.storeAs}Day`,
-        `${step.storeAs}Month`,
-        `${step.storeAs}Year`,
-      ];
-    case 'time_wheel':
-      return [step.storeAs, `${step.storeAs}Hour`, `${step.storeAs}Minute`];
-    case 'analysis_loader':
-      return step.questions.flatMap((question) => (question.storeAs ? [question.storeAs] : []));
-    default:
-      return [];
-  }
 }
 
 function validateStepAnswer(step: QuizStep, key: string, value: unknown): string | null {

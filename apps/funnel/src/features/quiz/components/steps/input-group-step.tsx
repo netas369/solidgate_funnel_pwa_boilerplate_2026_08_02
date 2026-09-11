@@ -21,7 +21,12 @@ interface InputGroupStepProps {
   t: ReturnType<typeof useTranslations>;
   onContinue: (nextStepId: string, fieldValues: Record<string, string | number>) => void;
   onBack?: () => void;
-  onSkip?: () => void;
+  /**
+   * Explicit skip of an optional field group. Distinct from onContinue with no
+   * values: the CRO step-activity record needs to tell "declined to answer"
+   * apart from "answered nothing", and only the caller knows which happened.
+   */
+  onSkip?: (nextStepId: string) => void;
 }
 
 const FONT_SERIF = "var(--font-display), Georgia, serif";
@@ -30,7 +35,7 @@ const FONT_SANS =
 const INK = '#0e0f23';
 const ACCENT = '#7f4cf2';
 
-export function InputGroupStep({ step, t, onContinue, onBack }: InputGroupStepProps) {
+export function InputGroupStep({ step, t, onContinue, onBack, onSkip }: InputGroupStepProps) {
   const locale = useLocale();
   const answers = useQuizStore((s) => s.answers);
   const questionTemplate = t.raw(step.question) as string;
@@ -283,7 +288,11 @@ export function InputGroupStep({ step, t, onContinue, onBack }: InputGroupStepPr
             <div style={{ flex: '0 0 auto', marginTop: 'clamp(6px, 1.6dvh, 12px)', textAlign: 'center' }}>
               <button
                 type="button"
-                onClick={() => onContinue(step.nextStepId, {})}
+                // Falls back to onContinue when no onSkip is wired: a metrics
+                // feature must never be able to strand a visitor on a form.
+                onClick={() =>
+                  onSkip ? onSkip(step.nextStepId) : onContinue(step.nextStepId, {})
+                }
                 className="tap"
                 style={{
                   background: 'transparent',

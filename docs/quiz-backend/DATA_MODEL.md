@@ -40,6 +40,7 @@ A valid visitor receives this row when the Quiz screen becomes active, even when
 | `created_at`            | TIMESTAMPTZ |      Yes | Server creation time                                             |
 | `updated_at`            | TIMESTAMPTZ |      Yes | Server last-update time                                          |
 | `completed_at`          | TIMESTAMPTZ |       No | Server completion time                                           |
+| `step_activity`         | JSONB       |      Yes | Per-step viewed/answered/skipped/views. Timestamps, never answers |
 
 ### Example row
 
@@ -179,6 +180,31 @@ This table stores history, not current state.
 - Never include the full answer object, email, IP address, session credential, auth token, or payment data.
 - A unique `event_id` makes retry safe.
 - Events are append-only. Correct an analytical mistake with a new deliberate event or reporting rule, not by rewriting history.
+
+## `sessions.step_activity`
+
+Per-step CRO telemetry, keyed by `step_id`:
+
+```json
+{ "step3": { "viewed_at": "…", "answered_at": null, "skipped": false, "views": 2 } }
+```
+
+It answers the one question `funnel_events` cannot: was a question **viewed** or
+**answered**? `answered_at: null` on a viewed step is the drop-off signal.
+
+The client sends step IDS ONLY — the server stamps every timestamp with `now()` inside
+`quiz_merge_step_activity()`, merged in the same revision-guarded UPDATE as the answers.
+`viewed_at` and `answered_at` are both FIRST-wins and never move.
+
+This is NOT a second home for answers, and it is NOT an event log — it is a bounded
+object on the existing row, one entry per step. See [CRO_TRACKING.md](CRO_TRACKING.md).
+
+## The definition catalog is not part of this contract
+
+`quiz_definitions`, `quiz_definition_steps` and `quiz_definition_step_edges` describe the
+quiz's own structure so an external dashboard can label steps. They hold **no user data**,
+carry roughly 18 rows per quiz version, and do not grow with traffic. `sessions` has no FK
+to them by design. See [CRO_TRACKING.md](CRO_TRACKING.md).
 
 ## Why this is two tables
 

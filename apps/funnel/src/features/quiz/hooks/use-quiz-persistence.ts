@@ -173,6 +173,30 @@ export async function readQuizSession(sessionId: string): Promise<QuizSessionRes
   return requireJson<QuizSessionResponse>(response);
 }
 
+interface StepActivityPayload {
+  activityId: string;
+  viewed: string[];
+  answered: string[];
+  skipped: string[];
+}
+
+/**
+ * Snapshot the store's step-activity buffer for one save attempt.
+ *
+ * Read from the store rather than taken as a QuizSaveOptions field on purpose:
+ * the buffer must flush on EVERY save — persistSessionLocale, captureLeadRecord
+ * and finalizeAndNavigate all call saveQuizProgress — and an opt-in field is
+ * something a future caller silently forgets.
+ *
+ * Returns undefined when there is nothing buffered, so the key never reaches
+ * the wire and the route's .strict() schema never sees it.
+ */
+function readStepActivity(activityId: string): StepActivityPayload | undefined {
+  const { viewed, answered, skipped } = useQuizStore.getState().pendingStepActivity;
+  if (viewed.length === 0 && answered.length === 0 && skipped.length === 0) return undefined;
+  return { activityId, viewed: [...viewed], answered: [...answered], skipped: [...skipped] };
+}
+
 async function postQuizSave(input: {
   sessionId: string;
   expectedRevision: number;
@@ -180,6 +204,7 @@ async function postQuizSave(input: {
   answers: QuizAnswers;
   options: QuizSaveOptions;
   eventId?: string;
+  stepActivity?: StepActivityPayload;
 }): Promise<QuizSaveResponse> {
   const { consent } = input.options;
   const response = await fetch('/api/quiz/session/save', {
@@ -209,6 +234,7 @@ async function postQuizSave(input: {
             },
           }
         : {}),
+      ...(input.stepActivity ? { stepActivity: input.stepActivity } : {}),
     }),
   });
   return requireJson<QuizSaveResponse>(response);
@@ -227,6 +253,11 @@ export function saveQuizProgress(
   options: QuizSaveOptions = {},
 ): Promise<QuizSaveResponse> {
   const eventId = options.event ? globalThis.crypto.randomUUID() : undefined;
+  // Minted ONCE outside the queue, exactly as eventId is: every retry of this
+  // logical save reuses it. Both retry paths below are provably pre-write
+  // (SESSION_NOT_FOUND and STALE_SESSION_REVISION), so the only window it
+  // closes is a committed write whose response was lost.
+  const activityId = globalThis.crypto.randomUUID();
   const submittedAnswers = { ...answers };
 
   return enqueueSessionTask(sessionId, async () => {
@@ -239,6 +270,7 @@ export function saveQuizProgress(
     let expectedRevision = state.revision;
 
     try {
+      const stepActivity = readStepActivity(activityId);
       const saved = await postQuizSave({
         sessionId,
         expectedRevision,
@@ -246,12 +278,14 @@ export function saveQuizProgress(
         answers: answersToSave,
         options,
         eventId,
+        stepActivity,
       });
       useQuizStore.getState().markProgressSaved({
         sessionId,
         currentStepId,
         answers: answersToSave,
         revision: saved.revision,
+        stepActivitySent: stepActivity,
       });
       return saved;
     } catch (error) {
@@ -276,6 +310,7 @@ export function saveQuizProgress(
           answers: submittedAnswers,
           revision: created.revision,
         });
+        const recoveredActivity = readStepActivity(activityId);
         const recovered = await postQuizSave({
           sessionId,
           expectedRevision: created.revision,
@@ -283,12 +318,14 @@ export function saveQuizProgress(
           answers: answersToSave,
           options,
           eventId,
+          stepActivity: recoveredActivity,
         });
         useQuizStore.getState().markProgressSaved({
           sessionId,
           currentStepId,
           answers: answersToSave,
           revision: recovered.revision,
+          stepActivitySent: recoveredActivity,
         });
         return recovered;
       }
@@ -312,6 +349,7 @@ export function saveQuizProgress(
     });
     expectedRevision = serverSession.revision;
 
+    const retriedActivity = readStepActivity(activityId);
     const saved = await postQuizSave({
       sessionId,
       expectedRevision,
@@ -319,12 +357,14 @@ export function saveQuizProgress(
       answers: answersToSave,
       options,
       eventId,
+      stepActivity: retriedActivity,
     });
     useQuizStore.getState().markProgressSaved({
       sessionId,
       currentStepId,
       answers: answersToSave,
       revision: saved.revision,
+      stepActivitySent: retriedActivity,
     });
     return saved;
   });

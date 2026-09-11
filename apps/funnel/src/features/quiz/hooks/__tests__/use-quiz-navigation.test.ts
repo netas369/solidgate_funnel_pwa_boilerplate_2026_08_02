@@ -8,6 +8,7 @@ const {
   mockGoBack,
   mockTrack,
   mockState,
+  mockRecordStepActivity,
   mockSaveQuizProgress,
 } = vi.hoisted(() => {
   const mockGoToStep = vi.fn();
@@ -24,15 +25,25 @@ const {
       ) => Promise<{ ok: boolean }>
     >()
     .mockResolvedValue({ ok: true });
+  const mockRecordStepActivity =
+    vi.fn<
+      (delta: { viewed?: string[]; answered?: string[]; skipped?: string[] }) => void
+    >();
   const mockState = {
     currentStepId: 'step-a',
     history: [] as string[],
     answers: {} as Record<string, string | string[] | number>,
     answerLabels: {} as Record<string, string | string[]>,
-    sessionId: 'test-session-123',
+    sessionId: 'test-session-123' as string | null,
+    pendingStepActivity: { viewed: [], answered: [], skipped: [] } as {
+      viewed: string[];
+      answered: string[];
+      skipped: string[];
+    },
     goToStep: mockGoToStep,
     goBack: mockGoBack,
     setStepAnswer: mockSetStepAnswer,
+    recordStepActivity: mockRecordStepActivity,
   };
   return {
     mockGoToStep,
@@ -40,6 +51,7 @@ const {
     mockTrack,
     mockState,
     mockSaveQuizProgress,
+    mockRecordStepActivity,
   };
 });
 
@@ -296,5 +308,99 @@ describe('useQuizNavigation', () => {
 
     expect(mockTrack).not.toHaveBeenCalled();
     expect(mockSaveQuizProgress).not.toHaveBeenCalled();
+  });
+});
+
+describe('useQuizNavigation — CRO step activity', () => {
+  beforeEach(() => {
+    mockState.currentStepId = 'step-a';
+    mockState.history = [];
+    mockState.answers = {};
+    mockState.answerLabels = {};
+    mockState.sessionId = 'test-session-123';
+    vi.clearAllMocks();
+  });
+
+  it('stamps the landing step as viewed on mount', () => {
+    renderHook(() => useQuizNavigation());
+    expect(mockRecordStepActivity).toHaveBeenCalledWith({ viewed: ['step-a'] });
+  });
+
+  it('records the entered step as viewed and the answered step as answered', () => {
+    mockState.answers = { goal: 'opt1' };
+    const { result } = renderHook(() => useQuizNavigation());
+    mockRecordStepActivity.mockClear();
+
+    act(() => result.current.goToStep('step-b'));
+
+    expect(mockRecordStepActivity).toHaveBeenCalledWith({
+      viewed: ['step-b'],
+      answered: ['step-a'],
+      skipped: [],
+    });
+  });
+
+  it('never buffers an extra request — activity rides along on the same save', () => {
+    mockState.answers = { goal: 'opt1' };
+    const { result } = renderHook(() => useQuizNavigation());
+    mockSaveQuizProgress.mockClear();
+
+    act(() => result.current.goToStep('step-b'));
+
+    expect(mockSaveQuizProgress).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a presentational step as viewed-not-answered', () => {
+    // step-b is an info_box: no storeAs, so allowedKeysForStep returns [].
+    // This is the case step_completed alone cannot distinguish.
+    mockState.currentStepId = 'step-b';
+    const { result } = renderHook(() => useQuizNavigation());
+    mockRecordStepActivity.mockClear();
+
+    act(() => result.current.goToStep('step-c'));
+
+    expect(mockRecordStepActivity).toHaveBeenCalledWith({
+      viewed: ['step-c'],
+      answered: [],
+      skipped: [],
+    });
+  });
+
+  it('reports a question left with no stored answer as not answered', () => {
+    mockState.answers = {};
+    const { result } = renderHook(() => useQuizNavigation());
+    mockRecordStepActivity.mockClear();
+
+    act(() => result.current.goToStep('step-b'));
+
+    expect(mockRecordStepActivity).toHaveBeenCalledWith({
+      viewed: ['step-b'],
+      answered: [],
+      skipped: [],
+    });
+  });
+
+  it('marks an explicit skip as skipped and never as answered', () => {
+    mockState.answers = { goal: 'opt1' };
+    const { result } = renderHook(() => useQuizNavigation());
+    mockRecordStepActivity.mockClear();
+
+    act(() => result.current.goToStep('step-b', { skipped: true }));
+
+    expect(mockRecordStepActivity).toHaveBeenCalledWith({
+      viewed: ['step-b'],
+      answered: [],
+      skipped: ['step-a'],
+    });
+  });
+
+  it('records nothing beyond the mount stamp when there is no session', () => {
+    mockState.sessionId = null;
+    const { result } = renderHook(() => useQuizNavigation());
+    mockRecordStepActivity.mockClear();
+
+    act(() => result.current.goToStep('step-b'));
+
+    expect(mockRecordStepActivity).not.toHaveBeenCalled();
   });
 });

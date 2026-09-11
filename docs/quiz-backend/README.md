@@ -9,6 +9,8 @@ The quiz backend owns two database tables:
 1. `public.sessions` stores the current state of one quiz journey, including all current answers and the final result.
 2. `public.funnel_events` stores append-only milestone history for that journey.
 
+CRO step tracking adds one column (`sessions.step_activity`) and a small read-only catalog describing the quiz's own structure — no user data and no per-answer rows. See [CRO_TRACKING.md](CRO_TRACKING.md).
+
 Do not add separate `quiz_responses`, `quiz_results`, or `funnel_inputs` tables for the standard boilerplate. The complete JSONB answer object on `sessions` is deliberate: quiz structures change between products, while the table shape remains stable.
 
 ## How data moves

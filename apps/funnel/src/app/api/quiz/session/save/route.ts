@@ -24,6 +24,20 @@ const eventSchema = z
   })
   .strict();
 
+const MAX_STEP_ACTIVITY_IDS = 200;
+
+// Step IDS ONLY. There is deliberately no timestamp field: the server stamps
+// every viewed_at/answered_at with now() inside quiz_merge_step_activity, so a
+// skewed or hostile client clock cannot move one.
+const stepActivitySchema = z
+  .object({
+    activityId: z.uuid(),
+    viewed: z.array(z.string().max(100)).max(MAX_STEP_ACTIVITY_IDS),
+    answered: z.array(z.string().max(100)).max(MAX_STEP_ACTIVITY_IDS),
+    skipped: z.array(z.string().max(100)).max(MAX_STEP_ACTIVITY_IDS),
+  })
+  .strict();
+
 const saveSchema = z
   .object({
     sessionId: z.uuid(),
@@ -36,6 +50,7 @@ const saveSchema = z
     consentVersion: z.string().min(1).max(100).optional(),
     marketingConsent: z.boolean().optional(),
     event: eventSchema.optional(),
+    stepActivity: stepActivitySchema.optional(),
   })
   .strict();
 
@@ -77,6 +92,42 @@ export async function POST(request: Request) {
       "Current quiz step is not defined.",
     );
   }
+
+  // Step activity. BOUNDS are fatal (zod already returned 400 above): an
+  // oversized array or a non-uuid activityId is a bug or an attack.
+  //
+  // UNKNOWN STEP IDS ARE DROPPED, NOT REJECTED. They mean client/server config
+  // skew — a tab still holding a bundle from before a quiz-config change.
+  // Rejecting the save would 400 that tab FOREVER: its buffer never clears, so
+  // it would retry the same unknown id indefinitely and stop persisting the
+  // visitor's answers entirely. Dropping self-heals on the next 200, and the
+  // skew stays visible in the logs. Telemetry must never cost answers.
+  const activity = body.stepActivity;
+  let activityViewed: string[] = [];
+  let activityAnswered: string[] = [];
+  let activitySkipped: string[] = [];
+  if (activity) {
+    // `viewed` keeps duplicates — they are the view counter. The other two are
+    // deduped, which is what bounds the stored JSONB.
+    activityViewed = activity.viewed.filter(isKnownQuizStep);
+    activityAnswered = [...new Set(activity.answered.filter(isKnownQuizStep))];
+    activitySkipped = [...new Set(activity.skipped.filter(isKnownQuizStep))];
+    const submitted =
+      activity.viewed.length + activity.answered.length + activity.skipped.length;
+    const kept =
+      activityViewed.length +
+      activity.answered.filter(isKnownQuizStep).length +
+      activity.skipped.filter(isKnownQuizStep).length;
+    if (submitted > kept) {
+      console.warn(
+        `[quiz/session/save] dropped ${submitted - kept} unknown step activity id(s)`,
+      );
+    }
+  }
+  const hasStepActivity =
+    activityViewed.length > 0 ||
+    activityAnswered.length > 0 ||
+    activitySkipped.length > 0;
 
   const answerValidation = validateQuizAnswers(body.answers);
   if (!answerValidation.ok) {
@@ -191,6 +242,13 @@ export async function POST(request: Request) {
     p_event_type: body.event?.type ?? null,
     p_event_step_number: body.event?.stepNumber ?? null,
     p_event_metadata: (body.event?.metadata ?? {}) as Json,
+    p_step_activity: hasStepActivity
+      ? ({
+          viewed: activityViewed,
+          answered: activityAnswered,
+          skipped: activitySkipped,
+        } as Json)
+      : null,
   });
 
   if (error) return databaseErrorResponse(error);

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQuizStore } from '@/stores/quiz-store';
 import { quizConfig, quizStepMap } from '@/features/quiz/config/quiz-config';
+import { allowedKeysForStep } from '@/features/quiz/config/step-answer-keys';
 import type { QuizStep } from '@/features/quiz/config/quiz-schema';
 import { saveQuizProgress } from './use-quiz-persistence';
 import { useAnalytics } from '@/features/analytics/hooks/use-analytics';
@@ -41,6 +42,20 @@ function buildCopyResolver(
  * replacing it — Next reads that object on popstate, and clobbering it breaks
  * client navigation (same care as the OTO return flow in charge-oto.ts).
  */
+/**
+ * Mirrors the server's emptiness test in validateReachableRequiredAnswers, so
+ * the client's "did this step capture an answer" derivation agrees with what
+ * the API would consider present.
+ */
+function hasAnswer(value: unknown): boolean {
+  return (
+    value !== undefined &&
+    value !== null &&
+    value !== '' &&
+    !(Array.isArray(value) && value.length === 0)
+  );
+}
+
 const QUIZ_NAV_KEY = '__quizNav';
 
 interface QuizNavEntry {
@@ -69,7 +84,7 @@ interface UseQuizNavigationReturn {
   totalSteps: number;
   direction: 'forward' | 'backward';
   canGoBack: boolean;
-  goToStep: (stepId: string) => void;
+  goToStep: (stepId: string, opts?: { skipped?: boolean }) => void;
   goToStepReplace: (stepId: string) => void;
   goBack: () => void;
   setStepAnswer: (
@@ -111,6 +126,12 @@ export function useQuizNavigation(locale?: string): UseQuizNavigationReturn {
     const { currentStepId: stepId, history: stack } = useQuizStore.getState();
     writeNavEntry('replace', { stepId, stack });
     pushedEntries.current = 0;
+    // Nobody ever advances INTO the landing step, so without this its
+    // viewed_at stays null forever and "rendered step 1 and bounced" is
+    // indistinguishable from "row exists, screen never rendered" — which
+    // DATA_MODEL.md calls the whole reason the row is created before any click.
+    // Also covers a resumed visitor re-entering mid-quiz. Costs no request.
+    useQuizStore.getState().recordStepActivity({ viewed: [stepId] });
   }, []);
 
   useEffect(() => {
@@ -140,7 +161,7 @@ export function useQuizNavigation(locale?: string): UseQuizNavigationReturn {
   // Shared persistence + analytics for any forward move. `answeredStepId` is the
   // step the user is leaving (captured before the store mutates).
   const recordStepAdvance = useCallback(
-    (answeredStepId: string, nextStepId: string) => {
+    (answeredStepId: string, nextStepId: string, opts?: { skipped?: boolean }) => {
       if (!sessionId) return;
       const answeredStepNum = quizConfig.stepPositions[answeredStepId] ?? 0;
       const currentAnswers = useQuizStore.getState().answers;
@@ -154,6 +175,27 @@ export function useQuizNavigation(locale?: string): UseQuizNavigationReturn {
         // Analytics: step_completed to PostHog + GTM + in-memory (D-08, D-09)
         track('step_completed', { step_id: answeredStepId, step_number: answeredStepNum, session_id: sessionId });
       }
+
+      // CRO step activity. BUFFERED ONLY — the saveQuizProgress call below
+      // flushes it on the SAME request. Never add a fetch here.
+      //
+      // `answered` is derived from the stored answers rather than the step
+      // type, so it is right in both awkward cases without special-casing
+      // either: a skipped input_group wrote no key, and a presentational step
+      // (checkpoint, loading_screen, …) has no keys at all. Both yield [].
+      // That matters because step_completed fires for auto-advancing screens
+      // too, so the event alone cannot tell "answered" from "displayed".
+      const answeredStep = quizStepMap[answeredStepId];
+      const wroteAnswer =
+        !opts?.skipped &&
+        Boolean(answeredStep) &&
+        allowedKeysForStep(answeredStep).some((key) => hasAnswer(currentAnswers[key]));
+
+      useQuizStore.getState().recordStepActivity({
+        viewed: [nextStepId],
+        answered: wroteAnswer ? [answeredStepId] : [],
+        skipped: opts?.skipped ? [answeredStepId] : [],
+      });
 
       // The hardened save endpoint writes progress and its durable milestone
       // in one transaction. Requests are serialized by saveQuizProgress,
@@ -176,8 +218,10 @@ export function useQuizNavigation(locale?: string): UseQuizNavigationReturn {
     [sessionId, track, completedSteps, locale]
   );
 
+  // `opts` stays OPTIONAL so every existing 1-argument caller (onInfoContinue,
+  // option handlers) remains assignable without widening their prop types.
   const goToStep = useCallback(
-    (stepId: string) => {
+    (stepId: string, opts?: { skipped?: boolean }) => {
       setDirection('forward');
       // Capture the answered step BEFORE mutating store state
       const answeredStepId = useQuizStore.getState().currentStepId;
@@ -185,7 +229,7 @@ export function useQuizNavigation(locale?: string): UseQuizNavigationReturn {
       const next = useQuizStore.getState();
       writeNavEntry('push', { stepId: next.currentStepId, stack: next.history });
       pushedEntries.current += 1;
-      recordStepAdvance(answeredStepId, stepId);
+      recordStepAdvance(answeredStepId, stepId, opts);
     },
     [storeGoToStep, recordStepAdvance]
   );

@@ -45,6 +45,14 @@ Existing implementations may use `oto_viewed`, `oto_accepted`, and `oto_declined
 - Update this catalog, runtime allowlist, database constraint, reporting queries, and tests together.
 - Known Meta crawlers are filtered before session creation, so they cannot create `quiz_started` or later Quiz milestones. Do not filter on `fbclid`, Meta referrers, `FBAN`, `FBAV`, or `Instagram`; those signals also belong to real visitors.
 
+## Step activity is NOT an event
+
+Per-step viewed/answered/skipped state lives in `sessions.step_activity`, a bounded JSONB
+object on the session row. It must never become `funnel_events` rows: that would be one
+row per screen per visitor, which is the unbounded clickstream this table exists to stay
+out of — and the partial unique indexes would reject it anyway. See
+[CRO_TRACKING.md](CRO_TRACKING.md).
+
 ## Keep these in product analytics instead
 
 - every answer click;

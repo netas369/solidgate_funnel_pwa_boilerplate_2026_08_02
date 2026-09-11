@@ -221,3 +221,137 @@ describe("POST /api/quiz/session/save", () => {
     expect(mockRpc).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/quiz/session/save — CRO step activity", () => {
+  const activityId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockMaybeSingle.mockResolvedValue({
+      data: {
+        id: sessionId,
+        user_id: null,
+        revision: 2,
+        status: "active",
+        quiz_variant: "boilerplate-v1",
+        quiz_answers: {},
+      },
+      error: null,
+    });
+    mockAuthorize.mockResolvedValue({ ok: true, userId: null, via: "quiz_cookie" });
+    mockRpc.mockResolvedValue({
+      data: { id: sessionId, status: "active", revision: 3, current_step_id: "step2" },
+      error: null,
+    });
+  });
+
+  function body(stepActivity?: unknown) {
+    return {
+      sessionId,
+      expectedRevision: 2,
+      currentStepId: "step2",
+      answers: { gender: "female" },
+      ...(stepActivity ? { stepActivity } : {}),
+    };
+  }
+
+  it("forwards step ids to the RPC", async () => {
+    const response = await post(
+      body({ activityId, viewed: ["step2"], answered: ["step1"], skipped: [] }),
+    );
+    expect(response.status).toBe(200);
+    expect(mockRpc).toHaveBeenCalledWith(
+      "save_quiz_session_progress",
+      expect.objectContaining({
+        p_step_activity: { viewed: ["step2"], answered: ["step1"], skipped: [] },
+      }),
+    );
+  });
+
+  it("sends null when the caller omits stepActivity — existing callers still work", async () => {
+    const response = await post(body());
+    expect(response.status).toBe(200);
+    expect(mockRpc).toHaveBeenCalledWith(
+      "save_quiz_session_progress",
+      expect.objectContaining({ p_step_activity: null }),
+    );
+  });
+
+  it("keeps duplicate views (the counter) but dedupes answered and skipped", async () => {
+    await post(
+      body({
+        activityId,
+        viewed: ["step2", "step2"],
+        answered: ["step1", "step1"],
+        skipped: ["step3", "step3"],
+      }),
+    );
+    expect(mockRpc).toHaveBeenCalledWith(
+      "save_quiz_session_progress",
+      expect.objectContaining({
+        p_step_activity: {
+          viewed: ["step2", "step2"],
+          answered: ["step1"],
+          skipped: ["step3"],
+        },
+      }),
+    );
+  });
+
+  it("DROPS unknown step ids and still saves — a stale tab must not 400 forever", async () => {
+    const response = await post(
+      body({ activityId, viewed: ["step2", "ghost-step"], answered: [], skipped: [] }),
+    );
+    // A 400 here would leave that tab's buffer uncleared, so it would retry the
+    // same unknown id indefinitely and stop persisting the visitor's answers.
+    expect(response.status).toBe(200);
+    expect(mockRpc).toHaveBeenCalledWith(
+      "save_quiz_session_progress",
+      expect.objectContaining({
+        p_step_activity: { viewed: ["step2"], answered: [], skipped: [] },
+      }),
+    );
+  });
+
+  it("sends null when every id was unknown, but still persists the answers", async () => {
+    const response = await post(
+      body({ activityId, viewed: ["ghost"], answered: ["phantom"], skipped: [] }),
+    );
+    expect(response.status).toBe(200);
+    expect(mockRpc).toHaveBeenCalledWith(
+      "save_quiz_session_progress",
+      expect.objectContaining({ p_step_activity: null }),
+    );
+  });
+
+  it("rejects an over-long array before touching the database", async () => {
+    const response = await post(
+      body({
+        activityId,
+        viewed: Array.from({ length: 201 }, (_, i) => `step${i}`),
+        answered: [],
+        skipped: [],
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(mockMaybeSingle).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-uuid activityId", async () => {
+    const response = await post(
+      body({ activityId: "not-a-uuid", viewed: ["step2"], answered: [], skipped: [] }),
+    );
+    expect(response.status).toBe(400);
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unknown key inside stepActivity (schema is strict)", async () => {
+    const response = await post(
+      body({ activityId, viewed: [], answered: [], skipped: [], viewedAt: "2026-01-01" }),
+    );
+    // The client must never be able to supply a timestamp.
+    expect(response.status).toBe(400);
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+});

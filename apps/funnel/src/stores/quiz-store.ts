@@ -4,6 +4,17 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { FIRST_STEP_ID } from '@/features/quiz/config/quiz-config';
 
+/** See QuizState.pendingStepActivity. Step ids only; never timestamps. */
+export interface PendingStepActivity {
+  viewed: string[];
+  answered: string[];
+  skipped: string[];
+}
+
+const MAX_PENDING_STEP_ACTIVITY = 200;
+
+const EMPTY_STEP_ACTIVITY: PendingStepActivity = { viewed: [], answered: [], skipped: [] };
+
 interface QuizState {
   currentStepId: string;
   history: string[];
@@ -16,6 +27,16 @@ interface QuizState {
   source: string | null;
   revision: number;
   hasUnsavedProgress: boolean;
+  /**
+   * Un-flushed CRO step activity. Step IDS ONLY — the server stamps every
+   * timestamp with now(), so a skewed or hostile client clock cannot move one.
+   *
+   * `viewed` is a MULTISET: one entry per forward entry, which IS the view
+   * counter. `answered` and `skipped` are sets. It is buffered here rather than
+   * sent directly so it rides along on the next save_quiz_session_progress
+   * call — step activity must never cost an extra request.
+   */
+  pendingStepActivity: PendingStepActivity;
   authLinked: boolean | null; // null = unknown/not-yet-determined, false = auth linking failed, true = linked
 
   // Post-purchase OTO authorization for buyers who arrive through a direct
@@ -65,7 +86,9 @@ interface QuizState {
     currentStepId: string | null;
     answers: Record<string, unknown>;
     revision: number;
+    stepActivitySent?: PendingStepActivity;
   }) => void;
+  recordStepActivity: (delta: Partial<PendingStepActivity>) => void;
   completeQuiz: (revision?: number) => void;
 
   // Atomic grant - sets sessionId + flips authorizedViaPurchase=true in one
@@ -92,6 +115,7 @@ const initialState = {
   source: null as string | null,
   revision: 0,
   hasUnsavedProgress: false,
+  pendingStepActivity: { ...EMPTY_STEP_ACTIVITY } as PendingStepActivity,
   authLinked: null as boolean | null,
   authorizedViaPurchase: false,
 };
@@ -176,16 +200,48 @@ export const useQuizStore = create<QuizState>()(
         return reconciled;
       },
 
-      markProgressSaved: ({ sessionId, currentStepId, answers, revision }) =>
+      markProgressSaved: ({ sessionId, currentStepId, answers, revision, stepActivitySent }) =>
         set((state) => {
           if (state.sessionId !== sessionId) return {};
           const savedCurrentState =
             (currentStepId === null || state.currentStepId === currentStepId) &&
             JSON.stringify(state.answers) === JSON.stringify(answers);
+          // Subtract EXACTLY what went over the wire rather than clearing the
+          // buffer, so activity recorded WHILE the request was in flight is not
+          // thrown away. `viewed` is an append-only log, so the sent prefix is
+          // what was consumed. Same care as the hasUnsavedProgress guard above.
+          let pendingStepActivity = state.pendingStepActivity;
+          if (stepActivitySent) {
+            const sentAnswered = new Set(stepActivitySent.answered);
+            const sentSkipped = new Set(stepActivitySent.skipped);
+            pendingStepActivity = {
+              viewed: state.pendingStepActivity.viewed.slice(stepActivitySent.viewed.length),
+              answered: state.pendingStepActivity.answered.filter((id) => !sentAnswered.has(id)),
+              skipped: state.pendingStepActivity.skipped.filter((id) => !sentSkipped.has(id)),
+            };
+          }
           return {
             revision,
+            pendingStepActivity,
             ...(savedCurrentState ? { hasUnsavedProgress: false } : {}),
           };
+        }),
+
+      // Buffer only — the caller's saveQuizProgress flushes it on the SAME
+      // request. Deliberately does NOT set hasUnsavedProgress: this is
+      // diagnostics, and tripping that flag would make the unsaved-progress
+      // guard fire for pure telemetry.
+      recordStepActivity: (delta) =>
+        set((state) => {
+          const current = state.pendingStepActivity;
+          // Duplicates in `viewed` are kept — they are the view counter. The
+          // cap drops the OLDEST views, which are the least interesting.
+          const viewed = [...current.viewed, ...(delta.viewed ?? [])].slice(
+            -MAX_PENDING_STEP_ACTIVITY,
+          );
+          const answered = [...new Set([...current.answered, ...(delta.answered ?? [])])];
+          const skipped = [...new Set([...current.skipped, ...(delta.skipped ?? [])])];
+          return { pendingStepActivity: { viewed, answered, skipped } };
         }),
 
       // Atomic grant for the direct-offer post-purchase path. Sets sessionId +
@@ -206,7 +262,7 @@ export const useQuizStore = create<QuizState>()(
     }),
     {
       name: 'quiz-store',
-      version: 3,
+      version: 4,
       migrate: (persistedState, version) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return {};
@@ -251,6 +307,7 @@ export const useQuizStore = create<QuizState>()(
         source: state.source,
         revision: state.revision,
         hasUnsavedProgress: state.hasUnsavedProgress,
+        pendingStepActivity: state.pendingStepActivity,
         authLinked: state.authLinked,
         authorizedViaPurchase: state.authorizedViaPurchase,
         persistedAt: Date.now(),

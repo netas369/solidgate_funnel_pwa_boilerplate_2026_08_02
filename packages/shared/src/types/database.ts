@@ -393,6 +393,111 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_definition_step_edges: {
+        Row: {
+          edge_index: number
+          from_step_id: string
+          on_value: string | null
+          quiz_variant: string
+          to_step_id: string
+        }
+        Insert: {
+          edge_index?: number
+          from_step_id: string
+          on_value?: string | null
+          quiz_variant: string
+          to_step_id: string
+        }
+        Update: {
+          edge_index?: number
+          from_step_id?: string
+          on_value?: string | null
+          quiz_variant?: string
+          to_step_id?: string
+        }
+        Relationships: []
+      }
+      quiz_definition_steps: {
+        Row: {
+          answer_keys: Json
+          entry_skippable: boolean
+          is_question: boolean
+          is_terminal: boolean
+          is_unconditional: boolean
+          label: string | null
+          label_key: string | null
+          phase_key: string | null
+          position: number
+          quiz_variant: string
+          sort_index: number
+          step_id: string
+          step_type: string
+          store_as: string | null
+        }
+        Insert: {
+          answer_keys?: Json
+          entry_skippable?: boolean
+          is_question: boolean
+          is_terminal?: boolean
+          is_unconditional?: boolean
+          label?: string | null
+          label_key?: string | null
+          phase_key?: string | null
+          position: number
+          quiz_variant: string
+          sort_index: number
+          step_id: string
+          step_type: string
+          store_as?: string | null
+        }
+        Update: {
+          answer_keys?: Json
+          entry_skippable?: boolean
+          is_question?: boolean
+          is_terminal?: boolean
+          is_unconditional?: boolean
+          label?: string | null
+          label_key?: string | null
+          phase_key?: string | null
+          position?: number
+          quiz_variant?: string
+          sort_index?: number
+          step_id?: string
+          step_type?: string
+          store_as?: string | null
+        }
+        Relationships: []
+      }
+      quiz_definitions: {
+        Row: {
+          app_key: string
+          config_hash: string
+          first_step_id: string
+          funnel_key: string
+          published_at: string
+          quiz_variant: string
+          total_steps: number
+        }
+        Insert: {
+          app_key: string
+          config_hash: string
+          first_step_id: string
+          funnel_key: string
+          published_at?: string
+          quiz_variant: string
+          total_steps: number
+        }
+        Update: {
+          app_key?: string
+          config_hash?: string
+          first_step_id?: string
+          funnel_key?: string
+          published_at?: string
+          quiz_variant?: string
+          total_steps?: number
+        }
+        Relationships: []
+      }
       renewal_events: {
         Row: {
           amount_cents: number
@@ -479,6 +584,7 @@ export type Database = {
           solidgate_oto_environment: string | null
           source: string
           status: string
+          step_activity: Json
           updated_at: string
           user_id: string | null
           visitor_id: string | null
@@ -506,6 +612,7 @@ export type Database = {
           solidgate_oto_environment?: string | null
           source?: string
           status?: string
+          step_activity?: Json
           updated_at?: string
           user_id?: string | null
           visitor_id?: string | null
@@ -533,6 +640,7 @@ export type Database = {
           solidgate_oto_environment?: string | null
           source?: string
           status?: string
+          step_activity?: Json
           updated_at?: string
           user_id?: string | null
           visitor_id?: string | null
@@ -1394,6 +1502,7 @@ export type Database = {
           p_marketing_consent: boolean | null
           p_quiz_answers: Json
           p_session_id: string
+          p_step_activity?: Json | null
         }
         Returns: Json
       }
@@ -1407,6 +1516,69 @@ export type Database = {
           p_step_number: number | null
         }
         Returns: string
+      }
+      publish_quiz_definition: {
+        Args: {
+          p_app_key: string
+          p_config_hash: string
+          p_first_step_id: string
+          p_funnel_key: string
+          p_quiz_variant: string
+          p_steps: Json
+          p_total_steps: number
+        }
+        Returns: Json
+      }
+      cro_funnel_segments: {
+        Args: {
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+          first_seen: string
+          id: string
+          kind: string
+          last_seen: string
+          sessions: number
+        }[]
+      }
+      cro_step_funnel: {
+        Args: {
+          p_from: string
+          p_funnel_variant?: string | null
+          p_locale?: string | null
+          p_quiz_variant?: string | null
+          p_settled_after?: unknown
+          p_source?: string | null
+          p_to: string
+        }
+        Returns: {
+          advanced: number
+          answered: number
+          dropped: number
+          entry_skippable: boolean
+          funnel_variant: string
+          has_traffic: boolean
+          in_catalog: boolean
+          is_question: boolean
+          is_terminal: boolean
+          is_unconditional: boolean
+          label: string
+          p50_seconds_to_answer: number
+          p90_seconds_to_answer: number
+          phase_key: string
+          position_cohort: number
+          quiz_variant: string
+          revisits: number
+          skipped: number
+          sort_index: number
+          step_id: string
+          step_position: number
+          step_type: string
+          total_views: number
+          unsettled: number
+          viewed: number
+        }[]
       }
       advance_solidgate_oto_progress: {
         Args: {

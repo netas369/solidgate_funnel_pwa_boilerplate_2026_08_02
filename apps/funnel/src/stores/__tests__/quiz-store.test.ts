@@ -256,3 +256,94 @@ describe('useQuizStore  -  authorizedViaPurchase (post-purchase OTO gate)', () =
     expect(useQuizStore.getState().isComplete).toBe(true);
   });
 });
+
+describe('useQuizStore — CRO step activity buffer', () => {
+  beforeEach(() => {
+    useQuizStore.getState().reset();
+    useQuizStore.getState().setSessionId('sess-1');
+  });
+
+  it('starts empty', () => {
+    useQuizStore.getState().reset();
+    expect(useQuizStore.getState().pendingStepActivity).toEqual({
+      viewed: [],
+      answered: [],
+      skipped: [],
+    });
+  });
+
+  it('keeps duplicate views — they ARE the view counter — but dedupes the sets', () => {
+    const { recordStepActivity } = useQuizStore.getState();
+    recordStepActivity({ viewed: ['step2'], answered: ['step1'] });
+    recordStepActivity({ viewed: ['step2'], answered: ['step1'], skipped: ['step3'] });
+    recordStepActivity({ skipped: ['step3'] });
+    const buffer = useQuizStore.getState().pendingStepActivity;
+    expect(buffer.viewed).toEqual(['step2', 'step2']);
+    expect(buffer.answered).toEqual(['step1']);
+    expect(buffer.skipped).toEqual(['step3']);
+  });
+
+  it('does not trip the unsaved-progress guard — this is telemetry, not answers', () => {
+    useQuizStore.getState().recordStepActivity({ viewed: ['step2'] });
+    expect(useQuizStore.getState().hasUnsavedProgress).toBe(false);
+  });
+
+  it('caps the view log by dropping the OLDEST entries', () => {
+    const { recordStepActivity } = useQuizStore.getState();
+    for (let i = 0; i < 205; i += 1) recordStepActivity({ viewed: [`step-${i}`] });
+    const { viewed } = useQuizStore.getState().pendingStepActivity;
+    expect(viewed).toHaveLength(200);
+    expect(viewed[0]).toBe('step-5');
+    expect(viewed.at(-1)).toBe('step-204');
+  });
+
+  it('subtracts exactly what was sent, keeping activity buffered mid-request', () => {
+    const store = useQuizStore.getState();
+    store.recordStepActivity({ viewed: ['step2'], answered: ['step1'] });
+    const sent = { ...useQuizStore.getState().pendingStepActivity };
+
+    // Recorded WHILE the request is in flight.
+    store.recordStepActivity({ viewed: ['step3'], answered: ['step2'] });
+
+    useQuizStore.getState().markProgressSaved({
+      sessionId: 'sess-1',
+      currentStepId: null,
+      answers: {},
+      revision: 1,
+      stepActivitySent: sent,
+    });
+
+    const buffer = useQuizStore.getState().pendingStepActivity;
+    expect(buffer.viewed).toEqual(['step3']);
+    expect(buffer.answered).toEqual(['step2']);
+  });
+
+  it('leaves the buffer untouched when the session changed under it', () => {
+    useQuizStore.getState().recordStepActivity({ viewed: ['step2'] });
+    useQuizStore.getState().markProgressSaved({
+      sessionId: 'a-different-session',
+      currentStepId: null,
+      answers: {},
+      revision: 9,
+      stepActivitySent: { viewed: ['step2'], answered: [], skipped: [] },
+    });
+    expect(useQuizStore.getState().pendingStepActivity.viewed).toEqual(['step2']);
+  });
+
+  it('keeps the buffer when a save omits stepActivitySent (a failed or empty flush)', () => {
+    useQuizStore.getState().recordStepActivity({ viewed: ['step2'] });
+    useQuizStore.getState().markProgressSaved({
+      sessionId: 'sess-1',
+      currentStepId: null,
+      answers: {},
+      revision: 1,
+    });
+    expect(useQuizStore.getState().pendingStepActivity.viewed).toEqual(['step2']);
+  });
+
+  it('reset() clears it', () => {
+    useQuizStore.getState().recordStepActivity({ viewed: ['step2'] });
+    useQuizStore.getState().reset();
+    expect(useQuizStore.getState().pendingStepActivity.viewed).toEqual([]);
+  });
+});

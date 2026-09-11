@@ -30,7 +30,7 @@ export default defineConfig({
     globals: true,
     // Phase 1038 Plan 07: jest-dom matchers (toBeInTheDocument, toHaveFocus, …)
     // Registered globally so React component tests can assert rendered DOM.
-    setupFiles: ["./vitest.setup.ts"],
+    setupFiles: ["../../test-setup/webstorage.ts", "./vitest.setup.ts"],
     server: {
       deps: {
         // next-intl/navigation ESM imports next/navigation without .js extension,
@@ -42,6 +42,9 @@ export default defineConfig({
       "src/**/*.test.{ts,tsx}",
       // Webhook unit tests live in supabase/ outside funnel src.
       "../../supabase/functions/solidgate-webhooks/__tests__/**/*.test.{ts,tsx}",
+      // Repo-root scripts have no suite of their own; without this glob their
+      // tests are collected by nothing and silently never run.
+      "../../scripts/**/*.test.ts",
     ],
     coverage: {
       provider: "v8",

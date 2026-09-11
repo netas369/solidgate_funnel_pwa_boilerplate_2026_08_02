@@ -382,6 +382,17 @@ function QuizPageContent() {
     [setStepAnswer, goToStep],
   );
 
+  // Explicit skip of an optional input group. Deliberately calls NO
+  // setStepAnswer: the field stays ABSENT, so the `answered` derivation in
+  // recordStepAdvance yields [] on its own, independently of the skipped flag.
+  // Belt and braces — the two signals agree without depending on each other.
+  const handleInputSkip = useCallback(
+    (nextStepId: string) => {
+      goToStep(nextStepId, { skipped: true });
+    },
+    [goToStep],
+  );
+
   // The wheel steps write to the key the CONFIG declares (`step.storeAs`) plus
   // derived component keys, rather than to hardcoded names — so a product can
   // ask for any date/time without editing this file.
@@ -513,6 +524,7 @@ function QuizPageContent() {
     onMultiToggle: handleMultiToggle,
     onMultiContinue: handleMultiContinue,
     onInputContinue: handleInputContinue,
+    onInputSkip: handleInputSkip,
     onEmailSubmit: handleEmailSubmit,
     onInfoContinue: goToStep,
     onLoadingAdvance: goToStepReplace,
@@ -576,6 +588,7 @@ interface StepHandlers {
   onMultiToggle: (storeAs: string, value: string, maxSelection?: number) => void;
   onMultiContinue: (nextStepId: string, storeAs: string, values: string[], labels: string[]) => void;
   onInputContinue: (nextStepId: string, fieldValues: Record<string, string | number>) => void;
+  onInputSkip: (nextStepId: string) => void;
   onEmailSubmit: (data: EmailConsentData) => void | boolean | Promise<void | boolean>;
   onInfoContinue: (nextStepId: string) => void;
   // Auto-advancing steps REPLACE themselves in history — otherwise browser-Back
@@ -619,7 +632,15 @@ function renderStep(step: QuizStep, h: StepHandlers): React.ReactNode {
         />
       );
     case 'input_group':
-      return <InputGroupStep step={step} t={h.t} onContinue={h.onInputContinue} onBack={h.onBack} />;
+      return (
+        <InputGroupStep
+          step={step}
+          t={h.t}
+          onContinue={h.onInputContinue}
+          onBack={h.onBack}
+          onSkip={h.onInputSkip}
+        />
+      );
     case 'loading_screen':
       return (
         <LoadingScreenStep
