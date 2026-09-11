@@ -3,13 +3,9 @@
 // date-range state and re-fetches via refetch-revenue action.
 
 import { subDays, startOfDay, formatISO } from 'date-fns';
-import {
-  grossRevenueInEurInRange,
-  revenueByCurrencyInRange,
-  renewalRevenueInEur,
-  revenueTimeSeriesInEur,
-} from '../../_queries/revenue';
 import { RevenueClient } from './RevenueClient';
+import { supabaseSolidgateRevenueAdapter } from '@/features/admin/adapters/supabase-solidgate';
+import { adminConfig } from '@/admin.config';
 
 function default30dRange() {
   const now = new Date();
@@ -21,15 +17,6 @@ function default30dRange() {
 
 export async function RevenueTab() {
   const range = default30dRange();
-  const [oneTimeEur, renewalEur, byCurrency, timeSeries] = await Promise.all([
-    grossRevenueInEurInRange(range),
-    renewalRevenueInEur(range),
-    revenueByCurrencyInRange(range),
-    revenueTimeSeriesInEur(range),
-  ]);
-  return (
-    <RevenueClient
-      initialData={{ oneTimeEur, renewalEur, byCurrency, timeSeries }}
-    />
-  );
+  const result = await supabaseSolidgateRevenueAdapter.readSnapshot(range, adminConfig);
+  return <RevenueClient initialData={result} />;
 }

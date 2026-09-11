@@ -6,7 +6,7 @@
 // re-verify isAdminEmail BEFORE running queries (mirrors refetch-sessions.ts).
 
 import { createClient } from '@repo/shared/supabase/server';
-import { isAdminEmail } from '../../_queries/_shared';
+import { adminEmailHasCapability } from '../../_queries/_shared';
 import {
   quizStepFunnel,
   funnelStageSummary,
@@ -19,7 +19,7 @@ export async function refetchFunnel(input: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user?.email || !isAdminEmail(user.email)) {
+  if (!adminEmailHasCapability(user?.email, 'analytics:view')) {
     throw new Error('Forbidden');
   }
   const range = RangeSchema.parse(input);

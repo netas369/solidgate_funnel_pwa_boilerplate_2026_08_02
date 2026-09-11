@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// _shared.ts reads process.env.ADMIN_EMAILS at module-load. Reset modules in
-// beforeEach so each test can install its own env and re-trigger the parse.
+// _shared.ts derives the legacy email view at module-load. Reset modules in
+// beforeEach so each test can install its own access policy and re-trigger it.
 describe('_shared.isAdminEmail', () => {
   beforeEach(() => {
     vi.resetModules();
+    delete process.env.ADMIN_ACCESS;
     delete process.env.ADMIN_EMAILS;
   });
 
@@ -28,6 +29,18 @@ describe('_shared.isAdminEmail', () => {
     delete process.env.ADMIN_EMAILS;
     const { isAdminEmail } = await import('../_shared');
     expect(isAdminEmail('admin@example.com')).toBe(false);
+  });
+
+  it('selects the first enabled landing module allowed for each role', async () => {
+    process.env.ADMIN_ACCESS = [
+      'support@example.com:support',
+      'analyst@example.com:analyst',
+    ].join(',');
+    const { adminLandingPathForEmail } = await import('../_shared');
+
+    expect(adminLandingPathForEmail('support@example.com')).toBe('/admin/support');
+    expect(adminLandingPathForEmail('analyst@example.com')).toBe('/admin/dashboard');
+    expect(adminLandingPathForEmail('unknown@example.com')).toBe('/');
   });
 });
 

@@ -8,9 +8,10 @@ export interface KpiCardProps {
   today: string;
   sevenD: string;
   thirtyD: string;
+  warning?: string;
 }
 
-export function KpiCard({ label, today, sevenD, thirtyD }: KpiCardProps) {
+export function KpiCard({ label, today, sevenD, thirtyD, warning }: KpiCardProps) {
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
       <div className="mb-3 text-sm font-medium text-neutral-600">{label}</div>
@@ -19,6 +20,11 @@ export function KpiCard({ label, today, sevenD, thirtyD }: KpiCardProps) {
         <Bucket caption="7d" value={sevenD} />
         <Bucket caption="30d" value={thirtyD} />
       </div>
+      {warning ? (
+        <p role="status" className="mt-3 text-xs text-amber-700">
+          {warning}
+        </p>
+      ) : null}
     </div>
   );
 }

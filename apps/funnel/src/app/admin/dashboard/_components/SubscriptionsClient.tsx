@@ -8,6 +8,7 @@ import { subDays } from 'date-fns';
 import { DateRangePicker } from './DateRangePicker';
 import { refetchSubscriptions } from '../_actions/refetch-subscriptions';
 import type {
+  SubscriptionLocalePerformanceReport,
   SubscriptionStatusBreakdown,
   SubscriptionVariantBreakdown,
 } from '../../_queries/subscriptions';
@@ -27,6 +28,7 @@ export type SubscriptionsPayload = {
   };
   statusBreakdown: SubscriptionStatusBreakdown;
   variantBreakdown: SubscriptionVariantBreakdown;
+  localePerformance: SubscriptionLocalePerformanceReport;
 };
 
 function defaultDateStrings() {
@@ -66,6 +68,7 @@ export function SubscriptionsClient({
     recurringOto,
     statusBreakdown: sb,
     variantBreakdown: vb,
+    localePerformance,
   } = data;
 
   return (
@@ -174,11 +177,11 @@ export function SubscriptionsClient({
             {cohort.ratePct.toFixed(1)}%
           </div>
           <div className="mt-1 text-xs text-neutral-500">
-            {cohort.converted} of {cohort.cohortSize} trials converted (7d+ retention)
+            {cohort.converted} of {cohort.cohortSize} mature trials converted
           </div>
           <div className="mt-2 text-xs text-neutral-400">
-            Share of trials started in range that stayed paid for 7+ days. Reads
-            0% until trials are old enough to have a confirmed renewal.
+            Recent trials that have not reached the configured maturity window
+            are excluded from the denominator.
           </div>
         </div>
         <div className="rounded-lg border border-neutral-200 bg-white p-4">
@@ -196,6 +199,94 @@ export function SubscriptionsClient({
           </div>
         </div>
       </div>
+
+      <div className="rounded-lg border border-neutral-200 bg-white p-4">
+        <div className="mb-3">
+          <h3 className="text-sm font-medium text-neutral-700">
+            Subscription performance by locale
+          </h3>
+          <p className="mt-1 text-xs text-neutral-500">
+            Trial conversion uses only mature trials through{' '}
+            {new Date(localePerformance.trialCohortMaturedThrough).toLocaleString('en-GB', {
+              timeZone: 'UTC',
+              dateStyle: 'medium',
+            })}{' '}
+            UTC. Renewals are deduplicated by invoice; first-attempt approval and
+            eventual recovery are shown separately.
+          </p>
+        </div>
+
+        {localePerformance.warnings.length > 0 ? (
+          <div
+            role="status"
+            className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+          >
+            {localePerformance.warnings.join(' ')}
+          </div>
+        ) : null}
+
+        {localePerformance.locales.length === 0 ? (
+          <p className="text-sm text-neutral-500">
+            No trial or renewal data in this range.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-[1040px] w-full text-sm">
+              <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className="py-2 pr-4">Locale</th>
+                  <th className="py-2 pr-4 text-right">Trials</th>
+                  <th className="py-2 pr-4 text-right">Converted</th>
+                  <th className="py-2 pr-4 text-right">Trial → paid</th>
+                  <th className="py-2 pr-4 text-right">Renewal invoices</th>
+                  <th className="py-2 pr-4 text-right">First try</th>
+                  <th className="py-2 pr-4 text-right">First-try success</th>
+                  <th className="py-2 pr-4 text-right">Recovered</th>
+                  <th className="py-2 pr-4 text-right">Eventually paid</th>
+                  <th className="py-2 text-right">Eventual success</th>
+                </tr>
+              </thead>
+              <tbody>
+                {localePerformance.locales.map((row) => (
+                  <tr key={row.locale} className="border-t border-neutral-100">
+                    <td className="py-2 pr-4 font-medium text-neutral-800">
+                      {row.locale}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {row.trialStarts}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {row.trialConversions}
+                    </td>
+                    <td className="py-2 pr-4 text-right font-medium tabular-nums text-sky-700">
+                      {row.trialConversionPct.toFixed(1)}%
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {row.renewalInvoices}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {row.firstAttemptSuccessfulRenewals}
+                    </td>
+                    <td className="py-2 pr-4 text-right font-medium tabular-nums text-sky-700">
+                      {row.firstAttemptRenewalSuccessPct.toFixed(1)}%
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {row.recoveredRenewals}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {row.successfulRenewals}
+                    </td>
+                    <td className="py-2 text-right font-medium tabular-nums text-emerald-700">
+                      {row.renewalSuccessPct.toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       <div className="rounded-lg border border-neutral-200 bg-white p-4">
         <h3 className="mb-2 text-sm font-medium text-neutral-700">
           Recurring OTO subscriptions

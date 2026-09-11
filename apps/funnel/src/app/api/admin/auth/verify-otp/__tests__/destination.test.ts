@@ -4,14 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   mockHandleVerifyOtp,
   mockCreateClient,
-  mockIsAdminEmail,
+  mockAdminLandingPath,
   mockCheckRateLimit,
   mockRecordAttempt,
   mockGetUser,
 } = vi.hoisted(() => ({
   mockHandleVerifyOtp: vi.fn(),
   mockCreateClient: vi.fn(),
-  mockIsAdminEmail: vi.fn(),
+  mockAdminLandingPath: vi.fn(),
   mockCheckRateLimit: vi.fn(),
   mockRecordAttempt: vi.fn(),
   mockGetUser: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock('@repo/shared/supabase/server', () => ({
 }));
 
 vi.mock('@/app/admin/_queries/_shared', () => ({
-  isAdminEmail: mockIsAdminEmail,
+  adminLandingPathForEmail: mockAdminLandingPath,
 }));
 
 vi.mock('@repo/shared/auth/otp-rate-limit', () => ({
@@ -61,6 +61,7 @@ describe('POST /api/admin/auth/verify-otp (getRedirectUrl logic)', () => {
     await POST(
       new Request('https://example.com/api/admin/auth/verify-otp', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: 'https://example.com' },
         body: JSON.stringify({ email: 'admin@example.com', token: '123456' }),
       }),
     );
@@ -69,7 +70,7 @@ describe('POST /api/admin/auth/verify-otp (getRedirectUrl logic)', () => {
     mockGetUser.mockResolvedValueOnce({
       data: { user: { id: 'user-42', email: 'admin@example.com' } },
     });
-    mockIsAdminEmail.mockReturnValueOnce(true);
+    mockAdminLandingPath.mockReturnValueOnce('/admin/dashboard');
 
     const redirect = await capturedOptions!.getRedirectUrl('user-42');
     expect(redirect).toBe('/admin/dashboard');
@@ -92,6 +93,7 @@ describe('POST /api/admin/auth/verify-otp (getRedirectUrl logic)', () => {
     await POST(
       new Request('https://example.com/api/admin/auth/verify-otp', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: 'https://example.com' },
         body: JSON.stringify({ email: 'bob@example.com', token: '123456' }),
       }),
     );
@@ -100,7 +102,7 @@ describe('POST /api/admin/auth/verify-otp (getRedirectUrl logic)', () => {
     mockGetUser.mockResolvedValueOnce({
       data: { user: { id: 'user-789', email: 'bob@example.com' } },
     });
-    mockIsAdminEmail.mockReturnValueOnce(false);
+    mockAdminLandingPath.mockReturnValueOnce('/');
 
     const redirect = await capturedOptions!.getRedirectUrl('user-789');
     expect(redirect).toBe('/');
@@ -123,11 +125,13 @@ describe('POST /api/admin/auth/verify-otp (getRedirectUrl logic)', () => {
     await POST(
       new Request('https://example.com/api/admin/auth/verify-otp', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: 'https://example.com' },
         body: JSON.stringify({ email: 'x@example.com', token: '123456' }),
       }),
     );
 
     mockGetUser.mockResolvedValueOnce({ data: { user: null } });
+    mockAdminLandingPath.mockReturnValueOnce('/');
 
     const redirect = await capturedOptions!.getRedirectUrl('user-xxx');
     expect(redirect).toBe('/');

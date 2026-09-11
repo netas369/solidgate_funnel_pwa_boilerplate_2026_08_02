@@ -25,6 +25,8 @@
         "CRON_SECRET",
 
         "ADMIN_EMAILS",
+        "ADMIN_ACCESS",
+        "ADMIN_PAYMENT_ENVIRONMENT",
         "ADMIN_FX_RATES",
 
         "RESEND_API_KEY",

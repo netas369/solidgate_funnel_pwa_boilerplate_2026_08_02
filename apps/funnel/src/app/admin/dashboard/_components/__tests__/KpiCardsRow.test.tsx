@@ -40,4 +40,27 @@ describe('KpiCardsRow (D-12 three-bucket KPI row)', () => {
     expect(screen.getByText('Leads')).toBeInTheDocument();
     expect(screen.getByText(/Revenue/)).toBeInTheDocument();
   });
+
+  it('marks only the affected KPI period unavailable when a source fails', async () => {
+    vi.doMock('../../../_queries/sessions', () => ({
+      countSessionsInRange: vi.fn().mockResolvedValue(7),
+    }));
+    vi.doMock('../../../_queries/leads', () => ({
+      countLeadsInRange: vi.fn().mockResolvedValue(3),
+    }));
+    vi.doMock('../../../_queries/revenue', () => ({
+      grossRevenueInEurInRange: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('Missing FX rate'))
+        .mockResolvedValue(12345),
+    }));
+
+    const { KpiCardsRow } = await import('../KpiCardsRow');
+    render(await KpiCardsRow());
+
+    expect(screen.getByText('Unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'One or more periods could not be read.',
+    );
+  });
 });

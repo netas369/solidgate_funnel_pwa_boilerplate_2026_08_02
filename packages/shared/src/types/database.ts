@@ -1189,6 +1189,66 @@ export type Database = {
         }
         Relationships: []
       }
+      support_action_audit: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          completed_at: string | null
+          created_at: string
+          customer_email_hash: string
+          customer_user_id: string | null
+          details: Json
+          id: string
+          idempotency_key: string | null
+          outcome: string
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          customer_email_hash: string
+          customer_user_id?: string | null
+          details?: Json
+          id?: string
+          idempotency_key?: string | null
+          outcome?: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          customer_email_hash?: string
+          customer_user_id?: string | null
+          details?: Json
+          id?: string
+          idempotency_key?: string | null
+          outcome?: string
+        }
+        Relationships: []
+      }
+      admin_rate_limit_events: {
+        Row: {
+          id: number
+          occurred_at: string
+          scope: string
+          subject_digest: string
+        }
+        Insert: {
+          id?: never
+          occurred_at?: string
+          scope: string
+          subject_digest: string
+        }
+        Update: {
+          id?: never
+          occurred_at?: string
+          scope?: string
+          subject_digest?: string
+        }
+        Relationships: []
+      }
       user_acquisition_attribution: {
         Row: {
           captured_at: string
@@ -1324,6 +1384,65 @@ export type Database = {
       }
     }
     Functions: {
+      consume_admin_rate_limit: {
+        Args: {
+          p_limit: number
+          p_scope: string
+          p_subject_digest: string
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
+      admin_customer_ltv_by_currency: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          currency: string
+          customer_count: number
+          net_amount_cents: number
+        }[]
+      }
+      admin_customer_ltv_by_currency_v2: {
+        Args: {
+          p_payment_environment: string
+        }
+        Returns: {
+          currency: string
+          customer_count: number
+          net_amount_cents: number
+        }[]
+      }
+      admin_subscription_performance_by_locale: {
+        Args: {
+          p_from: string
+          p_main_product_slug: string
+          p_to: string
+        }
+        Returns: {
+          locale: string
+          renewal_invoices: number
+          successful_renewals: number
+          trial_conversions: number
+          trial_starts: number
+        }[]
+      }
+      admin_subscription_performance_by_locale_v2: {
+        Args: {
+          p_from: string
+          p_main_product_slugs: string[]
+          p_payment_environment: string
+          p_to: string
+          p_trial_maturity_days: number
+        }
+        Returns: {
+          first_attempt_successful_renewals: number
+          locale: string
+          recovered_renewals: number
+          renewal_invoices: number
+          successful_renewals: number
+          trial_conversions: number
+          trial_starts: number
+        }[]
+      }
       advance_solidgate_oto_progress: {
         Args: {
           p_allow_catch_up?: boolean

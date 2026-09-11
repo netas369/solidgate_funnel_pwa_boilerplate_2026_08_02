@@ -7,7 +7,7 @@
 // (T-06-01 mitigation enforced by refetch-sessions.test.ts.)
 
 import { createClient } from '@repo/shared/supabase/server';
-import { isAdminEmail } from '../../_queries/_shared';
+import { adminEmailHasCapability } from '../../_queries/_shared';
 import { sessionsTimeSeries } from '../../_queries/sessions';
 import { sessionsByLocale } from '../../_queries/locales';
 import { RangeSchema } from './_range-schema';
@@ -17,7 +17,7 @@ export async function refetchSessions(input: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user?.email || !isAdminEmail(user.email)) {
+  if (!adminEmailHasCapability(user?.email, 'analytics:view')) {
     throw new Error('Forbidden');
   }
   const range = RangeSchema.parse(input);

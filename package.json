@@ -17,7 +17,10 @@
     "clean": "rm -rf .turbo/cache apps/*/.next",
     "clean:all": "rm -rf .turbo/cache apps/*/.next apps/*/.turbo node_modules/.cache",
     "test:ci": "turbo run test",
-    "test:coverage:payments": "npm --prefix apps/funnel run test:payments"
+    "test:coverage:payments": "npm --prefix apps/funnel run test:payments",
+    "typecheck": "tsc --noEmit -p apps/funnel/tsconfig.json && tsc --noEmit -p packages/admin-core/tsconfig.json",
+    "admin:verify": "node --import tsx scripts/verify-admin-config.ts",
+    "test:db": "bash scripts/test-database.sh"
   },
   "devDependencies": {
     "dotenv": "^17.4.2",

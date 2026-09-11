@@ -2,19 +2,52 @@
 // Consumed by: proxy.ts (Plan 03), /api/admin/auth/* (Plan 03),
 //              _queries/*.ts (Plan 04), _actions/*.ts (Plan 06).
 
-/**
- * Comma-separated, lowercased on read. v1 expects one email but supports many.
- * Empty string env → empty allowlist (no admin access).
- */
-export const ADMIN_EMAILS: readonly string[] = (process.env.ADMIN_EMAILS ?? '')
-  .split(',')
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
+import {
+  getAdminAccessForEmail,
+  hasAdminCapability,
+  parseAdminAccess,
+  type AdminCapability,
+} from '@repo/admin-core/access';
+import { adminConfig } from '@/admin.config';
+
+/** Backward-compatible view of every configured role-aware access entry. */
+export const ADMIN_EMAILS: readonly string[] = parseAdminAccess().entries.map(
+  (entry) => entry.email,
+);
 
 /** True when email is non-null AND case-insensitively present in ADMIN_EMAILS. */
 export function isAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return ADMIN_EMAILS.includes(email.toLowerCase());
+  return getAdminAccessForEmail(email) !== null;
+}
+
+export function adminEmailHasCapability(
+  email: string | null | undefined,
+  capability: AdminCapability,
+): boolean {
+  return hasAdminCapability(getAdminAccessForEmail(email), capability);
+}
+
+export function adminLandingPathForEmail(
+  email: string | null | undefined,
+): '/admin/dashboard' | '/admin/support' | '/admin/audit' | '/admin/health' | '/' {
+  const access = getAdminAccessForEmail(email);
+  const dashboardEnabled = Object.entries(adminConfig.modules).some(
+    ([key, enabled]) =>
+      key !== 'support' && key !== 'audit' && key !== 'health' && enabled,
+  );
+  if (dashboardEnabled && hasAdminCapability(access, 'analytics:view')) {
+    return '/admin/dashboard';
+  }
+  if (adminConfig.modules.support && hasAdminCapability(access, 'support:view')) {
+    return '/admin/support';
+  }
+  if (adminConfig.modules.audit && hasAdminCapability(access, 'admin:manage')) {
+    return '/admin/audit';
+  }
+  if (adminConfig.modules.health && hasAdminCapability(access, 'admin:manage')) {
+    return '/admin/health';
+  }
+  return '/';
 }
 
 /** ISO-8601 UTC bounds. `from` inclusive, `to` exclusive. */

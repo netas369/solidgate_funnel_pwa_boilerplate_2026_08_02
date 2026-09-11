@@ -41,11 +41,9 @@ describe('fx query (GREEN — Plan 04 implementation)', () => {
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it('convertToEur falls back to 1.0 and console.warns when currency missing', async () => {
+  it('convertToEur fails closed when currency is missing', async () => {
     const { convertToEur } = await import('../fx');
-    expect(convertToEur(1000, 'XYZ')).toBe(1000);
-    expect(warnSpy).toHaveBeenCalled();
-    const message = String(warnSpy.mock.calls[0]?.[0] ?? '');
-    expect(message).toContain('XYZ');
+    expect(() => convertToEur(1000, 'XYZ')).toThrow(/Missing admin FX rate for XYZ/);
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });

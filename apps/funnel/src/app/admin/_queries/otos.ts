@@ -9,6 +9,7 @@ import { PRODUCT_ID_TO_CODE } from '@repo/shared/solidgate/catalog';
 import type { ProductId } from '@repo/shared/price-map';
 import { convertToEur } from './fx';
 import type { DateRange } from './_shared';
+import { adminConfig } from '@/admin.config';
 
 export interface OtoMetric {
   offer: string;
@@ -34,10 +35,10 @@ const OTO_OFFERS: Array<{ offer: string; code: string }> = Object.entries(
 // (renewal_events), so here only the order's own amount counts (the intro
 // charge, 0 for a free trial) — no double counting.
 //
-// TODO(new product): list every upsell slot that starts a subscription.
-// Typed as ProductId so a catalog rename fails the build instead of silently
-// mis-bucketing the offer.
-const SUBSCRIPTION_OFFERS = new Set<ProductId>(['oto2_addon_weekly']);
+// Project-specific subscription offers live in admin.config.ts.
+const SUBSCRIPTION_OFFERS = new Set<ProductId>(
+  adminConfig.analytics.recurringOffers.map((offer) => offer.id as ProductId),
+);
 const SUB_TAKE_STATUSES = ['trialing', 'active', 'past_due', 'canceled'];
 
 export async function otoCountsPerOffer({ from, to }: DateRange): Promise<OtoMetric[]> {
@@ -47,7 +48,7 @@ export async function otoCountsPerOffer({ from, to }: DateRange): Promise<OtoMet
     const base = admin
       .from('orders')
       .select('amount_cents,currency')
-      .eq('payment_environment', 'production');
+      .eq('payment_environment', adminConfig.analytics.paymentEnvironment);
     const withStatus = SUBSCRIPTION_OFFERS.has(offer as ProductId)
       ? base.in('status', SUB_TAKE_STATUSES)
       : base.eq('status', 'completed');

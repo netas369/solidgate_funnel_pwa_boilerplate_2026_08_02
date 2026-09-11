@@ -542,6 +542,7 @@ describe('proxy paid-route guard', () => {
 describe('proxy /admin branch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.ADMIN_ACCESS;
     process.env.ADMIN_EMAILS = 'admin@example.com';
 
     mockUpdateSession.mockResolvedValue(new Response(null, { status: 200 }));
@@ -609,6 +610,28 @@ describe('proxy /admin branch', () => {
     expect(response.status).toBe(200);
     expect(mockUpdateSession).toHaveBeenCalledOnce();
     expect(mockIntlInstance).not.toHaveBeenCalled();
+  });
+
+  it('enforces role capabilities independently for dashboard, support, and health', async () => {
+    const { proxy } = await import('./proxy');
+    process.env.ADMIN_ACCESS = [
+      'support@example.com:support',
+      'analyst@example.com:analyst',
+    ].join(',');
+    mockAuthGetUser.mockResolvedValue({
+      data: { user: { id: 'support-user', email: 'support@example.com' } },
+    });
+
+    expect((await proxy(new NextRequest('https://example.com/admin/support'))).status).toBe(200);
+    expect((await proxy(new NextRequest('https://example.com/admin'))).status).toBe(200);
+    expect((await proxy(new NextRequest('https://example.com/admin/dashboard'))).status).toBe(307);
+    expect((await proxy(new NextRequest('https://example.com/admin/health'))).status).toBe(307);
+
+    mockAuthGetUser.mockResolvedValue({
+      data: { user: { id: 'analyst-user', email: 'analyst@example.com' } },
+    });
+    expect((await proxy(new NextRequest('https://example.com/admin/dashboard'))).status).toBe(200);
+    expect((await proxy(new NextRequest('https://example.com/admin/support'))).status).toBe(307);
   });
 
   it('intl middleware is bypassed for /admin/* paths', async () => {

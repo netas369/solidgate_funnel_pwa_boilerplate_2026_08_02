@@ -5,6 +5,7 @@
 
 import { getSupabaseAdminClient } from '@repo/shared/supabase/admin';
 import type { DateRange } from './_shared';
+import { adminConfig } from '@/admin.config';
 
 export interface CustomerOrderRow {
   id: string;
@@ -50,7 +51,7 @@ export async function recentOrders(
     .select(
       'id, created_at, status, product_name, amount_cents, currency, solidgate_subscription_id, sessions(email, locale)',
     )
-    .eq('payment_environment', 'production')
+    .eq('payment_environment', adminConfig.analytics.paymentEnvironment)
     // Solidgate writes the order row BEFORE payment, so 'pending' means an
     // opened checkout, not a buyer — and every decline-retry mints a fresh
     // order. Hide them or the tab fills with abandoned attempts.

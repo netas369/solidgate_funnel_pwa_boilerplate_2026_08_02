@@ -14,6 +14,7 @@ import {
   type SolidgateMainAcceptedCookieBinding,
 } from '@repo/shared/solidgate/main-accepted-cookie';
 import { SOLIDGATE_PRODUCT_CODES } from '@repo/shared/solidgate/catalog';
+import { getAdminAccessForEmail, hasAdminCapability } from '@repo/admin-core/access';
 import { FUNNEL_CODE } from '@/features/analytics/lib/checkout-context';
 import { PAID_MAIN_CHECKOUT_TIER_SLUGS } from '@/lib/payment/checkout-tiers';
 import {
@@ -222,12 +223,7 @@ export async function proxy(request: NextRequest) {
       return await updateSession(request);
     }
 
-    // All other /admin/* require an authenticated, allowlisted user.
-    const adminEmails = (process.env.ADMIN_EMAILS ?? '')
-      .split(',')
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-
+    // All other /admin/* require an authenticated user with the route capability.
     const supabaseAdminGate = createServerClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -245,8 +241,16 @@ export async function proxy(request: NextRequest) {
     const {
       data: { user: adminUser },
     } = await supabaseAdminGate.auth.getUser();
+    const adminAccess = getAdminAccessForEmail(adminUser?.email);
+    const requiredCapability = pathname.startsWith('/admin/support')
+      ? 'support:view'
+      : pathname.startsWith('/admin/health') || pathname.startsWith('/admin/audit')
+        ? 'admin:manage'
+        : 'analytics:view';
     const isAllowed =
-      !!adminUser?.email && adminEmails.includes(adminUser.email.toLowerCase());
+      pathname === '/admin' || pathname === '/admin/'
+        ? adminAccess !== null
+        : hasAdminCapability(adminAccess, requiredCapability);
 
     if (!isAllowed) {
       // D-07: silent redirect to funnel root. No 403, no /admin/dashboard leak.

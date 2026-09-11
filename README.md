@@ -11,7 +11,7 @@ Its guiding principle: **reuse the platform layer, replace the product layer.**
 | OTP auth, entitlements, grace periods, card updates | Quiz questions, offer and OTO copy |
 | Quiz engine + generic step-type library | Branding, assets, legal entity |
 | PostHog, Meta Pixel + CAPI, GTM | Member-area content |
-| Admin analytics dashboard | |
+| Admin analytics + customer support workspace | |
 | i18n routing, multi-currency pricing | |
 | PWA shell, offline, install | |
 
@@ -29,8 +29,9 @@ apps/
 packages/
   shared/     Solidgate client + catalog, price map, entitlements, auth, emails, DB types
   i18n/       next-intl routing + message packs (ships `en`; infra supports 15 locales)
+  admin-core/ reusable admin manifest, RBAC, adapter, result, and request contracts
 supabase/
-  migrations/00001_baseline.sql   the entire schema, one idempotent file
+  migrations/                     baseline plus additive platform migrations
   functions/solidgate-webhooks/   payment webhook (Deno edge function)
   tests/                          psql behaviour tests for the PL/pgSQL money logic
 scripts/     Solidgate catalog seeding, price exports, reconciliation tooling
@@ -89,6 +90,9 @@ A test fails if real IDs are ever committed back into the boilerplate.
 | `npm run test` | All workspace test suites |
 | `npm run lint` | ESLint across workspaces |
 | `npm run test:coverage:payments` | Payment-path coverage run |
+| `npm run typecheck` | Funnel and reusable admin-core TypeScript checks |
+| `npm run admin:verify` | Validate admin manifest, adapters, access, FX, migrations, and DB types |
+| `npm run test:db` | Apply migrations and SQL behavior tests in throwaway PostgreSQL 17 (Docker required) |
 
 Database behaviour tests live in `supabase/tests/` and are plain `psql` assertion scripts
 (not pgTAP). They are the only coverage of the PL/pgSQL money logic — see
@@ -101,6 +105,13 @@ Database behaviour tests live in `supabase/tests/` and are plain `psql` assertio
 Read **[docs/new-product-checklist.md](docs/new-product-checklist.md)** — it walks the whole
 path in order, from `boilerplate-brand.ts` through Solidgate catalog seeding to the
 pre-launch checks.
+
+The reusable admin architecture, support data adapters, access model, and safe extension
+rules are documented in **[docs/admin-dashboard.md](docs/admin-dashboard.md)**.
+
+Complete **[Admin-checklist.md](Admin-checklist.md)** as the admin/support adaptation,
+security, reconciliation, staging, and release gate. Project-specific admin settings are
+centralized in `apps/funnel/src/admin.config.ts`.
 
 Fastest orientation: two files drive almost everything.
 

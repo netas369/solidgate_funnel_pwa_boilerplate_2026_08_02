@@ -137,7 +137,7 @@ const nextConfig: NextConfig = {
   // app dir (apps/funnel), which makes Turbopack think the monorepo root is
   // here and it can't find the hoisted next/package.json.
   outputFileTracingRoot: MONOREPO_ROOT,
-  transpilePackages: ["@repo/shared", "@repo/i18n"],
+  transpilePackages: ["@repo/admin-core", "@repo/shared", "@repo/i18n"],
   images: {
     minimumCacheTTL: 31536000,
     // TODO(new product): allowlist the hosts you serve product imagery from,
@@ -149,6 +149,22 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        source: "/admin/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
+      {
+        source: "/api/admin/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
       },
       // The Apple Pay domain-verification file has no extension, so Next serves
       // it as application/octet-stream — and our global nosniff stops the

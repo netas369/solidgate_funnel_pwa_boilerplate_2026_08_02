@@ -10,6 +10,15 @@
 // while shape settles. Plan 06 can swap to a richer primitive if needed.
 
 import { useState, type ReactNode } from 'react';
+import {
+  Activity,
+  BadgeDollarSign,
+  CircleDollarSign,
+  GitBranch,
+  ShoppingBag,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 
 type TabKey =
   | 'sessions'
@@ -19,22 +28,22 @@ type TabKey =
   | 'customers'
   | 'otos';
 
-const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: 'sessions', label: 'Sessions' },
-  { key: 'funnel', label: 'Funnel' },
-  { key: 'revenue', label: 'Revenue' },
-  { key: 'subscriptions', label: 'Subscriptions' },
-  { key: 'customers', label: 'Customers' },
-  { key: 'otos', label: 'OTOs' },
+const TABS: Array<{ key: TabKey; label: string; icon: LucideIcon }> = [
+  { key: 'sessions', label: 'Sessions', icon: Activity },
+  { key: 'funnel', label: 'Funnel', icon: GitBranch },
+  { key: 'revenue', label: 'Revenue', icon: CircleDollarSign },
+  { key: 'subscriptions', label: 'Subscriptions', icon: BadgeDollarSign },
+  { key: 'customers', label: 'Customers', icon: Users },
+  { key: 'otos', label: 'Offers', icon: ShoppingBag },
 ];
 
 export interface TabShellProps {
-  sessions: ReactNode;
-  funnel: ReactNode;
-  revenue: ReactNode;
-  subscriptions: ReactNode;
-  customers: ReactNode;
-  otos: ReactNode;
+  sessions: ReactNode | null;
+  funnel: ReactNode | null;
+  revenue: ReactNode | null;
+  subscriptions: ReactNode | null;
+  customers: ReactNode | null;
+  otos: ReactNode | null;
 }
 
 export function TabShell({
@@ -45,7 +54,6 @@ export function TabShell({
   customers,
   otos,
 }: TabShellProps) {
-  const [active, setActive] = useState<TabKey>('sessions');
   const slots: Record<TabKey, ReactNode> = {
     sessions,
     funnel,
@@ -54,30 +62,49 @@ export function TabShell({
     customers,
     otos,
   };
+  const enabledTabs = TABS.filter((tab) => slots[tab.key] !== null);
+  const [active, setActive] = useState<TabKey>(enabledTabs[0]?.key ?? 'sessions');
+  if (enabledTabs.length === 0) {
+    return <p className="rounded-2xl border border-neutral-200 bg-white p-6 text-sm text-neutral-500">No analytics modules are enabled.</p>;
+  }
   return (
-    <section>
+    <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
       <div
         role="tablist"
-        className="mb-4 flex gap-2 border-b border-neutral-200"
+        aria-label="Dashboard sections"
+        className="flex gap-1 overflow-x-auto border-b border-neutral-200 bg-neutral-50/80 px-3 pt-2"
       >
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            role="tab"
-            aria-selected={active === t.key}
-            onClick={() => setActive(t.key)}
-            className={
-              active === t.key
-                ? 'border-b-2 border-sky-600 px-3 py-2 text-sm font-medium text-sky-700'
-                : 'border-b-2 border-transparent px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900'
-            }
-          >
-            {t.label}
-          </button>
-        ))}
+        {enabledTabs.map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              id={`admin-tab-${t.key}`}
+              aria-controls={`admin-panel-${t.key}`}
+              aria-selected={active === t.key}
+              onClick={() => setActive(t.key)}
+              className={
+                active === t.key
+                  ? 'inline-flex shrink-0 items-center gap-2 border-b-2 border-sky-600 px-3 py-2.5 text-sm font-semibold text-sky-700'
+                  : 'inline-flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900'
+              }
+            >
+              <Icon size={15} aria-hidden="true" />
+              {t.label}
+            </button>
+          );
+        })}
       </div>
-      <div role="tabpanel">{slots[active]}</div>
+      <div
+        role="tabpanel"
+        id={`admin-panel-${active}`}
+        aria-labelledby={`admin-tab-${active}`}
+        className="p-4 sm:p-6"
+      >
+        {slots[active]}
+      </div>
     </section>
   );
 }

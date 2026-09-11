@@ -8,6 +8,7 @@ import {
   paidConversionsCohort,
   paidConversionsRolling,
   recurringOtoSnapshot,
+  subscriptionPerformanceByLocale,
   subscriptionStatusBreakdown,
   subscriptionVariantBreakdown,
 } from '../../_queries/subscriptions';
@@ -23,16 +24,31 @@ function default30dRange() {
 
 export async function SubscriptionsTab() {
   const range = default30dRange();
-  const [cohort, rolling, recurringOto, statusBreakdown, variantBreakdown] = await Promise.all([
+  const [
+    cohort,
+    rolling,
+    recurringOto,
+    statusBreakdown,
+    variantBreakdown,
+    localePerformance,
+  ] = await Promise.all([
     paidConversionsCohort(range),
     paidConversionsRolling(range),
     recurringOtoSnapshot(range),
     subscriptionStatusBreakdown(range),
     subscriptionVariantBreakdown(range),
+    subscriptionPerformanceByLocale(range),
   ]);
   return (
     <SubscriptionsClient
-      initialData={{ cohort, rolling, recurringOto, statusBreakdown, variantBreakdown }}
+      initialData={{
+        cohort,
+        rolling,
+        recurringOto,
+        statusBreakdown,
+        variantBreakdown,
+        localePerformance,
+      }}
     />
   );
 }

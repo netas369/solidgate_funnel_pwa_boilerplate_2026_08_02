@@ -21,6 +21,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run admin:verify -- --structure-only
+      - run: npm run typecheck
       - run: npm run lint
 
   test:
@@ -37,3 +39,27 @@ jobs:
         run: npm run test:ci
       - name: Payment-surface tests + coverage report
         run: npm run test:coverage:payments
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    env:
+      ADMIN_ACCESS: ci-admin@example.com:administrator
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  database:
+    name: Database migrations and behavior
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm run test:db

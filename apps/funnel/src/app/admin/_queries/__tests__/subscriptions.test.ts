@@ -123,7 +123,7 @@ describe('subscriptions query', () => {
       { solidgate_subscription_id: 'sub1', created_at: trialStart, status: 'active' },
       // active but NO renewal_events row → not converted (renewal requirement).
       { solidgate_subscription_id: 'sub2', created_at: trialStart, status: 'active' },
-      // status=canceled — never enters the converted check at all.
+      // Canceled with no renewal evidence → not converted.
       { solidgate_subscription_id: 'sub3', created_at: trialStart, status: 'canceled' },
       // status=trialing — never enters the converted check.
       { solidgate_subscription_id: 'sub4', created_at: trialStart, status: 'trialing' },

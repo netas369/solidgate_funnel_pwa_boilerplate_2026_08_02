@@ -37,10 +37,11 @@ function fmtEur(cents: number): string {
 
 export async function KpiCardsRow() {
   const b = buckets();
-  // Promise.all parallelizes 9 lightweight count queries — Supabase handles
+  // Promise.allSettled parallelizes 9 lightweight count queries while keeping
+  // one unavailable source from hiding the other KPI cards. Supabase handles
   // each as a separate `count: 'exact', head: true` round trip, so total
   // latency is roughly 1× slowest query, not 9× sequential.
-  const [tS, wS, mS, tL, wL, mL, tR, wR, mR] = await Promise.all([
+  const results = await Promise.allSettled([
     countSessionsInRange(b.today),
     countSessionsInRange(b.sevenD),
     countSessionsInRange(b.thirtyD),
@@ -51,26 +52,44 @@ export async function KpiCardsRow() {
     grossRevenueInEurInRange(b.sevenD),
     grossRevenueInEurInRange(b.thirtyD),
   ]);
+  const values = results.map((result) =>
+    result.status === 'fulfilled' ? result.value : null,
+  );
+  const [tS, wS, mS, tL, wL, mL, tR, wR, mR] = values;
+
+  const countValue = (value: number | null) =>
+    value === null ? 'Unavailable' : String(value);
+  const moneyValue = (value: number | null) =>
+    value === null ? 'Unavailable' : fmtEur(value);
+  const sourceWarning = (
+    sourceResults: readonly PromiseSettledResult<number>[],
+  ) =>
+    sourceResults.some((result) => result.status === 'rejected')
+      ? 'One or more periods could not be read.'
+      : undefined;
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <KpiCard
         label="Sessions"
-        today={String(tS)}
-        sevenD={String(wS)}
-        thirtyD={String(mS)}
+        today={countValue(tS)}
+        sevenD={countValue(wS)}
+        thirtyD={countValue(mS)}
+        warning={sourceWarning(results.slice(0, 3))}
       />
       <KpiCard
         label="Leads"
-        today={String(tL)}
-        sevenD={String(wL)}
-        thirtyD={String(mL)}
+        today={countValue(tL)}
+        sevenD={countValue(wL)}
+        thirtyD={countValue(mL)}
+        warning={sourceWarning(results.slice(3, 6))}
       />
       <KpiCard
         label="Revenue (EUR)"
-        today={fmtEur(tR)}
-        sevenD={fmtEur(wR)}
-        thirtyD={fmtEur(mR)}
+        today={moneyValue(tR)}
+        sevenD={moneyValue(wR)}
+        thirtyD={moneyValue(mR)}
+        warning={sourceWarning(results.slice(6, 9))}
       />
     </div>
   );

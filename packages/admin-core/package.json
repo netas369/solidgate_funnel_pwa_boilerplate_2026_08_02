@@ -1,0 +1,16 @@
+{
+  "name": "@repo/admin-core",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "vitest run"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./access": "./src/access.ts",
+    "./adapters": "./src/adapters.ts",
+    "./config": "./src/config.ts",
+    "./request": "./src/request.ts",
+    "./result": "./src/result.ts"
+  }
+}

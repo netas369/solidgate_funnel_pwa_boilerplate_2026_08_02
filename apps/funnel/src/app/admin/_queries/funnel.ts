@@ -17,6 +17,7 @@ import { getSupabaseAdminClient } from '@repo/shared/supabase/admin';
 import { quizConfig } from '@/features/quiz/config/quiz-config';
 import { countLeadsInRange } from './leads';
 import type { DateRange } from './_shared';
+import { adminConfig } from '@/admin.config';
 
 /** One row of the step-by-step quiz funnel. */
 export interface StepFunnelRow {
@@ -220,7 +221,7 @@ export async function localeBreakdown({
     admin
       .from('orders')
       .select('sessions(locale)')
-      .eq('payment_environment', 'production')
+      .eq('payment_environment', adminConfig.analytics.paymentEnvironment)
       .not('solidgate_subscription_id', 'is', null)
       .gte('created_at', from)
       .lt('created_at', to),

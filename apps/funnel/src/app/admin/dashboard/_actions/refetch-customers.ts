@@ -5,7 +5,7 @@
 // same pattern as the sibling refetch-* actions.
 
 import { createClient } from '@repo/shared/supabase/server';
-import { isAdminEmail } from '../../_queries/_shared';
+import { adminEmailHasCapability } from '../../_queries/_shared';
 import { recentOrders } from '../../_queries/customers';
 import { RangeSchema } from './_range-schema';
 
@@ -14,7 +14,7 @@ export async function refetchCustomers(input: unknown) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user?.email || !isAdminEmail(user.email)) {
+  if (!adminEmailHasCapability(user?.email, 'analytics:view')) {
     throw new Error('Forbidden');
   }
   const range = RangeSchema.parse(input);

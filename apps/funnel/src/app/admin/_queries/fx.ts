@@ -1,7 +1,7 @@
 // D-22: unified-EUR revenue display.
 // ADMIN_FX_RATES env format: COMMA-SEPARATED `CODE:RATE` pairs (e.g. 'USD:0.92,GBP:1.17').
 // RATE is the multiplier from source currency to EUR.
-// Missing currencies fall back to 1.0 with a console.warn (surfaced as a UI warning row in Plan 05).
+// Missing currencies fail closed. A 1:1 fallback fabricates financial data.
 // Server-only — never imported from 'use client' modules.
 
 function parseRates(raw: string | undefined): Record<string, number> {
@@ -12,7 +12,7 @@ function parseRates(raw: string | undefined): Record<string, number> {
     if (idx < 0) continue;
     const code = pair.slice(0, idx).trim().toUpperCase();
     const rate = Number.parseFloat(pair.slice(idx + 1).trim());
-    if (!code || !Number.isFinite(rate)) continue;
+    if (!/^[A-Z]{3}$/.test(code) || !Number.isFinite(rate) || rate <= 0) continue;
     out[code] = rate;
   }
   return out;
@@ -22,6 +22,13 @@ export const ADMIN_FX_RATES: Readonly<Record<string, number>> = Object.freeze(
   parseRates(process.env.ADMIN_FX_RATES),
 );
 
+export class MissingAdminFxRateError extends Error {
+  constructor(public readonly currency: string) {
+    super(`Missing admin FX rate for ${currency}`);
+    this.name = 'MissingAdminFxRateError';
+  }
+}
+
 // Currencies with no minor unit: rows store MAJOR units (¥926 is stored as
 // 926, on both PSPs), so they must be scaled to cent-space before the per-unit
 // rate applies — otherwise a naturally-quoted rate (JPY:0.0054) undercounts
@@ -30,15 +37,15 @@ const ZERO_DECIMAL_CURRENCIES = new Set(['JPY']);
 
 /**
  * Convert a per-row order/invoice amount (in source-currency cents) to EUR cents.
- * EUR rows pass through. Missing rates fall back to 1.0 with a console.warn.
+ * EUR rows pass through. Missing rates throw so callers can mark the metric
+ * unavailable instead of presenting fabricated 1:1 totals.
  */
 export function convertToEur(amountCents: number, currency: string): number {
   const code = (currency ?? '').toUpperCase();
   if (!code || code === 'EUR') return amountCents;
   const rate = ADMIN_FX_RATES[code];
   if (rate === undefined) {
-    console.warn(`[admin/fx] missing FX rate for ${code} — falling back to 1.0`);
-    return amountCents;
+    throw new MissingAdminFxRateError(code);
   }
   const minorUnits = ZERO_DECIMAL_CURRENCIES.has(code)
     ? amountCents * 100

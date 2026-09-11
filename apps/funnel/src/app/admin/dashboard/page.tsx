@@ -20,20 +20,33 @@ import { RevenueTab } from './_components/RevenueTab';
 import { SubscriptionsTab } from './_components/SubscriptionsTab';
 import { CustomersTab } from './_components/CustomersTab';
 import { OtosTab } from './_components/OtosTab';
+import { getAuthenticatedAdminUser } from '../_queries/admin-access';
+import { redirect } from 'next/navigation';
+import { adminConfig } from '@/admin.config';
 
 // D-17: live SQL on every visit; no caching.
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  if (!(await getAuthenticatedAdminUser('analytics:view'))) redirect('/');
+
   return (
-    <main className="mx-auto max-w-7xl space-y-6 p-6">
-      <header className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold text-neutral-900">
-          Admin dashboard
-        </h1>
+    <main className="mx-auto max-w-[1440px] space-y-6 p-4 sm:p-6 lg:p-8">
+      <header className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">
+            Analytics
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-neutral-950">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Funnel performance, revenue, subscriptions, and customer activity.
+          </p>
+        </div>
         <span className="text-xs text-neutral-500">
-          Live SQL. All dates UTC. Updated on page load.
+          Live data · UTC · Updated on page load
         </span>
       </header>
 
@@ -46,12 +59,12 @@ export default function AdminDashboardPage() {
           active-tab state. Each tab is a Server Component subtree streamed
           via Suspense from the tab's own internal sections. */}
       <TabShell
-        sessions={<SessionsTab />}
-        funnel={<FunnelTab />}
-        revenue={<RevenueTab />}
-        subscriptions={<SubscriptionsTab />}
-        customers={<CustomersTab />}
-        otos={<OtosTab />}
+        sessions={adminConfig.modules.sessions ? <SessionsTab /> : null}
+        funnel={adminConfig.modules.funnel ? <FunnelTab /> : null}
+        revenue={adminConfig.modules.revenue ? <RevenueTab /> : null}
+        subscriptions={adminConfig.modules.subscriptions ? <SubscriptionsTab /> : null}
+        customers={adminConfig.modules.customers ? <CustomersTab /> : null}
+        otos={adminConfig.modules.offers ? <OtosTab /> : null}
       />
     </main>
   );

@@ -1,9 +1,19 @@
 import { handleVerifyOtp } from '@repo/shared/auth/verify-otp';
+import { readSameOriginAdminJson } from '@repo/admin-core/request';
 import { createClient } from '@repo/shared/supabase/server';
-import { isAdminEmail } from '@/app/admin/_queries/_shared';
+import { adminLandingPathForEmail } from '@/app/admin/_queries/_shared';
 import { checkOtpRateLimit, recordOtpAttempt } from '@repo/shared/auth/otp-rate-limit';
 
+const MAX_BODY_BYTES = 4_096;
+
 export async function POST(request: Request) {
+  const parsed = await readSameOriginAdminJson(request.clone(), MAX_BODY_BYTES);
+  if (!parsed.ok) {
+    return Response.json(
+      { error: 'Invalid admin authentication request.' },
+      { status: parsed.status },
+    );
+  }
   return handleVerifyOtp(request, {
     checkRateLimit: checkOtpRateLimit,
     recordAttempt: recordOtpAttempt,
@@ -13,10 +23,7 @@ export async function POST(request: Request) {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user?.email || !isAdminEmail(user.email)) {
-        return '/';
-      }
-      return '/admin/dashboard';
+      return adminLandingPathForEmail(user?.email);
     },
   });
 }
