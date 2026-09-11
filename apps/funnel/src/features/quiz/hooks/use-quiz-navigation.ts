@@ -154,7 +154,7 @@ export function useQuizNavigation(locale?: string): UseQuizNavigationReturn {
       if (!completedSteps.has(answeredStepId)) {
         completedSteps.add(answeredStepId);
 
-        // Analytics: step_completed to PostHog + GTM + in-memory (D-08, D-09)
+        // Analytics: step_completed to internal events + GTM + in-memory (D-08, D-09)
         track('step_completed', { step_id: answeredStepId, step_number: answeredStepNum, session_id: sessionId });
 
         // Supabase funnel_events insert (ANLYT-01)

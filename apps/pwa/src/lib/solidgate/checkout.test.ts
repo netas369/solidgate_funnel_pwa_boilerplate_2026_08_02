@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConfirmedPurchase } from "@/lib/analytics/payment-event";
 
 const captureConfirmedPurchase = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/analytics/posthog", () => ({ captureConfirmedPurchase }));
+vi.mock("@/lib/analytics/internal", () => ({ captureConfirmedPurchase }));
 
 import {
   confirmPurchase,

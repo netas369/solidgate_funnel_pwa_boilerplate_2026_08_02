@@ -9,6 +9,7 @@
     "./supabase/server": "./src/supabase/server.ts",
     "./supabase/admin": "./src/supabase/admin.ts",
     "./supabase/middleware": "./src/supabase/middleware.ts",
+    "./analytics/server": "./src/analytics/server.ts",
     "./entitlements": "./src/entitlements.ts",
     "./grace-period": "./src/grace-period.ts",
     "./generation-lock": "./src/generation-lock.ts",

@@ -139,11 +139,6 @@ vi.mock('@/features/quiz/hooks/use-quiz-persistence', () => ({
   persistSessionSnapshot: vi.fn(),
 }));
 
-vi.mock('@/features/analytics/lib/posthog', () => ({
-  identifyPostHogUser: vi.fn(),
-  capturePostHogEvent: vi.fn(),
-}));
-
 vi.mock('@/features/analytics/lib/hash-email', () => ({
   hashEmail: vi.fn(),
 }));

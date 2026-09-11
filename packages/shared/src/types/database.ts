@@ -1,6 +1,6 @@
-// Generated from supabase/migrations/00001_baseline.sql.
+// Generated from the files in supabase/migrations/.
 //
-// Hand-authored to match the baseline exactly, because the boilerplate ships
+// Hand-authored to match those migrations exactly, because the boilerplate ships
 // without a linked Supabase project. Once you have created your project and run
 // `npx supabase link`, stop hand-editing this file and regenerate it:
 //
@@ -20,6 +20,189 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      advisor_conversations: {
+        Row: {
+          advisor_key: string
+          archived_at: string | null
+          created_at: string
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          preview: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          advisor_key?: string
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          preview?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          advisor_key?: string
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          preview?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      advisor_message_attachments: {
+        Row: {
+          bucket_name: string
+          created_at: string
+          id: string
+          message_id: string
+          mime_type: string | null
+          object_path: string
+          size_bytes: number | null
+        }
+        Insert: {
+          bucket_name?: string
+          created_at?: string
+          id?: string
+          message_id: string
+          mime_type?: string | null
+          object_path: string
+          size_bytes?: number | null
+        }
+        Update: {
+          bucket_name?: string
+          created_at?: string
+          id?: string
+          message_id?: string
+          mime_type?: string | null
+          object_path?: string
+          size_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advisor_message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "advisor_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      advisor_messages: {
+        Row: {
+          client_message_id: string | null
+          conversation_id: string
+          created_at: string
+          id: string
+          message_content: string | null
+          message_kind: string
+          metadata: Json
+          role: string
+          status: string
+        }
+        Insert: {
+          client_message_id?: string | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          message_content?: string | null
+          message_kind?: string
+          metadata?: Json
+          role: string
+          status?: string
+        }
+        Update: {
+          client_message_id?: string | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          message_content?: string | null
+          message_kind?: string
+          metadata?: Json
+          role?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advisor_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "advisor_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_events: {
+        Row: {
+          created_at: string
+          deployment_environment: string
+          distinct_id: string
+          event_key: string
+          event_name: string
+          id: string
+          insert_id: string
+          occurred_at: string
+          project_key: string
+          properties: Json
+          schema_version: number
+          session_id: string | null
+          source_app: string
+          source_channel: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          deployment_environment?: string
+          distinct_id: string
+          event_key: string
+          event_name: string
+          id?: string
+          insert_id?: string
+          occurred_at?: string
+          project_key: string
+          properties?: Json
+          schema_version?: number
+          session_id?: string | null
+          source_app: string
+          source_channel?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          deployment_environment?: string
+          distinct_id?: string
+          event_key?: string
+          event_name?: string
+          id?: string
+          insert_id?: string
+          occurred_at?: string
+          project_key?: string
+          properties?: Json
+          schema_version?: number
+          session_id?: string | null
+          source_app?: string
+          source_channel?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cron_runs: {
         Row: {
           cached: number
@@ -572,60 +755,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      solidgate_analytics_outbox: {
-        Row: {
-          attempts: number
-          completed_at: string | null
-          created_at: string
-          distinct_id: string
-          environment: string
-          event_key: string
-          event_name: string
-          id: string
-          insert_id: string
-          last_error: string | null
-          next_attempt_at: string
-          processing_started_at: string | null
-          properties: Json
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          attempts?: number
-          completed_at?: string | null
-          created_at?: string
-          distinct_id: string
-          environment?: string
-          event_key: string
-          event_name: string
-          id?: string
-          insert_id: string
-          last_error?: string | null
-          next_attempt_at?: string
-          processing_started_at?: string | null
-          properties?: Json
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          attempts?: number
-          completed_at?: string | null
-          created_at?: string
-          distinct_id?: string
-          environment?: string
-          event_key?: string
-          event_name?: string
-          id?: string
-          insert_id?: string
-          last_error?: string | null
-          next_attempt_at?: string
-          processing_started_at?: string | null
-          properties?: Json
-          status?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       solidgate_card_update_attempts: {
         Row: {
@@ -1253,24 +1382,36 @@ export type Database = {
         Row: {
           app_open_count: number
           country: string | null
+          display_name: string | null
           last_active_at: string | null
           locale: string
+          notifications_enabled: boolean
+          notifications_updated_at: string | null
+          timezone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           app_open_count?: number
           country?: string | null
+          display_name?: string | null
           last_active_at?: string | null
           locale: string
+          notifications_enabled?: boolean
+          notifications_updated_at?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           app_open_count?: number
           country?: string | null
+          display_name?: string | null
           last_active_at?: string | null
           locale?: string
+          notifications_enabled?: boolean
+          notifications_updated_at?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1361,6 +1502,19 @@ export type Database = {
           last_active_at: string
         }[]
       }
+      record_user_app_open: {
+        Args: {
+          p_default_locale: string
+          p_deployment_environment: string
+          p_event_key: string
+          p_project_key: string
+          p_user_id: string
+        }
+        Returns: {
+          app_open_count: number
+          last_active_at: string
+        }[]
+      }
       claim_meta_capi_event: {
         Args: {
           p_environment: string
@@ -1372,36 +1526,6 @@ export type Database = {
           p_window_seconds?: number
         }
         Returns: boolean
-      }
-      claim_solidgate_analytics_outbox: {
-        Args: {
-          p_environment: string
-          p_lease_seconds?: number
-          p_limit?: number
-        }
-        Returns: {
-          attempts: number
-          completed_at: string | null
-          created_at: string
-          distinct_id: string
-          environment: string
-          event_key: string
-          event_name: string
-          id: string
-          insert_id: string
-          last_error: string | null
-          next_attempt_at: string
-          processing_started_at: string | null
-          properties: Json
-          status: string
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "solidgate_analytics_outbox"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       claim_solidgate_card_update_attempt: {
         Args: {

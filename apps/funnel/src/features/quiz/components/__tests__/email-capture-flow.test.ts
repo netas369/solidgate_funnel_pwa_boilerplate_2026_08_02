@@ -13,12 +13,6 @@ vi.mock('@/features/quiz/hooks/use-quiz-persistence', () => ({
   persistSessionSnapshot: vi.fn(),
 }));
 
-const mockIdentifyPostHogUser = vi.fn();
-vi.mock('@/features/analytics/lib/posthog', () => ({
-  capturePostHogEvent: vi.fn(),
-  identifyPostHogUser: (...args: unknown[]) => mockIdentifyPostHogUser(...args),
-}));
-
 const mockHashEmail = vi.fn();
 vi.mock('@/features/analytics/lib/hash-email', () => ({
   hashEmail: (...args: unknown[]) => mockHashEmail(...args),
@@ -137,14 +131,6 @@ describe('Email Capture Flow', () => {
     expect(mockTrack).toHaveBeenCalledWith('lead_capture_error', { session_id: TEST_SESSION_ID });
     expect(mockTrack).toHaveBeenCalledWith('lead_captured', { session_id: TEST_SESSION_ID });
     expect(mockCompleteQuiz).toHaveBeenCalled();
-  });
-
-  it('identifyPostHogUser is called with (sessionId, email)', () => {
-    const email = 'user@example.com';
-
-    mockIdentifyPostHogUser(TEST_SESSION_ID, email);
-
-    expect(mockIdentifyPostHogUser).toHaveBeenCalledWith(TEST_SESSION_ID, email);
   });
 
   it('captureLeadRecord receives consent fields as 4th argument', async () => {

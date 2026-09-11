@@ -13,23 +13,11 @@ import {
 } from '../_codes';
 import {
   configureWebhookRuntime,
-  drainAnalyticsOutbox,
   handleEvent,
   serveRequest,
   triggerFunnelFulfillment,
   WEBHOOK_CONTRACT_VERSION,
 } from '../index';
-
-// Server-side analytics: capture spy behind the npm:posthog-node alias.
-const posthogCapture = vi.fn();
-vi.mock('npm:posthog-node', () => ({
-  PostHog: class {
-    capture = posthogCapture;
-    shutdown() {
-      return Promise.resolve();
-    }
-  },
-}));
 
 // The webhook is the only thing standing between Solidgate's view of the money
 // and ours. These tests pin the rules that, when broken, cost the customer
@@ -683,7 +671,6 @@ async function makeWebhookRequest(
 }
 
 beforeEach(() => {
-  posthogCapture.mockClear();
   configureWebhookRuntime({
     environment: 'production',
     webhookPublicKey: WH_PUBLIC,
@@ -1414,7 +1401,7 @@ describe('fail-closed database boundaries', () => {
       status: 'completed',
     }));
     expect(upsertsTo('entitlements')).toHaveLength(0);
-    expect(upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+    expect(upsertsTo('analytics_events')).toHaveLength(0);
     expect(
       writes.filter((write) =>
         write.table === 'solidgate_webhook_events' && write.payload.status === 'completed'
@@ -1527,7 +1514,7 @@ describe('positive settlement binding', () => {
     await expect(response.text()).resolves.toContain('positive settlement');
     expect(updatesTo('orders')).toHaveLength(0);
     expect(upsertsTo('entitlements')).toHaveLength(0);
-    expect(upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+    expect(upsertsTo('analytics_events')).toHaveLength(0);
     expect(upsertsTo('solidgate_fulfillment_outbox')).toHaveLength(0);
     expect(
       writes.filter((write) => write.table !== 'solidgate_webhook_events'),
@@ -1721,7 +1708,7 @@ describe('card_gate.order.updated', () => {
         p_user_id: 'sandbox-user',
         p_order_id: 'sandbox-order',
       });
-      expect(upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+      expect(upsertsTo('analytics_events')).toHaveLength(0);
     } finally {
       configureWebhookRuntime({
         environment: 'production',
@@ -2198,7 +2185,7 @@ describe('card_gate.order.updated', () => {
       p_user_id: 'webhook-user',
       p_order_id: 'order-1',
     }));
-    expect(retry.upsertsTo('solidgate_analytics_outbox')).not.toHaveLength(0);
+    expect(retry.upsertsTo('analytics_events')).not.toHaveLength(0);
   });
 
   it('queues lifetime replacement cancellation only after capture is recognised', async () => {
@@ -2262,7 +2249,7 @@ describe('card_gate.order.updated', () => {
     expect(rpcCalls).toContainEqual(expect.objectContaining({
       name: 'grant_solidgate_main_entitlement',
     }));
-    expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({
+    expect(upsertsTo('analytics_events')[0]).toMatchObject({
       event_name: 'intro_offer_conflict',
       distinct_id: 'sess-1',
       properties: {
@@ -2301,7 +2288,7 @@ describe('card_gate.order.updated', () => {
     ).rejects.toThrow('intro offer conflict');
 
     expect(upsertsTo('entitlements')).toHaveLength(0);
-    expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({
+    expect(upsertsTo('analytics_events')[0]).toMatchObject({
       event_name: 'intro_offer_conflict',
       properties: { resolution: 'aborted' },
     });
@@ -2356,7 +2343,7 @@ describe('card_gate.order.updated', () => {
       value: ['pending', 'failed'],
     });
     expect(attempt.updatesTo('entitlements')).toHaveLength(0);
-    expect(attempt.upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+    expect(attempt.upsertsTo('analytics_events')).toHaveLength(0);
   });
 
   it('revokes access on a FULL refund but keeps it on a partial one', async () => {
@@ -2469,7 +2456,7 @@ describe('card_gate.order.updated', () => {
     expect(updatesTo('orders')[0]).toMatchObject({ solidgate_payment_status: 'auth_ok' });
     expect(updatesTo('orders')[0]).not.toHaveProperty('status');
     expect(upsertsTo('entitlements')).toHaveLength(0);
-    expect(upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+    expect(upsertsTo('analytics_events')).toHaveLength(0);
   });
 
   it('accepts special_free auth_ok only with the exact reusable authorization token', async () => {
@@ -3296,7 +3283,7 @@ describe('card_gate.order.updated', () => {
     expect(updatesTo('orders')[0]).toMatchObject({ solidgate_payment_status: 'partial_settled' });
     expect(updatesTo('orders')[0]).not.toHaveProperty('status');
     expect(upsertsTo('entitlements')).toHaveLength(0);
-    expect(upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+    expect(upsertsTo('analytics_events')).toHaveLength(0);
   });
 
   it('does not mistake order.amount for captured money when partial_settled omits settlement fields', async () => {
@@ -3320,7 +3307,7 @@ describe('card_gate.order.updated', () => {
     });
     expect(updatesTo('orders')[0]).not.toHaveProperty('status');
     expect(upsertsTo('entitlements')).toHaveLength(0);
-    expect(upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+    expect(upsertsTo('analytics_events')).toHaveLength(0);
     expect(upsertsTo('solidgate_fulfillment_outbox')).toHaveLength(0);
   });
 
@@ -3348,7 +3335,7 @@ describe('card_gate.order.updated', () => {
       p_amount_cents: 1767,
       p_subscription_id: 'sub-uuid-1',
     });
-    expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({
+    expect(upsertsTo('analytics_events')[0]).toMatchObject({
       event_name: 'subscription_started',
     });
   });
@@ -3448,7 +3435,7 @@ describe('card_gate.order.updated', () => {
       refunded_amount_cents: 1200,
       status: 'partially_refunded',
     });
-    expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({
+    expect(upsertsTo('analytics_events')[0]).toMatchObject({
       event_name: 'payment_refunded',
       properties: {
         provider: 'solidgate',
@@ -3477,70 +3464,8 @@ describe('card_gate.order.updated', () => {
   });
 });
 
-describe('durable server-side lifecycle analytics outbox', () => {
-  it('reuses the persisted timestamp as well as the uuid when PostHog delivery retries', async () => {
-    process.env.NEXT_PUBLIC_POSTHOG_KEY = 'phc_test';
-    process.env.NEXT_PUBLIC_POSTHOG_HOST = 'https://eu.i.posthog.com';
-    configureWebhookRuntime({ analyticsEnabled: true });
-    const createdAt = '2026-07-16T08:50:10.000Z';
-    const { db } = makeDb([], [], {}, {
-      claim_solidgate_analytics_outbox: [{
-        id: 'outbox-1',
-        event_name: 'subscription_started',
-        distinct_id: 'sess-1',
-        insert_id: '6669b29c-e485-5a8a-b240-379ee8423448',
-        properties: { solidgate_order_id: 'sess-1:trial4:1', revenue: 1767 },
-        attempts: 2,
-        created_at: createdAt,
-      }],
-    });
-
-    await drainAnalyticsOutbox(db);
-
-    expect(posthogCapture).toHaveBeenCalledWith(expect.objectContaining({
-      event: 'subscription_started',
-      uuid: '6669b29c-e485-5a8a-b240-379ee8423448',
-      timestamp: new Date(createdAt),
-    }));
-    delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
-    delete process.env.NEXT_PUBLIC_POSTHOG_HOST;
-  });
-
-  it('marks analytics failed and throws so Solidgate redelivery retries without new traffic', async () => {
-    process.env.NEXT_PUBLIC_POSTHOG_KEY = 'phc_test';
-    process.env.NEXT_PUBLIC_POSTHOG_HOST = 'https://eu.i.posthog.com';
-    configureWebhookRuntime({ analyticsEnabled: true });
-    posthogCapture.mockImplementationOnce(() => {
-      throw new Error('temporary PostHog failure');
-    });
-    const { db, updatesTo } = makeDb([], [], {}, {
-      claim_solidgate_analytics_outbox: [{
-        id: 'outbox-failed',
-        event_name: 'purchase_completed',
-        distinct_id: 'user-1',
-        insert_id: '6669b29c-e485-5a8a-b240-379ee8423448',
-        properties: { revenue: 9900 },
-        attempts: 1,
-        created_at: '2026-07-16T08:50:10.000Z',
-      }],
-    });
-
-    await expect(drainAnalyticsOutbox(db)).rejects.toThrow(
-      'analytics outbox delivery failed: temporary PostHog failure',
-    );
-    expect(updatesTo('solidgate_analytics_outbox')[0]).toMatchObject({
-      status: 'failed',
-      processing_started_at: null,
-      last_error: 'temporary PostHog failure',
-    });
-    expect(
-      new Date(updatesTo('solidgate_analytics_outbox')[0]!.next_attempt_at as string).getTime(),
-    ).toBeLessThanOrEqual(Date.now());
-    delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
-    delete process.env.NEXT_PUBLIC_POSTHOG_HOST;
-  });
-
-  it('queues canonical subscription_started + attribution before delivery', async () => {
+describe('internal server-side lifecycle analytics', () => {
+  it('persists canonical subscription_started + attribution', async () => {
     const attributedOrder = {
       ...ORDER_ROW,
       analytics_captured_at: null,
@@ -3553,7 +3478,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
     };
     const { db, upsertsTo } = makeDb([attributedOrder]);
     await handleEvent(db, 'card_gate.order.updated', positiveOrderPayload(attributedOrder));
-    expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({
+    expect(upsertsTo('analytics_events')[0]).toMatchObject({
       event_key: 'order:sess-1:trial4:1:settled',
       event_name: 'subscription_started',
       distinct_id: 'sess-1',
@@ -3574,7 +3499,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
     });
   });
 
-  it('merges an authoritatively linked funnel UUID into the stable auth UUID exactly once', async () => {
+  it('stores linked user and funnel session identities on the canonical event', async () => {
     const sessionId = 'a02abb9d-f287-4ef2-b31c-fe7ef95c6f56';
     const userId = 'b08991b3-ebdc-4f7e-b6c5-e73245323c24';
     const oneTimeOrder = {
@@ -3604,28 +3529,19 @@ describe('durable server-side lifecycle analytics outbox', () => {
 
     await handleEvent(db, 'card_gate.order.updated', positiveOrderPayload(oneTimeOrder));
 
-    const analytics = upsertsTo('solidgate_analytics_outbox');
-    expect(analytics).toHaveLength(2);
+    const analytics = upsertsTo('analytics_events');
+    expect(analytics).toHaveLength(1);
     expect(analytics[0]).toMatchObject({
+      project_key: 'unconfigured',
+      deployment_environment: 'production',
+      source_app: 'funnel',
+      source_channel: 'webhook',
       event_name: 'purchase_completed',
       distinct_id: sessionId,
+      user_id: userId,
+      session_id: sessionId,
       properties: { product_name: 'Bundle (all)', revenue: 3000 },
     });
-    expect(analytics[1]).toMatchObject({
-      event_key: `identity:production:${userId}:${sessionId}`,
-      event_name: '$merge_dangerously',
-      distinct_id: userId,
-      properties: {
-        alias: sessionId,
-        user_id: userId,
-        session_id: sessionId,
-        source: 'solidgate_account_link',
-        environment: 'production',
-      },
-    });
-    expect(analytics[1]?.properties).not.toHaveProperty('revenue');
-    expect(analytics[1]?.properties).not.toHaveProperty('amount_cents');
-    expect(analytics[1]?.properties).not.toHaveProperty('currency');
     expect(
       rpcCalls.find((call) => call.name === 'persist_user_acquisition_attribution')?.args,
     ).toMatchObject({
@@ -3638,7 +3554,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
     });
   });
 
-  it('does not queue an identity merge when sandbox analytics are disabled', async () => {
+  it('does not persist analytics when sandbox analytics are disabled', async () => {
     const sessionId = 'a02abb9d-f287-4ef2-b31c-fe7ef95c6f56';
     const userId = 'b08991b3-ebdc-4f7e-b6c5-e73245323c24';
     configureWebhookRuntime({
@@ -3675,7 +3591,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
         positiveOrderPayload(sandboxOneTimeOrder),
         { environment: 'sandbox' },
       );
-      expect(upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+      expect(upsertsTo('analytics_events')).toHaveLength(0);
     } finally {
       configureWebhookRuntime({
         environment: 'production',
@@ -3685,18 +3601,18 @@ describe('durable server-side lifecycle analytics outbox', () => {
     }
   });
 
-  it('uses the same deterministic outbox key and insert id on a retry', async () => {
+  it('uses the same deterministic event key and insert id on a retry', async () => {
     const { db, upsertsTo } = makeDb([{ ...ORDER_ROW }]);
     const payload = positiveOrderPayload(ORDER_ROW);
     await handleEvent(db, 'card_gate.order.updated', payload);
     await handleEvent(db, 'card_gate.order.updated', payload);
-    const attempts = upsertsTo('solidgate_analytics_outbox');
+    const attempts = upsertsTo('analytics_events');
     expect(attempts).toHaveLength(2); // the DB UNIQUE(event_key) collapses these
     expect(attempts[0]?.event_key).toBe(attempts[1]?.event_key);
     expect(attempts[0]?.insert_id).toBe(attempts[1]?.insert_id);
   });
 
-  it('queues one-time and zero-trial taxonomy without calling PostHog inline', async () => {
+  it('persists one-time and zero-trial taxonomy directly', async () => {
     const oneTimeOrder = {
       ...ORDER_ROW,
       product_name: 'BRANDPDF5_000000_PDF',
@@ -3715,7 +3631,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
       oneTimeOrder,
     ]);
     await handleEvent(oneTime.db, 'card_gate.order.updated', positiveOrderPayload(oneTimeOrder));
-    expect(oneTime.upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({ event_name: 'purchase_completed' });
+    expect(oneTime.upsertsTo('analytics_events')[0]).toMatchObject({ event_name: 'purchase_completed' });
 
     const addonOrder = {
       ...ORDER_ROW,
@@ -3738,8 +3654,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
       'card_gate.order.updated',
       positiveOrderPayload(addonOrder, { status: 'auth_ok', amount: 0, settled_amount: 0 }),
     );
-    expect(addon.upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({ event_name: 'oto_subscription_started' });
-    expect(posthogCapture).not.toHaveBeenCalled();
+    expect(addon.upsertsTo('analytics_events')[0]).toMatchObject({ event_name: 'oto_subscription_started' });
   });
 
   it('queues a payment_failed lifecycle event for declines', async () => {
@@ -3747,13 +3662,13 @@ describe('durable server-side lifecycle analytics outbox', () => {
     await handleEvent(db, 'card_gate.order.updated', {
       order: { order_id: 'sess-1:trial4:1', status: 'auth_failed' },
     });
-    expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({ event_name: 'payment_failed' });
-    expect(posthogCapture).not.toHaveBeenCalled();
+    expect(upsertsTo('analytics_events')[0]).toMatchObject({ event_name: 'payment_failed' });
   });
 });
 
 describe('subscription.updated.v2', () => {
   it('grants access to the next charge date and records term-1 renewal + generated order mapping', async () => {
+    const nextChargeAt = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString();
     const captured = capturedSubscriptionOrder({ status: 'trialing' });
     const { db, updatesTo, upsertsTo, rpcsTo } = makeDb(
       [captured],
@@ -3762,7 +3677,7 @@ describe('subscription.updated.v2', () => {
     );
     await handleEvent(db, 'subscription.updated.v2', {
       callback_type: 'renew',
-      subscription: { id: 'sub-uuid-1', status: 'active', next_charge_at: '2026-08-19 20:08:51', trial: false },
+      subscription: { id: 'sub-uuid-1', status: 'active', next_charge_at: nextChargeAt, trial: false },
       product: { product_id: PRODUCT_IDS.trial4, amount: 5900, currency: 'USD' },
       customer: { customer_account_id: 'sess-1', customer_email: 'buyer@example.com' },
       invoices: {
@@ -3797,7 +3712,7 @@ describe('subscription.updated.v2', () => {
     const lifecycle = rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')[0];
     expect(lifecycle).toMatchObject({ p_access_level: 'full', p_status: 'active' });
     // Access expires when the next charge is due: stop paying, stop having it.
-    expect(lifecycle.p_expires_at).toBe(new Date('2026-08-19T20:08:51Z').toISOString());
+    expect(lifecycle.p_expires_at).toBe(new Date(nextChargeAt).toISOString());
     expect(upsertsTo('renewal_events')[0]).toMatchObject({
       solidgate_invoice_id: 'inv-1',
       solidgate_order_id: 'sg-renewal-order-1',
@@ -3811,7 +3726,7 @@ describe('subscription.updated.v2', () => {
       product_price_id: 'price-renewal-usd',
       order_metadata: expect.objectContaining({ utm_source: 'fb' }),
     });
-    expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({
+    expect(upsertsTo('analytics_events')[0]).toMatchObject({
       event_name: 'subscription_renewed',
       properties: {
         provider: 'solidgate',
@@ -3941,7 +3856,7 @@ describe('subscription.updated.v2', () => {
       write.table === 'orders'
       || write.table === 'entitlements'
       || write.table === 'solidgate_fulfillment_outbox'
-      || write.table === 'solidgate_analytics_outbox'
+      || write.table === 'analytics_events'
     )).toHaveLength(0);
 
     const card = makeDb(
@@ -4005,7 +3920,7 @@ describe('subscription.updated.v2', () => {
         || write.table === 'entitlements'
         || write.table === 'solidgate_invoice_orders'
         || write.table === 'renewal_events'
-        || write.table === 'solidgate_analytics_outbox'
+        || write.table === 'analytics_events'
         || write.table === 'solidgate_fulfillment_outbox'
       )).toHaveLength(0);
     },
@@ -4083,7 +3998,7 @@ describe('subscription.updated.v2', () => {
         || write.table === 'entitlements'
         || write.table === 'solidgate_invoice_orders'
         || write.table === 'renewal_events'
-        || write.table === 'solidgate_analytics_outbox'
+        || write.table === 'analytics_events'
         || write.table === 'solidgate_fulfillment_outbox'
       )).toHaveLength(0);
     },
@@ -4131,7 +4046,7 @@ describe('subscription.updated.v2', () => {
         || write.table === 'entitlements'
         || write.table === 'solidgate_invoice_orders'
         || write.table === 'renewal_events'
-        || write.table === 'solidgate_analytics_outbox'
+        || write.table === 'analytics_events'
         || write.table === 'solidgate_fulfillment_outbox'
       )).toHaveLength(0);
     },
@@ -4371,7 +4286,7 @@ describe('subscription.updated.v2', () => {
       write.table === 'orders'
       || write.table === 'entitlements'
       || write.table === 'solidgate_invoice_orders'
-      || write.table === 'solidgate_analytics_outbox'
+      || write.table === 'analytics_events'
     )).toHaveLength(0);
 
     // The card finalizer owns the REAL binding. Its active callback then grants
@@ -4454,7 +4369,7 @@ describe('subscription.updated.v2', () => {
         || write.table === 'entitlements'
         || write.table === 'renewal_events'
         || write.table === 'solidgate_invoice_orders'
-        || write.table === 'solidgate_analytics_outbox'
+        || write.table === 'analytics_events'
       )).toHaveLength(0);
       expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toHaveLength(0);
     },
@@ -4569,7 +4484,7 @@ describe('subscription.updated.v2', () => {
       write.table === 'orders'
       || write.table === 'entitlements'
       || write.table === 'solidgate_fulfillment_outbox'
-      || write.table === 'solidgate_analytics_outbox'
+      || write.table === 'analytics_events'
     )).toHaveLength(0);
   });
 
@@ -4590,7 +4505,7 @@ describe('subscription.updated.v2', () => {
       || write.table === 'entitlements'
       || write.table === 'solidgate_invoice_orders'
       || write.table === 'solidgate_fulfillment_outbox'
-      || write.table === 'solidgate_analytics_outbox'
+      || write.table === 'analytics_events'
     )).toHaveLength(0);
   });
 
@@ -4627,7 +4542,7 @@ describe('subscription.updated.v2', () => {
       || write.table === 'renewal_events'
       || write.table === 'solidgate_invoice_orders'
       || write.table === 'solidgate_fulfillment_outbox'
-      || write.table === 'solidgate_analytics_outbox'
+      || write.table === 'analytics_events'
     )).toHaveLength(0);
   });
 
@@ -4716,7 +4631,7 @@ describe('subscription.updated.v2', () => {
     )).rejects.toThrow('lost without an exact durable winner');
     expect(wrongWinner.upsertsTo('entitlements')).toHaveLength(0);
     expect(wrongWinner.upsertsTo('solidgate_fulfillment_outbox')).toHaveLength(0);
-    expect(wrongWinner.upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+    expect(wrongWinner.upsertsTo('analytics_events')).toHaveLength(0);
   });
 
   it.each([
@@ -4749,7 +4664,7 @@ describe('subscription.updated.v2', () => {
       || write.table === 'entitlements'
       || write.table === 'solidgate_invoice_orders'
       || write.table === 'solidgate_fulfillment_outbox'
-      || write.table === 'solidgate_analytics_outbox'
+      || write.table === 'analytics_events'
     )).toHaveLength(0);
   });
 
@@ -4816,7 +4731,7 @@ describe('subscription.updated.v2', () => {
     );
     expect(lateDunning.updatesTo('orders')).toHaveLength(0);
     expect(lateDunning.upsertsTo('entitlements')).toHaveLength(0);
-    expect(lateDunning.upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+    expect(lateDunning.upsertsTo('analytics_events')).toHaveLength(0);
   });
 
   it('lets a same-time terminal callback monotonically win after dunning', async () => {
@@ -4925,7 +4840,7 @@ describe('subscription.updated.v2', () => {
     expect(dunningAfterSuccess.updatesTo('orders')).toHaveLength(0);
     expect(dunningAfterSuccess.updatesTo('entitlements')).toHaveLength(0);
     expect(dunningAfterSuccess.upsertsTo('entitlements')).toHaveLength(0);
-    expect(dunningAfterSuccess.upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+    expect(dunningAfterSuccess.upsertsTo('analytics_events')).toHaveLength(0);
 
     // Dunning first: it may enter past_due, but the equal-time paid callback
     // deterministically restores the order and exact entitlement.
@@ -5001,7 +4916,7 @@ describe('subscription.updated.v2', () => {
       expect(attempt.updatesTo('orders')).toHaveLength(0);
       expect(attempt.updatesTo('entitlements')).toHaveLength(0);
       expect(attempt.upsertsTo('entitlements')).toHaveLength(0);
-      expect(attempt.upsertsTo('solidgate_analytics_outbox')).toContainEqual(
+      expect(attempt.upsertsTo('analytics_events')).toContainEqual(
         expect.objectContaining({
           event_name: callbackType === 'cancel'
             ? 'subscription_cancelled'

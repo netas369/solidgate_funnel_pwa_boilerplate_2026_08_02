@@ -5,7 +5,6 @@ import { useRouter } from "@repo/i18n/navigation";
 import { useDashboard } from "../context";
 import { TabHeader } from "./placeholder";
 import { LocaleCountrySwitchers } from "../shell/LocaleCountrySwitchers";
-import { resetPwaAnalytics } from "@/lib/analytics/posthog";
 
 /**
  * PLACEHOLDER TAB — the account surface.
@@ -24,10 +23,7 @@ export function ProfileTab({ accountEmail }: { accountEmail: string }) {
     if (signingOut) return;
     setSigningOut(true);
     try {
-      const response = await fetch("/api/auth/logout", { method: "POST" });
-      // Reset analytics identity only after the server really ended the
-      // session; otherwise a failed logout leaves the next user un-identified.
-      if (response.ok) resetPwaAnalytics();
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch (err) {
       console.error("[profile] logout failed", err);
     }

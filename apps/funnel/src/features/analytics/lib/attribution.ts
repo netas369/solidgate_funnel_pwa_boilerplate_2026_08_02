@@ -1,5 +1,5 @@
 /**
- * Browser-side campaign attribution shared by PostHog, GTM and checkout.
+ * Browser-side campaign attribution shared by internal analytics, GTM and checkout.
  *
  * The first touch never changes during a funnel tab session. The last touch is
  * replaced only when a URL contains a campaign/click identifier, so normal
@@ -207,7 +207,7 @@ export function selectFirstTouchUtm(
   return utm;
 }
 
-/** Flattened event properties understood by PostHog, GTM and the data team. */
+/** Flattened event properties understood by internal analytics, GTM and the data team. */
 export function attributionEventProperties(
   snapshot: AttributionSnapshot | null = readStoredAttribution(),
 ): Record<string, string> {

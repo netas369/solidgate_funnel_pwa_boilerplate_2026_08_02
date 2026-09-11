@@ -10,7 +10,7 @@ Its guiding principle: **reuse the platform layer, replace the product layer.**
 | Solidgate payments, 3DS, webhooks, refunds, chargebacks | Prices and product catalog |
 | OTP auth, entitlements, grace periods, card updates | Quiz questions, offer and OTO copy |
 | Quiz engine + generic step-type library | Branding, assets, legal entity |
-| PostHog, Meta Pixel + CAPI, GTM | Member-area content |
+| First-party analytics event stream, Meta Pixel + CAPI, GTM | Member-area content |
 | Admin analytics dashboard | |
 | i18n routing, multi-currency pricing | |
 | PWA shell, offline, install | |
@@ -30,7 +30,7 @@ packages/
   shared/     Solidgate client + catalog, price map, entitlements, auth, emails, DB types
   i18n/       next-intl routing + message packs (ships `en`; infra supports 15 locales)
 supabase/
-  migrations/00001_baseline.sql   the entire schema, one idempotent file
+  migrations/                     baseline plus additive platform migrations
   functions/solidgate-webhooks/   payment webhook (Deno edge function)
   tests/                          psql behaviour tests for the PL/pgSQL money logic
 scripts/     Solidgate catalog seeding, price exports, reconciliation tooling
@@ -101,6 +101,9 @@ Database behaviour tests live in `supabase/tests/` and are plain `psql` assertio
 Read **[docs/new-product-checklist.md](docs/new-product-checklist.md)** — it walks the whole
 path in order, from `boilerplate-brand.ts` through Solidgate catalog seeding to the
 pre-launch checks.
+
+Complete **[PWA-checklist.md](PWA-checklist.md)** as the member-area build and release
+gate.
 
 Fastest orientation: two files drive almost everything.
 

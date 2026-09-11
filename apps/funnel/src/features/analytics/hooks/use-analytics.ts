@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import type { Json } from '@repo/shared/types/database';
 import { useAnalyticsStore } from '@/stores/analytics-store';
 import { trackFunnelEvent } from '@/features/quiz/lib/track-funnel-event';
-import { capturePostHogEvent } from '../lib/posthog';
+import { captureInternalEvent } from '../lib/internal';
 import { pushDataLayerEvent } from '../lib/gtm';
 import { trackMetaEvent } from '../lib/meta-pixel';
 import { generateMetaEventId } from '../lib/meta-event-id';
@@ -12,7 +12,7 @@ import { generateMetaEventId } from '../lib/meta-event-id';
 /**
  * Internal funnel event → Meta standard event.
  *
- * Only mapped events reach the Pixel; everything else stays in PostHog / GTM /
+ * Only mapped events reach the Pixel; everything else stays in internal analytics / GTM /
  * the funnel_events mirror. checkout_completed → Purchase fires only when
  * value + currency are present (the offer page supplies them; an upsell whose
  * intro is €0 does not).
@@ -35,7 +35,7 @@ const META_EVENT_MAP: Record<string, string> = {
  *
  * Why it shipped true: ads optimize on the MAIN offer conversion. A buyer who
  * takes three upsells would otherwise count as four Purchases for one paid
- * funnel entry, inflating ROAS and poisoning attribution. PostHog, GTM and the
+ * funnel entry, inflating ROAS and poisoning attribution. Internal analytics, GTM and the
  * funnel_events mirror still receive every upsell event — only the Meta
  * emission is suppressed.
  *
@@ -75,7 +75,7 @@ function dbFunnelEventType(event: string): string | null {
  * Centralized analytics hook: ONE call site fans out to every sink.
  *
  *   1. the in-memory Zustand store (debug / session state)
- *   2. PostHog product analytics
+ *   2. first-party analytics_events
  *   3. the GTM dataLayer (retargeting pixels)
  *   4. the funnel_events DB mirror (our own conversion data)
  *   5. the Meta Pixel (mapped subset only)
@@ -92,25 +92,25 @@ export function useAnalytics() {
   const track = useCallback(
     (event: string, metadata?: TrackMetadata) => {
       // Strip CAPI-only fields before forwarding to channels that should
-      // never receive raw PII (PostHog, GTM, Meta Pixel browser-side).
+      // never receive raw PII (internal analytics, GTM, Meta Pixel browser-side).
       // Preserve undefined-when-absent so downstream channels see the same
       // payload shape they did before CAPI was introduced.
       let sanitized: Record<string, unknown> | undefined;
       if (metadata) {
         // capi_email stays stripped even with the CAPI mirror removed — raw
-        // PII must never leak into PostHog/GTM/fbq payloads.
+        // PII must never leak into analytics_events/GTM/fbq payloads.
         const { capi_email: _capiEmail, ...rest } = metadata;
         sanitized = rest;
       }
 
       // 1. In-memory buffer (existing analytics store)
       trackEvent(event, sanitized);
-      // 2. PostHog product analytics
-      capturePostHogEvent(event, sanitized);
+      // 2. Durable first-party product analytics
+      captureInternalEvent(event, sanitized);
       // 3. GTM dataLayer for retargeting pixels
       pushDataLayerEvent(event, sanitized);
       // 3b. funnel_events DB mirror, so quiz→purchase conversion and the OTO
-      // funnel are computable from our own data, not only PostHog. Requires a
+      // funnel are computable from our own data. Requires a
       // session_id (funnel_events.session_id is a NOT NULL FK to sessions).
       const dbEventType = dbFunnelEventType(event);
       const dbSessionId =
@@ -125,13 +125,6 @@ export function useAnalytics() {
       if (metaEvent) {
         const value = typeof sanitized?.value === 'number' ? sanitized.value : undefined;
         const currency = typeof sanitized?.currency === 'string' ? sanitized.currency : undefined;
-        const product =
-          typeof sanitized?.product_id === 'string'
-            ? sanitized.product_id
-            : typeof sanitized?.product === 'string'
-              ? sanitized.product
-              : undefined;
-
         // A €0 checkout_completed that opened a REAL subscription (server
         // confirmed via `authorized_trial`) is a free-trial start, not a
         // Purchase. See REPORT_ZERO_VALUE_TRIALS_AS_START_TRIAL.
@@ -162,14 +155,14 @@ export function useAnalytics() {
         // the value/currency guard. A real buyer's session replay showed
         // exactly that — healthy PageViews, zero /tr?ev=Purchase, and no way
         // to tell from the outside. Every skip and drop is reported with its
-        // reason so PostHog shows the TRUE Meta delivery rate.
+        // reason so the internal dashboard shows the TRUE Meta delivery rate.
         const reportDelivery = (
           pixelFired: boolean,
           skipReason: string | undefined,
           eventId: string | undefined,
         ) => {
           if (metaEvent !== 'Purchase') return;
-          capturePostHogEvent('meta_pixel_delivery', {
+          captureInternalEvent('meta_pixel_delivery', {
             meta_event: effectiveMetaEvent,
             pixel_fired: pixelFired,
             skip_reason: skipReason,

@@ -162,12 +162,12 @@ export function otoProductContext(
   };
 }
 
-/** One purchase/order produces one ID across PostHog, GTM, Pixel and CAPI. */
+/** One purchase/order produces one ID across internal analytics, GTM, Pixel and CAPI. */
 export function purchaseEventId(orderId: string): string {
   return `purchase:${orderId}`;
 }
 
-/** Secondary lifecycle events must not reuse Purchase's PostHog insert ID. */
+/** Secondary lifecycle events must not reuse the Purchase event's internal id. */
 export function lifecycleEventId(eventName: string, orderId: string): string {
   return `${eventName}:${orderId}`;
 }

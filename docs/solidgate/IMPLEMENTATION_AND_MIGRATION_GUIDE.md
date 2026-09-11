@@ -187,8 +187,7 @@ NEXT_PUBLIC_PWA_URL=https://...
 INTERNAL_API_SECRET=...
 CRON_SECRET=...
 SLACK_DISPUTE_WEBHOOK_URL=...       # optional
-NEXT_PUBLIC_POSTHOG_KEY=...         # optional
-NEXT_PUBLIC_POSTHOG_HOST=...        # optional
+ANALYTICS_PROJECT_KEY=acme          # required; same in funnel/PWA/Edge Function
 RESEND_API_KEY=...                  # if email fulfillment is enabled
 ```
 
@@ -1010,7 +1009,7 @@ The core ledgers are:
 | `solidgate_card_update_attempts` | one current zero-auth card replacement |
 | `solidgate_subscription_token_sync_jobs` | durable token propagation |
 | `solidgate_fulfillment_outbox` | customer/business side effects |
-| `solidgate_analytics_outbox` | idempotent server analytics |
+| `analytics_events` | private, idempotent cross-project analytics contract |
 | user acquisition attribution | immutable UTM ownership |
 
 Important RPC families include:

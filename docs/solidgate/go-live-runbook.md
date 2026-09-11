@@ -279,8 +279,7 @@ NEXT_PUBLIC_PWA_URL=https://<production-pwa-host>
 INTERNAL_API_SECRET=<same-strong-secret-as-production-funnel>
 SOLIDGATE_SANDBOX_FULFILLMENT_URL=https://<preview-funnel-host>/api/internal/solidgate-fulfillment
 SOLIDGATE_SANDBOX_FULFILLMENT_SECRET=<same-strong-secret-as-preview-funnel>
-NEXT_PUBLIC_POSTHOG_KEY=<production-key>
-NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
+ANALYTICS_PROJECT_KEY=<stable-lowercase-project-key>
 # Add AC_INTERNAL_SECRET and SLACK_DISPUTE_WEBHOOK_URL only when enabled.
 ```
 

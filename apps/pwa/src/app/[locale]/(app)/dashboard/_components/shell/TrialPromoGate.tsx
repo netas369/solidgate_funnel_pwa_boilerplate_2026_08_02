@@ -28,6 +28,12 @@ const OPEN_WINDOW_MS = 30 * 60 * 1000;
 const MAX_SHOWINGS = 2;
 const PROMO_ENABLED = process.env.NEXT_PUBLIC_TRIAL_PROMO_ENABLED === "true";
 
+function newEventKey(): string {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 type AppOpenResult = {
   appOpenCount?: number | null;
 };
@@ -90,7 +96,9 @@ export function TrialPromoGate() {
       try {
         const res = await fetch("/api/app-open", {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
+          body: JSON.stringify({ eventKey: newEventKey() }),
         });
         if (!res.ok) return;
         result = (await res.json()) as AppOpenResult;

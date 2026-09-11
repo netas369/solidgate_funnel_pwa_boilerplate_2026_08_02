@@ -152,7 +152,7 @@ describe('SuccessClient  -  funnel_completed analytics', () => {
     });
     expect(mockTrack).toHaveBeenCalledWith('funnel_completed', { order_count: 2 });
     // The raw email must NEVER be forwarded on funnel_completed  -  the user is
-    // already PostHog-identified from lead capture.
+    // already bound to the funnel session by the server-side event route.
     const [, payload] = mockTrack.mock.calls.find(([event]) => event === 'funnel_completed')!;
     expect(payload).not.toHaveProperty('email');
   });

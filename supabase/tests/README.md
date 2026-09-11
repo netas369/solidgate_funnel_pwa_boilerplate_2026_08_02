@@ -7,13 +7,13 @@ run on any branch without touching real data.
 Every assertion is a `DO $$ ... ASSERT ... $$` — the script aborts loudly on the
 first failure and prints a `... PASSED` banner when it does not.
 
-These are the only coverage of the PL/pgSQL money logic (roughly 330 assertions
-across the seven scripts). The application-level test suites cannot reach it:
+These are the only coverage of the PL/pgSQL money logic (roughly 340 assertions
+across the eight scripts). The application-level test suites cannot reach it:
 the behaviour lives entirely inside the database.
 
 ## Running them
 
-The whole schema is one file, so the recipe is one file too.
+Apply the baseline and every additive migration in filename order.
 
 ```sh
 docker run -d --name sgtest --tmpfs /pgdata:rw,size=512m \
@@ -43,8 +43,9 @@ docker exec sgtest psql -U postgres -v ON_ERROR_STOP=1 -c "
   GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
 "
 
-docker exec -i sgtest psql -U postgres -v ON_ERROR_STOP=1 -q \
-  < supabase/migrations/00001_baseline.sql
+for migration in supabase/migrations/*.sql; do
+  docker exec -i sgtest psql -U postgres -v ON_ERROR_STOP=1 -q < "$migration"
+done
 
 for t in supabase/tests/*.sql; do
   echo "== $t"
@@ -75,10 +76,10 @@ what proves its cleanup is retry-safe.
 
 ## Changing the schema
 
-`00001_baseline.sql` is the whole schema. Extend the relevant script here
-*before* changing any of the functions it covers — the behaviour these scripts
-pin is not visible from the application layer, and a regression surfaces as a
-buyer being charged twice, not as a failing unit test.
+The baseline plus additive migrations form the schema. Extend the relevant
+script here *before* changing any database function it covers — this behaviour
+is not visible from the application layer, and a regression can surface as a
+buyer being charged twice rather than as a failing unit test.
 
 ---
 

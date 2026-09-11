@@ -4,14 +4,13 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from '@repo/i18n/navigation';
 import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { LOCALE_CURRENCY_MAP, type Locale } from '@repo/shared/price-map';
 import { useQuizStore } from '@/stores/quiz-store';
 import { useQuizNavigation } from '@/features/quiz/hooks/use-quiz-navigation';
 import { useQuizHydration } from '@/features/quiz/hooks/use-quiz-hydration';
 import { useImagePrefetch } from '@/features/quiz/hooks/use-image-prefetch';
 import { captureLeadRecord } from '@/features/quiz/hooks/use-quiz-persistence';
 import { useAnalytics } from '@/features/analytics/hooks/use-analytics';
-import { identifyPostHogUser, capturePostHogEvent } from '@/features/analytics/lib/posthog';
+import { captureInternalEvent } from '@/features/analytics/lib/internal';
 import { hashEmail } from '@/features/analytics/lib/hash-email';
 import { setMetaUserData } from '@/features/analytics/lib/meta-pixel';
 import { pushDataLayerEvent } from '@/features/analytics/lib/gtm';
@@ -222,7 +221,6 @@ function QuizPageContent() {
   const sessionId = useQuizStore((s) => s.sessionId);
   const setStage = useFunnelStore((s) => s.setStage);
   const locale = useLocale();
-  const currency = LOCALE_CURRENCY_MAP[locale as Locale] ?? 'eur';
 
   const hasEmail = Boolean(answers['userEmail'] || answers['email']);
 
@@ -235,12 +233,12 @@ function QuizPageContent() {
     const handler = () => {
       const { stepId, stepPosition: pos, hasEmail: has, sessionId: sid } = abandonRef.current;
       if (sid) {
-        capturePostHogEvent('quiz_abandoned', {
+        captureInternalEvent('quiz_abandoned', {
           session_id: sid,
           step_id: stepId,
           step_position: pos,
           has_email: has,
-        });
+        }, { keepalive: true });
       }
     };
     window.addEventListener('beforeunload', handler);
@@ -342,12 +340,11 @@ function QuizPageContent() {
           // and match quality drops dramatically. The same hash also goes to
           // GTM for downstream pixels. capi_email passes the raw value to the
           // server-side Conversions API route, which hashes it there — the
-          // raw email never reaches PostHog/GTM/fbq.
+          // raw email never reaches analytics_events/GTM/fbq.
           const emailHashed = await hashEmail(email);
           setMetaUserData(emailHashed);
           track('lead_captured', { session_id: sessionId, capi_email: email });
           trackFunnelEvent(sessionId, 'lead_captured');
-          identifyPostHogUser(sessionId, email, { locale, currency });
           pushDataLayerEvent('lead_captured', { session_id: sessionId, email_hashed: emailHashed });
         } else {
           track('lead_capture_error', { session_id: sessionId, saved_locally: true });
@@ -357,7 +354,7 @@ function QuizPageContent() {
       // Continue to whichever step is configured next on the email step.
       goToStep((currentStep as { nextStepId: string }).nextStepId);
     },
-    [setStepAnswer, sessionId, track, setStage, goToStep, locale, currency, currentStep],
+    [setStepAnswer, sessionId, track, setStage, goToStep, locale, currentStep],
   );
 
   // Finalize the quiz (fire completion analytics, sync the full answers

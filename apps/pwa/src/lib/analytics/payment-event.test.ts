@@ -37,7 +37,7 @@ describe("PWA confirmed purchase analytics contract", () => {
       product: "oto3_bundle_all",
       solidgate_order_id: payment.order_id,
       app: "pwa",
-      $insert_id: insertId,
+      event_id: insertId,
       server_event_name: "purchase_completed",
     });
     expect(properties).not.toHaveProperty("revenue");

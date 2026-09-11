@@ -2,8 +2,6 @@
 // pins the exact transitive versions used at deploy time.
 // deno-lint-ignore no-import-prefix
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
-// deno-lint-ignore no-import-prefix no-unversioned-import
-import { PostHog } from 'npm:posthog-node';
 import { verifySolidgateWebhook } from './_signature.ts';
 import {
   canonicalProductName,
@@ -256,37 +254,27 @@ function admin(): SupabaseClient {
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 }
 
-// ── Server-side PostHog outbox ──────────────────────────────────────────────
-// Lifecycle events are committed to Postgres before delivery. The deterministic
-// insert id lets PostHog deduplicate a retry when the network response was lost.
+// ── First-party lifecycle analytics ─────────────────────────────────────────
+// Webhooks persist directly to the shared analytics_events contract. No event
+// payload or customer identity leaves the project's own Supabase instance.
 
-let _posthog: PostHog | null = null;
-function getPostHog(): PostHog | null {
-  if (!runtime.analyticsEnabled) return null;
-  const key = env('NEXT_PUBLIC_POSTHOG_KEY');
-  const host = env('NEXT_PUBLIC_POSTHOG_HOST');
-  if (!key || !host) {
-    console.warn('[solidgate-webhooks] PostHog key/host not set, skipping analytics');
-    return null;
+let warnedAboutAnalyticsProjectKey = false;
+function analyticsProjectKey(): string {
+  const value = env('ANALYTICS_PROJECT_KEY')?.trim().toLowerCase();
+  if (value && /^[a-z0-9][a-z0-9_-]{0,79}$/.test(value)) return value;
+  if (!warnedAboutAnalyticsProjectKey) {
+    console.warn('[solidgate-webhooks] ANALYTICS_PROJECT_KEY is missing or invalid');
+    warnedAboutAnalyticsProjectKey = true;
   }
-  if (!_posthog) {
-    _posthog = new PostHog(key, { host, flushAt: 1, flushInterval: 0 });
-  }
-  return _posthog;
-}
-
-async function shutdownPostHog(): Promise<void> {
-  if (!_posthog) return;
-  await _posthog.shutdown();
-  _posthog = null;
+  return 'unconfigured';
 }
 
 async function deterministicUuid(value: string): Promise<string> {
   const bytes = new Uint8Array(
     await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)),
   ).slice(0, 16);
-  // RFC 4122 variant + version 5 shape. The hash is SHA-256 rather than SHA-1,
-  // but PostHog only needs a stable UUID-shaped $insert_id, not UUID semantics.
+  // RFC 4122 variant + version 5 shape. The hash is SHA-256 rather than SHA-1;
+  // the UUID shape provides a stable internal insertion id for retries.
   bytes[6] = (bytes[6]! & 0x0f) | 0x50;
   bytes[8] = (bytes[8]! & 0x3f) | 0x80;
   const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -309,22 +297,36 @@ async function enqueueAnalytics(
     eventName: string;
     distinctId: string;
     properties: Record<string, unknown>;
+    userId?: string | null;
+    sessionId?: string | null;
   },
 ): Promise<void> {
   if (!runtime.analyticsEnabled) return;
   const insertId = await deterministicUuid(`solidgate:${params.eventKey}`);
-  const { error } = await db.from('solidgate_analytics_outbox').upsert(
+  const app = params.properties.app ?? params.properties.surface;
+  const sourceApp = app === 'funnel' || app === 'pwa' ? app : 'system';
+  const { error } = await db.from('analytics_events').upsert(
     {
-      environment: runtime.environment,
+      project_key: analyticsProjectKey(),
+      deployment_environment: runtime.environment,
+      source_app: sourceApp,
+      source_channel: 'webhook',
       event_key: params.eventKey,
       event_name: params.eventName,
       distinct_id: params.distinctId,
       insert_id: insertId,
+      user_id: params.userId ?? null,
+      session_id: params.sessionId ?? null,
       properties: params.properties,
+      schema_version: 1,
+      occurred_at: new Date().toISOString(),
     },
-    { onConflict: 'environment,event_key', ignoreDuplicates: true },
+    {
+      onConflict: 'project_key,deployment_environment,source_app,event_key',
+      ignoreDuplicates: true,
+    },
   );
-  if (error) throw new Error(`analytics outbox enqueue failed: ${error.message}`);
+  if (error) throw new Error(`analytics event insert failed: ${error.message}`);
 }
 
 async function enqueueOrderAnalytics(
@@ -370,6 +372,8 @@ async function enqueueOrderAnalytics(
     eventKey: `order:${params.orderId}:${params.eventKeySuffix ?? 'settled'}`,
     eventName,
     distinctId: params.sessionId ?? params.userId ?? params.orderId,
+    userId: params.userId,
+    sessionId: params.sessionId,
     properties: {
       session_id: params.sessionId,
       user_id: params.userId,
@@ -411,6 +415,14 @@ async function enqueueOrderAnalytics(
       utm_term: params.metadata?.utm_term,
     },
   });
+
+  const capturedAt = new Date().toISOString();
+  const { error: markerError } = await db.from('orders')
+    .update({ analytics_captured_at: capturedAt })
+    .eq('payment_environment', runtime.environment)
+    .eq('solidgate_order_id', params.orderId)
+    .is('analytics_captured_at', null);
+  if (markerError) throw new Error(`order analytics marker failed: ${markerError.message}`);
 }
 
 /**
@@ -703,34 +715,6 @@ async function consumeIntroOffer(
   }
 }
 
-/**
- * Funnel session IDs were intentionally identified before auth, so PostHog's
- * regular alias safeguard rejects them as aliases. Once our payment ledger
- * proves that a session belongs to an auth UUID, queue the documented recovery
- * merge with the stable user UUID as the survivor. The environment-scoped key
- * makes this irreversible operation exactly-once from our side.
- */
-async function enqueueIdentityMerge(
-  db: SupabaseClient,
-  userId: string | null,
-  sessionId: string | null,
-): Promise<void> {
-  if (!userId || !sessionId || userId === sessionId) return;
-  if (!UUID_PATTERN.test(userId) || !UUID_PATTERN.test(sessionId)) return;
-  await enqueueAnalytics(db, {
-    eventKey: `identity:${runtime.environment}:${userId}:${sessionId}`,
-    eventName: '$merge_dangerously',
-    distinctId: userId,
-    properties: {
-      alias: sessionId,
-      user_id: userId,
-      session_id: sessionId,
-      source: 'solidgate_account_link',
-      environment: runtime.environment,
-    },
-  });
-}
-
 /** First successful linked order wins account attribution; later visits never overwrite it. */
 async function persistAccountAcquisition(
   db: SupabaseClient,
@@ -764,103 +748,6 @@ async function persistAccountAcquisition(
     p_utm_term: utm.utm_term ?? null,
   });
   if (error) throw new Error(`account acquisition persist failed: ${error.message}`);
-}
-
-interface AnalyticsOutboxRow {
-  id: string;
-  event_name: string;
-  distinct_id: string;
-  insert_id: string;
-  properties: Record<string, unknown>;
-  attempts: number;
-  created_at: string;
-}
-
-export async function drainAnalyticsOutbox(db: SupabaseClient): Promise<void> {
-  const posthog = getPostHog();
-  if (!posthog) return;
-
-  const { data, error } = await db.rpc('claim_solidgate_analytics_outbox', {
-    p_environment: runtime.environment,
-    p_limit: 25,
-    p_lease_seconds: 300,
-  });
-  if (error) throw new Error(`analytics outbox claim failed: ${error.message}`);
-  const rows = (data ?? []) as AnalyticsOutboxRow[];
-  if (rows.length === 0) {
-    await shutdownPostHog();
-    return;
-  }
-
-  try {
-    for (const row of rows) {
-      posthog.capture({
-        distinctId: row.distinct_id,
-        event: row.event_name,
-        uuid: row.insert_id,
-        // PostHog's ingestion dedupe key also contains the event timestamp.
-        // Reuse the persisted outbox timestamp so a retry after an ambiguous
-        // network response cannot become a second revenue event.
-        timestamp: new Date(row.created_at),
-        properties: { ...row.properties, $insert_id: row.insert_id },
-      });
-    }
-    await shutdownPostHog();
-    const completedAt = new Date().toISOString();
-    for (const row of rows) {
-      const { error: updateError } = await db
-        .from('solidgate_analytics_outbox')
-        .update({
-          status: 'completed',
-          completed_at: completedAt,
-          processing_started_at: null,
-          updated_at: completedAt,
-        })
-        .eq('environment', runtime.environment)
-        .eq('id', row.id);
-      if (updateError) throw new Error(`analytics outbox completion failed: ${updateError.message}`);
-      const orderId = row.properties?.solidgate_order_id;
-      if (typeof orderId === 'string') {
-        const { error: orderMarkerError } = await db.from('orders').update({ analytics_captured_at: completedAt })
-          .eq('payment_environment', runtime.environment)
-          .eq('solidgate_order_id', orderId).is('analytics_captured_at', null);
-        if (orderMarkerError) {
-          throw new Error(`order analytics marker failed: ${orderMarkerError.message}`);
-        }
-      }
-    }
-  } catch (err) {
-    _posthog = null;
-    const message = err instanceof Error ? err.message : String(err);
-    let failureWriteError: string | null = null;
-    for (const row of rows) {
-      const retryAt = new Date().toISOString();
-      const { error: updateError } = await db
-        .from('solidgate_analytics_outbox')
-        .update({
-          status: 'failed',
-          processing_started_at: null,
-          // Keep it immediately claimable: the thrown error asks Solidgate to
-          // redeliver this webhook, which must be able to drain the row even
-          // when there is no other payment traffic.
-          next_attempt_at: retryAt,
-          last_error: message.slice(0, 2000),
-          updated_at: retryAt,
-        })
-        .eq('environment', runtime.environment)
-        .eq('id', row.id);
-      if (updateError && !failureWriteError) {
-        failureWriteError = updateError.message;
-      }
-    }
-    console.error('[solidgate-webhooks] analytics outbox delivery failed:', message);
-    if (failureWriteError) {
-      throw new Error(
-        `analytics outbox delivery failed: ${message}; failure persist failed: ${failureWriteError}`,
-      );
-    }
-    throw new Error(`analytics outbox delivery failed: ${message}`);
-  }
 }
 
 // ── Durable inbox + ordering ────────────────────────────────────────────────
@@ -2944,7 +2831,6 @@ async function handleOrderUpdated(
     environment,
     metadata: orderMetadata,
   });
-  await enqueueIdentityMerge(db, userId, effectiveRow.session_id);
 }
 
 // ── subscription.updated.v2 ─────────────────────────────────────────────────
@@ -3847,7 +3733,6 @@ async function handleSubscription(
   const analyticsLocale = row.solidgate_checkout_locale;
 
   await recordSubscriptionInvoices(db, event, row, callbackType, context, analyticsLocale);
-  await enqueueIdentityMerge(db, userId, row.session_id);
 
   const productSlug = row.product_slug as string;
   const invoiceId = invoice?.id ?? invoiceEntry?.[0] ?? null;
@@ -4444,7 +4329,6 @@ export async function serveRequest(
     if (claim.state === 'completed') {
       businessCompleted = true;
       scheduleFunnelFulfillment();
-      await drainAnalyticsOutbox(db);
       return Response.json({ duplicate: true });
     }
     if (claim.state === 'busy') {
@@ -4463,14 +4347,9 @@ export async function serveRequest(
     await completeEvent(db, eventId, runtime.environment, claim);
     businessCompleted = true;
     scheduleFunnelFulfillment();
-    await drainAnalyticsOutbox(db);
     return Response.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    // Analytics delivery deliberately returns 5xx so Solidgate redelivers and
-    // drains the durable outbox. Keep an already-completed business event
-    // completed: the retry takes the duplicate path without repeating CRM,
-    // provisioning or dispute-alert side effects.
     let responseMessage = message;
     if (!businessCompleted && inboxClaim) {
       try {
@@ -4486,15 +4365,6 @@ export async function serveRequest(
     }
     console.error('[solidgate-webhooks] handler failed:', message, { eventType, eventId });
     return new Response(responseMessage, { status: 500 });
-  } finally {
-    // If an exception happened between PostHog construction and the normal
-    // outbox shutdown, never leave a singleton queued across invocations.
-    try {
-      await shutdownPostHog();
-    } catch (err) {
-      console.error('[solidgate-webhooks] PostHog shutdown failed:', err instanceof Error ? err.message : err);
-      _posthog = null;
-    }
   }
 }
 

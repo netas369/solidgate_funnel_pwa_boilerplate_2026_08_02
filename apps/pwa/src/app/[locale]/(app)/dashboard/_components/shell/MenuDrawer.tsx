@@ -7,7 +7,6 @@ import { HamburgerIcon } from "./TopNav";
 import { BrandMark } from "@/components/BrandMark";
 import { LocaleCountrySwitchers } from "./LocaleCountrySwitchers";
 import type { TabId } from "../context";
-import { resetPwaAnalytics } from "@/lib/analytics/posthog";
 
 const NAV_ITEMS: { id: TabId; icon: React.ComponentType<{ size?: number; filled?: boolean }> }[] = [
   { id: "home", icon: IconHome },
@@ -43,8 +42,7 @@ export function MenuDrawer({
     if (signingOut) return;
     setSigningOut(true);
     try {
-      const response = await fetch("/api/auth/logout", { method: "POST" });
-      if (response.ok) resetPwaAnalytics();
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch (err) {
       console.error("[menu] logout failed", err);
     }

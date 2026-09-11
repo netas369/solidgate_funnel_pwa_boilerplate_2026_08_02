@@ -48,7 +48,7 @@ const cspDirectives = [
   // Solidgate: the payment form loads from cdn.charge-auth.com (their
   // white-label CDN) and pulls Google Pay's SDK from pay.google.com when the
   // wallet button is enabled.
-  `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : "'wasm-unsafe-eval'"} https://cdn.charge-auth.com https://applepay.cdn-apple.com https://pay.google.com https://www.googletagmanager.com https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://va.vercel-scripts.com`,
+  `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : "'wasm-unsafe-eval'"} https://cdn.charge-auth.com https://applepay.cdn-apple.com https://pay.google.com https://www.googletagmanager.com https://connect.facebook.net`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   // TODO(new product): add any CDN you serve product imagery from (and mirror
   // it in images.remotePatterns below).
@@ -61,7 +61,7 @@ const cspDirectives = [
   // too or the button loads and then fails on tap. Apple Pay needs no host
   // here. Apple Pay's JS integration host belongs in script/img/frame-src;
   // Solidgate's docs do not require it in connect-src.
-  `connect-src 'self'${isDev ? " http://127.0.0.1:55421" : ""} https://*.supabase.co https://connect.facebook.net https://www.facebook.com https://us.i.posthog.com https://us-assets.i.posthog.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://vitals.vercel-insights.com https://www.google-analytics.com https://*.charge-auth.com https://*.solidgate.com https://pay.google.com`,
+  `connect-src 'self'${isDev ? " http://127.0.0.1:55421" : ""} https://*.supabase.co https://connect.facebook.net https://www.facebook.com https://www.google-analytics.com https://*.charge-auth.com https://*.solidgate.com https://pay.google.com`,
   // 3DS: the Solidgate form opens the challenge in a frame chain that reaches
   // *.solidgate.com — a 3DS-challenge card is blocked outright without it.
   // selfFrameOrigins() adds the public apex + www (see the note above it).

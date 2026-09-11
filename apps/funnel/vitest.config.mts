@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -12,17 +11,8 @@ export default defineConfig({
     // can load the file. The test files themselves vi.mock these same
     // specifiers to stub out Stripe/Supabase, so these aliases mostly exist
     // to satisfy static analysis before mocks are applied.
-    //
-    // posthog-node is not a funnel-app dependency (Edge-runtime only), so it
-    // resolves to a local stub instead of a real package.
     alias: [
       { find: /^npm:@supabase\/supabase-js@2$/, replacement: "@supabase/supabase-js" },
-      {
-        find: /^npm:posthog-node$/,
-        replacement: fileURLToPath(
-          new URL("./test-stubs/posthog-node.ts", import.meta.url),
-        ),
-      },
     ],
   },
   test: {

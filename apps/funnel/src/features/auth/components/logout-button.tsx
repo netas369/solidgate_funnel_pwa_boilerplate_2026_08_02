@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useAnalyticsStore } from '@/stores/analytics-store';
 import { useFunnelStore } from '@/stores/funnel-store';
 import { useQuizStore } from '@/stores/quiz-store';
-import { resetPostHogIdentity } from '@/features/analytics/lib/posthog';
 import { cn } from '@repo/shared/utils';
 
 interface LogoutButtonProps {
@@ -29,7 +28,6 @@ export function LogoutButton({ className }: LogoutButtonProps) {
       }
 
       await response.json();
-      resetPostHogIdentity();
       useQuizStore.getState().reset();
       useQuizStore.persist?.clearStorage?.();
       useFunnelStore.setState({ currentStage: 'landing' });

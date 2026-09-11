@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -24,12 +23,6 @@ export default defineConfig({
     // import npm:* URLs vite cannot resolve).
     alias: [
       { find: /^npm:@supabase\/supabase-js@2$/, replacement: "@supabase/supabase-js" },
-      {
-        find: /^npm:posthog-node$/,
-        replacement: fileURLToPath(
-          new URL("./test-stubs/posthog-node.ts", import.meta.url),
-        ),
-      },
     ],
   },
   test: {

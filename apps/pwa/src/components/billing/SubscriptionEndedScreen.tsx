@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@repo/i18n/navigation";
 import { BOILERPLATE_BRAND } from "@repo/shared/boilerplate-brand";
-import { resetPwaAnalytics } from "@/lib/analytics/posthog";
 
 /**
  * Full-screen lock shown by the (app) layout when every app-access entitlement
@@ -24,8 +23,7 @@ export function SubscriptionEndedScreen() {
     if (signingOut) return;
     setSigningOut(true);
     try {
-      const response = await fetch("/api/auth/logout", { method: "POST" });
-      if (response.ok) resetPwaAnalytics();
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch (err) {
       console.error("[subscription-ended] logout failed", err);
     }

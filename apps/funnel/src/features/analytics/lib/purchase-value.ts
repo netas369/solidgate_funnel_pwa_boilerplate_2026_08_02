@@ -1,4 +1,4 @@
-// The `value` on purchase events (Meta Purchase, GTM, PostHog) is in MAJOR
+// The `value` on purchase events (Meta Purchase, GTM, internal analytics) is in MAJOR
 // currency units. Most currencies store minor units (cents ÷ 100), but JPY has
 // no minor unit — orders and PRICE_MAP hold whole yen, so dividing by 100
 // would report a ¥926 sale to Meta as ¥9.26 and starve ad optimization of two

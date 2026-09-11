@@ -9,8 +9,6 @@ import { cn } from "@repo/shared/utils";
 import { BOILERPLATE_BRAND } from "@repo/shared/boilerplate-brand";
 import { Providers } from "./_components/providers";
 import { ImageDragGuard } from "./_components/image-drag-guard";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleTagManager } from "@next/third-parties/google";
 import { MetaPixel } from "@/features/analytics/components/meta-pixel";
 
@@ -190,8 +188,6 @@ export default async function LocaleLayout({
               <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
             )}
             <MetaPixel />
-            <Analytics />
-            <SpeedInsights />
           </Providers>
         </NextIntlClientProvider>
         <ImageDragGuard />

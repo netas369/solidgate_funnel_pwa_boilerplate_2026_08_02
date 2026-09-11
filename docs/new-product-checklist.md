@@ -168,6 +168,9 @@ OTO 3 keeps a "choose one of N bundles" pattern; OTO 8 is the summary/recap page
 - `apps/pwa/src/app/[locale]/(app)/dashboard/` — the shell, bottom nav and tabs
 - `packages/i18n/messages/en/pwa.json`, `billing.json`
 - Design tokens live in the dashboard's CSS. Restyle there rather than per component.
+- Complete the dedicated [`PWA-checklist.md`](../PWA-checklist.md) before approving the
+  member area for production. It covers installability, worker/offline behavior, access,
+  internal-only analytics, conditional modules, device QA, and release evidence.
 
 ---
 
@@ -206,16 +209,17 @@ single-brace `{tokens}` verbatim. Do not gender third-party testimonial quotes.
 
 ## 9. Analytics
 
-Wiring is product-agnostic and already in place; you only supply IDs
-(`NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_META_PIXEL_ID`, `META_CAPI_ACCESS_TOKEN`,
-`NEXT_PUBLIC_GTM_ID`).
+The private `analytics_events` stream is product-agnostic and already in place.
+Set one permanent `ANALYTICS_PROJECT_KEY` in both apps and the Solidgate Edge
+Function. Optional marketing delivery uses `NEXT_PUBLIC_META_PIXEL_ID`,
+`META_CAPI_ACCESS_TOKEN`, and `NEXT_PUBLIC_GTM_ID`.
 
 Review event names and the purchase-value mapping in
 `apps/funnel/src/features/analytics/` so your funnel steps report meaningfully.
 
-> ⚠️ **Consent:** this boilerplate loads trackers unconditionally. That was the previous
-> owner's decision, not a safe default. If you serve the EU/UK, decide your consent-banner
-> approach deliberately before launch — see `docs/gdpr-compliance.md`.
+Internal product analytics is server-persisted and does not load a third-party
+analytics SDK. If optional advertising tags are enabled for the EU/UK, add an
+appropriate consent gate before launch — see `docs/gdpr-compliance.md`.
 
 ---
 

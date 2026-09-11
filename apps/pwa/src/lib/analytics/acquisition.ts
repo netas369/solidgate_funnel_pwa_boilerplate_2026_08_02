@@ -25,7 +25,7 @@ export function normalizeAcquisitionUtm(value: unknown): AcquisitionUtm {
   return result;
 }
 
-/** PostHog keeps both the established bare keys and explicit first-touch keys. */
+/** Keep established bare keys plus explicit first-touch keys in internal events. */
 export function acquisitionEventProperties(value: unknown): Record<string, string> {
   const acquisition = normalizeAcquisitionUtm(value);
   const properties: Record<string, string> = {};

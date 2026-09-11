@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
 // Mock dependencies
-vi.mock('../../lib/posthog', () => ({
-  capturePostHogEvent: vi.fn(),
+vi.mock('../../lib/internal', () => ({
+  captureInternalEvent: vi.fn(),
 }));
 
 vi.mock('../../lib/gtm', () => ({
@@ -28,7 +28,7 @@ vi.mock('@/features/quiz/lib/track-funnel-event', () => ({
 
 import { useAnalytics } from '../use-analytics';
 import { trackFunnelEvent } from '@/features/quiz/lib/track-funnel-event';
-import { capturePostHogEvent } from '../../lib/posthog';
+import { captureInternalEvent } from '../../lib/internal';
 import { pushDataLayerEvent } from '../../lib/gtm';
 import { trackMetaEvent } from '../../lib/meta-pixel';
 import { sendCapiFromBrowser } from '../../lib/meta-capi-client';
@@ -53,8 +53,8 @@ describe('useAnalytics', () => {
     expect(events[0].type).toBe('step_completed');
     expect(events[0].metadata).toEqual({ step_id: '003' });
 
-    // 2. PostHog
-    expect(capturePostHogEvent).toHaveBeenCalledWith('step_completed', {
+    // 2. Internal analytics
+    expect(captureInternalEvent).toHaveBeenCalledWith('step_completed', {
       step_id: '003',
     });
 
@@ -74,7 +74,7 @@ describe('useAnalytics', () => {
     const events = useAnalyticsStore.getState().events;
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe('quiz_started');
-    expect(capturePostHogEvent).toHaveBeenCalledWith('quiz_started', undefined);
+    expect(captureInternalEvent).toHaveBeenCalledWith('quiz_started', undefined);
     expect(pushDataLayerEvent).toHaveBeenCalledWith('quiz_started', undefined);
   });
 
@@ -165,7 +165,7 @@ describe('useAnalytics', () => {
     // CAPI mirror removed (2026-07-30): browser pixel is the only Meta channel.
     expect(sendCapiFromBrowser).not.toHaveBeenCalled();
     // Delivery telemetry: every Purchase reports whether fbq actually fired.
-    expect(capturePostHogEvent).toHaveBeenCalledWith(
+    expect(captureInternalEvent).toHaveBeenCalledWith(
       'meta_pixel_delivery',
       expect.objectContaining({
         meta_event: 'Purchase',
@@ -173,7 +173,7 @@ describe('useAnalytics', () => {
         pixel_fired: expect.any(Boolean),
       }),
     );
-    expect(capturePostHogEvent).toHaveBeenCalledWith(
+    expect(captureInternalEvent).toHaveBeenCalledWith(
       'checkout_completed',
       expect.not.objectContaining({ capi_email: expect.anything() }),
     );
@@ -216,7 +216,7 @@ describe('useAnalytics', () => {
     expect(trackMetaEvent).not.toHaveBeenCalled();
     expect(sendCapiFromBrowser).not.toHaveBeenCalled();
     // Internal analytics keep receiving the OTO purchase unchanged.
-    expect(capturePostHogEvent).toHaveBeenCalledWith(
+    expect(captureInternalEvent).toHaveBeenCalledWith(
       'checkout_completed',
       expect.objectContaining({ product_category: 'oto' }),
     );
@@ -235,7 +235,7 @@ describe('useAnalytics', () => {
     expect(trackMetaEvent).not.toHaveBeenCalled();
     expect(sendCapiFromBrowser).not.toHaveBeenCalled();
     // The guard skip is no longer silent: telemetry reports the reason.
-    expect(capturePostHogEvent).toHaveBeenCalledWith(
+    expect(captureInternalEvent).toHaveBeenCalledWith(
       'meta_pixel_delivery',
       expect.objectContaining({
         pixel_fired: false,
@@ -256,7 +256,7 @@ describe('useAnalytics', () => {
     });
 
     expect(trackMetaEvent).not.toHaveBeenCalled();
-    expect(capturePostHogEvent).toHaveBeenCalledWith(
+    expect(captureInternalEvent).toHaveBeenCalledWith(
       'meta_pixel_delivery',
       expect.objectContaining({
         pixel_fired: false,
@@ -278,7 +278,7 @@ describe('useAnalytics', () => {
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe('oto_viewed');
 
-    expect(capturePostHogEvent).toHaveBeenCalledWith('oto_viewed', { oto: 1 });
+    expect(captureInternalEvent).toHaveBeenCalledWith('oto_viewed', { oto: 1 });
     expect(pushDataLayerEvent).toHaveBeenCalledWith('oto_viewed', { oto: 1 });
   });
 });

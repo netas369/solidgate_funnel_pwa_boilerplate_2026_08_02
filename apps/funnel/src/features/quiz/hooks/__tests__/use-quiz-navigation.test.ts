@@ -231,7 +231,7 @@ describe('useQuizNavigation', () => {
       result.current.goToStep('step-e');
     });
 
-    // Analytics: PostHog/GTM track of the step that was just left.
+    // Analytics: internal/GTM track of the step that was just left.
     expect(mockTrack).toHaveBeenCalledWith('step_completed', {
       step_id: 'step-d',
       step_number: 4,

@@ -180,7 +180,7 @@ const config = {
 
     // ─── Step 6 — Lead-capture gate ─────────────────────────────────────────
     // Submitting fires captureLeadRecord + the hash-email → Meta userData →
-    // PostHog identify → GTM chain in quiz-page.handleEmailSubmit.
+    // Internal analytics → GTM chain in quiz-page.handleEmailSubmit.
     {
       stepId: 'step6',
       phase: 'phases.account',

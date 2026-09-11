@@ -101,8 +101,8 @@ export function SuccessClient({ orders, email, entitlements }: Props) {
     if (funnelCompletedFired.current) return;
     funnelCompletedFired.current = true;
     setStage('success');
-    // funnel_completed is forwarded to PostHog + the GTM dataLayer — never
-    // include the raw email here. The user is already PostHog-identified from
+    // funnel_completed is forwarded to internal analytics + the GTM dataLayer — never
+    // include the raw email here. Identity is bound by the server-side route from
     // lead capture, so order_count is all this event needs.
     track('funnel_completed', { order_count: orders.length });
   }, [email, orders.length, setStage, track]);

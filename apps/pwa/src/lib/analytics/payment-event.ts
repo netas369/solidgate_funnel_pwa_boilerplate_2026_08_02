@@ -66,8 +66,8 @@ export function buildConfirmedPurchase(params: {
 
 /**
  * Browser acknowledgement is intentionally a different event from the
- * webhook's canonical revenue event. PostHog deduplication also considers the
- * timestamp, so sharing only the webhook UUID would not prevent double revenue.
+ * webhook's canonical revenue event. The deterministic id makes browser
+ * retries idempotent without conflating acknowledgment with booked revenue.
  */
 export async function clientConfirmedPurchaseInsertId(orderId: string): Promise<string> {
   const input = `solidgate:client-confirmed:${orderId}`;
@@ -91,6 +91,6 @@ export function clientConfirmedPurchaseProperties(payment: ConfirmedPurchase, in
     solidgate_subscription_id: payment.subscription_id,
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
     app: "pwa",
-    $insert_id: insertId,
+    event_id: insertId,
   };
 }

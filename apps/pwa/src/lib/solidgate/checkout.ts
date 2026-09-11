@@ -1,5 +1,5 @@
 import type { InitConfig } from "@solidgate/react-sdk";
-import { captureConfirmedPurchase } from "@/lib/analytics/posthog";
+import { captureConfirmedPurchase } from "@/lib/analytics/internal";
 import type { ConfirmedPurchase } from "@/lib/analytics/payment-event";
 
 /**
