@@ -243,3 +243,69 @@ describe('unmodelled routing is refused, not guessed', () => {
     expect(() => snapshot()).not.toThrow();
   });
 });
+
+describe('option values are part of the hash', () => {
+  // Regression: optionValues() was declared and never called, while three
+  // comments claimed the hash covered "the option vocabulary". It did not — so a
+  // multi_select's options could change with no QUIZ_VARIANT bump and the
+  // publisher still reported "unchanged", letting one variant hold two answer
+  // vocabularies. An answer distribution then blends them with no symptom.
+  function withOptionChanged(mutate: (options: { value: string }[]) => void) {
+    const broken = JSON.parse(JSON.stringify(quizConfig));
+    const step = broken.steps.find((s: { stepId: string }) => s.stepId === 'step3');
+    mutate(step.options);
+    return buildDefinitionSnapshot(broken, {
+      quizVariant: QUIZ_VARIANT,
+      appKey: 'testapp',
+      funnelKey: 'main',
+      firstStepId: FIRST_STEP_ID,
+      terminalTypes: TERMINAL_STEP_TYPES,
+    });
+  }
+
+  it('publishes the declared codes in config order', () => {
+    const byId = Object.fromEntries(snapshot().steps.map((s) => [s.step_id, s]));
+    expect(byId.step3.option_values).toEqual(['o1', 'o2', 'o3', 'o4']);
+    expect(byId.step1.option_values).toEqual(['female', 'male']);
+    // A step type with no options publishes an empty list, not null.
+    expect(byId.step7.option_values).toEqual([]);
+  });
+
+  it('changes the hash when an option value is renamed', () => {
+    const renamed = withOptionChanged((options) => {
+      options[0].value = 'o1_renamed';
+    });
+    expect(renamed.config_hash).not.toBe(snapshot().config_hash);
+  });
+
+  it('changes the hash when an option is removed', () => {
+    const removed = withOptionChanged((options) => {
+      options.pop();
+    });
+    expect(removed.config_hash).not.toBe(snapshot().config_hash);
+  });
+
+  it('changes the hash when options are reordered', () => {
+    // Order is semantic: it is the order a visitor reads them in.
+    const reordered = withOptionChanged((options) => {
+      const [first, ...rest] = options;
+      options.length = 0;
+      options.push(...rest, first);
+    });
+    expect(reordered.config_hash).not.toBe(snapshot().config_hash);
+  });
+
+  it('still ignores option COPY, which is an i18n key not a code', () => {
+    const recopied = withOptionChanged((options) => {
+      (options[0] as unknown as { label: string }).label = 'steps.step3.options.o1.reworded';
+    });
+    expect(recopied.config_hash).toBe(snapshot().config_hash);
+  });
+
+  it('names option_values in a diff so the operator can see what moved', () => {
+    const before = snapshot().steps;
+    const after = withOptionChanged((options) => { options[0].value = 'o1_renamed'; }).steps;
+    const diff = diffStepRows(before, after).find((d) => d.step_id === 'step3');
+    expect(diff?.fields).toContain('option_values');
+  });
+});

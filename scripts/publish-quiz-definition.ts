@@ -125,7 +125,7 @@ async function readPublished(
   const { data: steps, error: stepsError } = await supabase
     .from('quiz_definition_steps')
     .select(
-      'step_id, position, sort_index, step_type, phase_key, store_as, is_question, is_terminal, answer_keys, label_key, label, is_unconditional, entry_skippable',
+      'step_id, position, sort_index, step_type, phase_key, store_as, is_question, is_terminal, answer_keys, option_values, label_key, label, is_unconditional, entry_skippable',
     )
     .eq('quiz_variant', quizVariant)
     .order('sort_index', { ascending: true });
@@ -148,6 +148,7 @@ async function readPublished(
     is_question: Boolean(step.is_question),
     is_terminal: Boolean(step.is_terminal),
     answer_keys: (step.answer_keys as string[]) ?? [],
+    option_values: (step.option_values as string[]) ?? [],
     label_key: (step.label_key as string | null) ?? null,
     label: (step.label as string | null) ?? null,
     is_unconditional: Boolean(step.is_unconditional),
@@ -264,6 +265,7 @@ async function main(): Promise<void> {
       is_question: step.is_question,
       is_terminal: step.is_terminal,
       answer_keys: step.answer_keys,
+      option_values: step.option_values,
       label_key: step.label_key,
       label: step.label,
       is_unconditional: step.is_unconditional,

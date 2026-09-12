@@ -426,6 +426,7 @@ export type Database = {
           is_unconditional: boolean
           label: string | null
           label_key: string | null
+          option_values: Json
           phase_key: string | null
           position: number
           quiz_variant: string
@@ -442,6 +443,7 @@ export type Database = {
           is_unconditional?: boolean
           label?: string | null
           label_key?: string | null
+          option_values?: Json
           phase_key?: string | null
           position: number
           quiz_variant: string
@@ -458,6 +460,7 @@ export type Database = {
           is_unconditional?: boolean
           label?: string | null
           label_key?: string | null
+          option_values?: Json
           phase_key?: string | null
           position?: number
           quiz_variant?: string

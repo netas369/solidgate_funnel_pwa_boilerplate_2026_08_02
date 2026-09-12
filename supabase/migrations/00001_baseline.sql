@@ -572,6 +572,15 @@ CREATE TABLE IF NOT EXISTS public.quiz_definition_steps (
   is_question   BOOLEAN NOT NULL,
   is_terminal   BOOLEAN NOT NULL DEFAULT false,
   answer_keys   JSONB NOT NULL DEFAULT '[]'::JSONB,
+  -- The declared answer CODES for this step, in config order ("o1", "female").
+  -- Not copy — the labels beside them in quiz-config.ts are i18n keys.
+  --
+  -- Two jobs. It is part of the config hash, so changing a step's option
+  -- vocabulary now forces a QUIZ_VARIANT bump rather than silently letting one
+  -- variant hold two vocabularies. And it lets an answer distribution say
+  -- "no longer an option" instead of rendering a bare code for an answer whose
+  -- option was later removed.
+  option_values JSONB NOT NULL DEFAULT '[]'::JSONB,
   -- The i18n key the label came from, kept so a dashboard can be localised
   -- later without republishing.
   label_key     TEXT,
@@ -603,9 +612,13 @@ CREATE TABLE IF NOT EXISTS public.quiz_definition_steps (
   CONSTRAINT quiz_definition_steps_type_len
     CHECK (char_length(step_type) BETWEEN 1 AND 50),
   CONSTRAINT quiz_definition_steps_answer_keys_array_check
-    CHECK (jsonb_typeof(answer_keys) = 'array')
+    CHECK (jsonb_typeof(answer_keys) = 'array'),
+  CONSTRAINT quiz_definition_steps_option_values_array_check
+    CHECK (jsonb_typeof(option_values) = 'array')
 );
 
+ALTER TABLE public.quiz_definition_steps
+  ADD COLUMN IF NOT EXISTS option_values JSONB NOT NULL DEFAULT '[]'::JSONB;
 ALTER TABLE public.quiz_definition_steps ADD COLUMN IF NOT EXISTS label_key TEXT;
 ALTER TABLE public.quiz_definition_steps ADD COLUMN IF NOT EXISTS label TEXT;
 ALTER TABLE public.quiz_definition_steps
@@ -764,7 +777,7 @@ BEGIN
   LOOP
     INSERT INTO public.quiz_definition_steps (
       quiz_variant, step_id, position, sort_index, step_type,
-      phase_key, store_as, is_question, is_terminal, answer_keys,
+      phase_key, store_as, is_question, is_terminal, answer_keys, option_values,
       label_key, label, is_unconditional, entry_skippable
     ) VALUES (
       p_quiz_variant,
@@ -777,6 +790,7 @@ BEGIN
       COALESCE((v_step ->> 'is_question')::BOOLEAN, false),
       COALESCE((v_step ->> 'is_terminal')::BOOLEAN, false),
       COALESCE(v_step -> 'answer_keys', '[]'::JSONB),
+      COALESCE(v_step -> 'option_values', '[]'::JSONB),
       v_step ->> 'label_key',
       v_step ->> 'label',
       COALESCE((v_step ->> 'is_unconditional')::BOOLEAN, true),

@@ -26,6 +26,12 @@ export interface PublishedStepRow {
   is_question: boolean;
   is_terminal: boolean;
   answer_keys: string[];
+  /**
+   * Declared answer codes for this step, in config order. Empty for step types
+   * that have no options. Lets a dashboard say "no longer an option" instead of
+   * rendering a bare code for an answer whose option was later removed.
+   */
+  option_values: string[];
   /** i18n key the label came from, kept so a dashboard can localise later. */
   label_key: string | null;
   /** Resolved English text. The i18n KEY is useless in a dashboard. */
@@ -91,7 +97,14 @@ export function sha256(input: string): string {
   return createHash('sha256').update(input, 'utf8').digest('hex');
 }
 
-/** Declared option values for the step types that have them, in config order. */
+/**
+ * Declared option values for the step types that have them, in config order.
+ *
+ * These are answer CODES (`o1`, `female`), not copy — the labels beside them in
+ * quiz-config.ts are i18n keys. So they belong in the hash: changing a step's
+ * option vocabulary changes the meaning of every answer already recorded under
+ * that key, whereas renaming the label does not.
+ */
 function optionValues(step: QuizStep): string[] {
   const candidate = step as unknown as { options?: Array<{ value?: unknown }> };
   if (!Array.isArray(candidate.options)) return [];
@@ -250,6 +263,11 @@ function stepHashInput(row: PublishedStepRow) {
     is_terminal: row.is_terminal,
     entry_skippable: row.entry_skippable,
     answer_keys: row.answer_keys,
+    // The answer VOCABULARY, not its copy. Omitting this let a multi_select's
+    // options change without a QUIZ_VARIANT bump while the publisher still
+    // reported "unchanged" — so one variant could hold two answer vocabularies
+    // and an answer distribution would blend them with no symptom.
+    option_values: row.option_values,
     next: row.next,
   };
 }
@@ -338,6 +356,7 @@ export function buildDefinitionSnapshot(
       is_question: answerKeys.length > 0,
       is_terminal: options.terminalTypes.has(step.type),
       answer_keys: answerKeys,
+      option_values: optionValues(step),
       next: stepEdges(step, options.terminalTypes),
       label_key: labelKey,
       label: labelKey ? lookupMessage(options.messages, labelKey) : null,
@@ -429,6 +448,9 @@ export function diffStepRows(
     ).filter((field) => stableStringify(previous[field]) !== stableStringify(row[field]));
     if (stableStringify(previous.answer_keys) !== stableStringify(row.answer_keys)) {
       fields.push('answer_keys' as never);
+    }
+    if (stableStringify(previous.option_values) !== stableStringify(row.option_values)) {
+      fields.push('option_values' as never);
     }
     if (stableStringify(previous.next) !== stableStringify(row.next)) {
       fields.push('next' as never);
