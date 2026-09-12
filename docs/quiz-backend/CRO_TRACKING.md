@@ -1,7 +1,8 @@
 # CRO Tracking
 
-How this app publishes its quiz structure and per-step activity so an **external
-internal CRO dashboard** can read drop-off across many apps built from this template.
+How this app records per-step quiz activity and publishes its quiz structure, so the
+app's own CRO dashboard can show where visitors abandon the quiz — and tell a BRANCH
+apart from a DROP.
 
 > Looking for the plain-English version? [`docs/cro-dropoff.md`](../cro-dropoff.md).
 
@@ -151,54 +152,48 @@ string in `quiz-config.ts` is an i18n key, and copy edits are the most common CR
 there is — if they forced a variant bump, someone would disable the guard within two
 months.
 
-## The dashboard contract
-
-The shape an external CRO dashboard actually consumes — both segmentation axes, the
-capabilities block, and the display-ready step rows — is specified in
-[CRO_DASHBOARD_CONTRACT.md](CRO_DASHBOARD_CONTRACT.md).
-
 ## Reading it
 
-Three endpoints, all authenticating with `INTERNAL_API_SECRET` via the `x-internal-secret`
-header, and all **fail closed**: an unset secret is a `500 not_configured`, never a 401 that
-disguises a misconfiguration as a bad credential. The dashboard never receives a
-service-role key — the admin client stays inside the app process.
+**There is no HTTP API.** The CRO dashboard lives inside the app, the same way
+`apps/cro` does in carnivore-app and glp-app, so it queries this data directly with the
+service-role client and never exposes it over the network.
 
-### `GET /api/internal/cro/funnel?from=&to=` ← what the dashboard actually calls
+That was a deliberate reversal. An earlier design served a universal payload to one
+central dashboard covering every product; it was dropped because each app's quiz differs
+enough that implementing the contract per app is exactly the sort of work that goes
+subtly wrong, whereas an agent builds a self-contained in-app dashboard reliably in one
+pass. The cross-product view is a set of links, not a merged payload.
 
-The display-ready drop-off funnel: one entry per position, branch arms already resolved,
-every percentage and badge already computed. This is the one to use. The other two are the
-raw surface it is assembled from, kept for drill-down and debugging.
+### What the dashboard calls
 
-Full specification, including the deviation protocol that governs changes to it:
-[CRO_DASHBOARD_CONTRACT.md](CRO_DASHBOARD_CONTRACT.md).
+```ts
+const { data } = await admin.rpc('cro_step_funnel', {
+  p_from, p_to, p_quiz_variant, p_funnel_variant, p_locale,
+});
+const rows = assembleFunnelResponse(data, { /* see features/cro/funnel-response.ts */ });
+```
 
-### `GET /api/internal/cro/definition`
+`cro_step_funnel()` returns one row per step; `assembleFunnelResponse()` turns them into
+display-ready positions with the branch arms resolved. **Use both rather than querying
+`step_activity` directly** — between them they carry four things a fresh query will get
+wrong and never announce:
 
-Optional `?quizVariant=`, defaulting to the deployed `QUIZ_VARIANT`. Returns each step
-with `position`, `type`, `isQuestion`, `isTerminal`, `nextSteps`, `answerKeys` and
-`sharesPositionWith`, plus a `live` block naming what this deployment writes onto new
-sessions right now.
+- **`advanced`** — did the session go on to view any of the step's successors? Needs the
+  edge graph. Without it, "did not answer" and "abandoned" collapse into one number.
+- **The settle window** — someone who started ten minutes ago has not dropped, they are
+  still taking the quiz. Without it every recent cohort inflates drop-off.
+- **Merging duplicate step rows** — `cro_step_funnel` groups by
+  `(quiz_variant, funnel_variant, step_id)`, so an app running an A/B returns each step
+  once per variant. Bucketing those by position alone files the second copy as an extra
+  screen and a step appears as its own companion.
+- **Branch vs companion** — split on `is_unconditional`, never on a shared position.
 
-### `GET /api/internal/cro/step-metrics?from=&to=`
+`cro_funnel_segments()` backs the pickers. It exists because PostgREST cannot aggregate,
+so "which versions and locales had traffic, with counts" needs SQL.
 
-`from`/`to` are **required** and half-open `[from, to)`. Optional `quizVariant`,
-`funnelVariant`, `source`. Backed by `cro_step_funnel()`.
-
-Per step: `viewed`, `answered`, `skipped`, `advanced`, `dropped`, `unsettled`,
-`positionCohort`, `totalViews`, `revisits`, `p50SecondsToAnswer`, `inCatalog`.
-
-**Rows are keyed by `stepId`, never `stepNumber`** — that is the entire fix. Join to the
-definition on `stepId`:
-
-- **branch** — arms sharing a `position`; their `viewed` sums to roughly
-  `positionCohort`, and nothing was lost.
-- **drop** — `dropped` counts sessions that viewed this step, viewed **none** of its
-  successor edges, and did not complete.
-- **unsettled** — viewed, not advanced, but too recent to call abandoned
-  (`p_settled_after`, default 2h). Excluded from `dropped` on purpose: without it, any
-  window touching `now()` overstates drop-off on whatever step the newest cohort is
-  sitting on.
+These were validated against 2,048 real carnivore-app sessions: 44 of 47 steps matched
+that product's own independently written aggregation exactly, and the three differences
+were traced to one documented semantic choice.
 
 ## Known gaps — documented, not bugs
 

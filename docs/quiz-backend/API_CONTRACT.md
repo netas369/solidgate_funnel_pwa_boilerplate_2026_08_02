@@ -271,28 +271,6 @@ Request:
 
 The backend validates authorization, event name, metadata, size, and any client timestamp. Client timestamps may be at most seven days old or five minutes in the future. Reusing the same `eventId` returns success without inserting another row. Clients cannot emit server-owned events such as `quiz_completed` or `checkout_completed`.
 
-## CRO endpoints (internal)
-
-Both authenticate with `INTERNAL_API_SECRET` via the `x-internal-secret` header and fail
-closed — an unset secret is `500 not_configured`, never a 401. They exist so an external
-CRO dashboard can read per-step drop-off without holding a service-role key. Full
-contract: [CRO_TRACKING.md](CRO_TRACKING.md).
-
-### `GET /api/internal/cro/definition`
-
-Optional `quizVariant` (defaults to the deployed `QUIZ_VARIANT`). Returns the published
-quiz structure: each step's `position`, `type`, `isQuestion`, `isTerminal`, `nextSteps`,
-`answerKeys` and `sharesPositionWith`, plus a `live` block. `404 not_published` when the
-variant has never been published.
-
-### `GET /api/internal/cro/step-metrics?from=&to=`
-
-`from` and `to` are required, half-open `[from, to)`. Optional `quizVariant`,
-`funnelVariant`, `source`. Per step: `viewed`, `answered`, `skipped`, `advanced`,
-`dropped`, `unsettled`, `positionCohort`, `totalViews`, `revisits`,
-`p50SecondsToAnswer`, `inCatalog`. Rows are keyed by `stepId`, never `stepNumber`.
-Errors: `400 invalid_query` / `invalid_range` / `range_too_large`, `500 query_failed`.
-
 ## Recommended limits
 
 | Item                             |          Limit |

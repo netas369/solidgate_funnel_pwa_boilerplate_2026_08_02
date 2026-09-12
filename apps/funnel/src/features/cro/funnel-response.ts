@@ -1,17 +1,15 @@
 /**
  * Assembles cro_step_funnel rows into the display-ready CRO dashboard payload.
  *
- * READ docs/quiz-backend/CRO_DASHBOARD_CONTRACT.md BEFORE CHANGING ANYTHING HERE.
- * That document is the specification; this file is its implementation. If you
- * find yourself needing to deviate from it, STOP, report the deviation and why,
- * and wait for a human decision — do not quietly implement a different contract.
+ * READ docs/quiz-backend/CRO_TRACKING.md BEFORE CHANGING ANYTHING HERE.
  *
- * Why the arithmetic lives on the server rather than in the dashboard: the
- * dashboard reads MANY apps, and collapsing a position's branch arms correctly
- * requires the quiz graph. A dashboard doing that would have to reimplement
- * reachability against every product's quiz and be right about all of them,
- * silently, forever. The rule is: if a number appears on screen, this file
- * computed it.
+ * Call this from the app's own CRO dashboard rather than querying step_activity
+ * directly. Between this file and cro_step_funnel() live four things a fresh
+ * query gets wrong WITHOUT ANNOUNCING IT: whether a session advanced past a
+ * step (needs the edge graph), the settle window that stops a mid-quiz cohort
+ * reading as drop-off, merging a step that appears once per funnel variant, and
+ * the branch-vs-companion split. Each of those produces a plausible chart that
+ * is simply wrong.
  *
  * Semantics are ported from apps/cro/src/lib/funnel-view.ts and
  * presentation.ts in carnivore-app and glp-app so a dashboard built against
