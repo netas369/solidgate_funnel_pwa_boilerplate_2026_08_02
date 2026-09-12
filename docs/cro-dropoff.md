@@ -57,7 +57,7 @@ It lives inside the app and queries directly with the service-role client. Two c
 const { data } = await admin.rpc('cro_step_funnel', {
   p_from, p_to, p_quiz_variant, p_funnel_variant, p_locale,
 });
-const view = assembleFunnelResponse(data, { /* features/cro/funnel-response.ts */ });
+const view = assembleFunnelResponse(data, { /* @repo/shared/cro/funnel-response */ });
 ```
 
 `cro_step_funnel()` counts; `assembleFunnelResponse()` turns those counts into rows you can
@@ -78,7 +78,7 @@ All four produce a chart that looks completely normal and is simply wrong.
 
 **When you change the quiz**, bump `QUIZ_VARIANT` in
 `apps/funnel/src/features/quiz/server/quiz-definition.ts` and add a line to
-`apps/funnel/src/features/cro/segment-labels.ts` describing what changed. That note is what
+`packages/shared/src/cro/segment-labels.ts` describing what changed. That note is what
 makes a comparison intelligible six months later — *"v2 vs v3"* tells you nothing,
 *"added the intro split"* does.
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FUNNEL_VARIANT, QUIZ_VARIANT } from "@/features/quiz/server/quiz-definition";
-import { segmentLabel, VERSION_LABELS } from "../segment-labels";
+import { FUNNEL_VARIANT, QUIZ_VARIANT } from "../../quiz-variant";
+import { segmentLabel, VERSION_LABELS } from "../../cro/segment-labels";
 
 describe("segmentLabel", () => {
   it("names the shipped funnel and quiz version", () => {

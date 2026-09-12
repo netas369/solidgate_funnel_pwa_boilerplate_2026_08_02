@@ -3,7 +3,7 @@ import {
   assembleFunnelResponse,
   dropSeverity,
   type CroStepFunnelRow,
-} from "../funnel-response";
+} from "../../cro/funnel-response";
 
 function row(over: Partial<CroStepFunnelRow> & { step_id: string }): CroStepFunnelRow {
   return {

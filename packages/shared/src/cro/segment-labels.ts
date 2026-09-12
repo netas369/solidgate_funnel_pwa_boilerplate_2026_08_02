@@ -23,7 +23,7 @@
  * shown instead — it just makes an old window harder to read.
  */
 
-import { FUNNEL_VARIANT, QUIZ_VARIANT } from "@/features/quiz/server/quiz-definition";
+import { FUNNEL_VARIANT, QUIZ_VARIANT } from "../quiz-variant";
 
 export interface SegmentLabel {
   id: string;

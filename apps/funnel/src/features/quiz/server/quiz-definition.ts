@@ -3,8 +3,11 @@ import { FIRST_STEP_ID, TERMINAL_STEP_TYPES, quizConfig, quizStepMap } from '../
 import type { QuizStep } from '../config/quiz-schema';
 import { allowedKeysForStep } from '../config/step-answer-keys';
 
-export const QUIZ_VARIANT = 'boilerplate-v1';
-export const FUNNEL_VARIANT = 'main-v1';
+// Re-exported from @repo/shared so the CRO app can read them without importing
+// this module, which would drag the whole quiz engine into a second app. Every
+// existing import site here is unchanged. See packages/shared/src/quiz-variant.ts
+// for what the two constants mean and why they are orthogonal.
+export { FUNNEL_VARIANT, QUIZ_VARIANT } from '@repo/shared/quiz-variant';
 export const MAX_QUIZ_ANSWERS_BYTES = 64 * 1024;
 
 export type QuizAnswers = Record<string, Json | undefined>;

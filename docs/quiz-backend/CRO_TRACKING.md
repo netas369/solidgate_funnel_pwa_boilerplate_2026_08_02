@@ -176,7 +176,7 @@ pass. The cross-product view is a set of links, not a merged payload.
 const { data } = await admin.rpc('cro_step_funnel', {
   p_from, p_to, p_quiz_variant, p_funnel_variant, p_locale,
 });
-const rows = assembleFunnelResponse(data, { /* see features/cro/funnel-response.ts */ });
+const rows = assembleFunnelResponse(data, { /* @repo/shared/cro/funnel-response */ });
 ```
 
 `cro_step_funnel()` returns one row per step; `assembleFunnelResponse()` turns them into
