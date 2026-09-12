@@ -202,7 +202,8 @@ object on the existing row, one entry per step. See [CRO_TRACKING.md](CRO_TRACKI
 ## The definition catalog is not part of this contract
 
 `quiz_definitions`, `quiz_definition_steps` and `quiz_definition_step_edges` describe the
-quiz's own structure so an external dashboard can label steps. They hold **no user data**,
+quiz's own structure, so the app's CRO dashboard can label a step and tell a branch apart
+from a drop after the quiz has moved on. They hold **no user data**,
 carry roughly 18 rows per quiz version, and do not grow with traffic. `sessions` has no FK
 to them by design. See [CRO_TRACKING.md](CRO_TRACKING.md).
 

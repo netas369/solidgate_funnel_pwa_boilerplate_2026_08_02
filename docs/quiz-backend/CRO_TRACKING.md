@@ -16,10 +16,16 @@ apart from a DROP.
 
 Two questions the pre-existing schema structurally cannot answer:
 
-**1. What is step 3?** The quiz graph lives only in TypeScript
-(`apps/funnel/src/features/quiz/config/quiz-config.ts`). The admin Funnel tab gets away
-with this because it runs *inside* the app. An external reader sees
-`funnel_events.step_number = 3` and an opaque integer.
+**1. What WAS step 3, back then?** The quiz graph lives only in TypeScript
+(`apps/funnel/src/features/quiz/config/quiz-config.ts`). A dashboard inside the app can
+import it — for the version running right now. But the moment `QUIZ_VARIANT` is bumped,
+last month's sessions reference step ids the live config no longer contains, and their
+labels and branch structure are simply gone.
+
+That is the catalog's whole job: a frozen snapshot per version, so an old window still
+reads correctly. carnivore-app has exactly this gap and documents living with it — steps
+from a retired version render as raw ids. Delete the catalog and you inherit that
+trade-off knowingly; keep it and a version bump stays readable.
 
 **2. Was this a branch or a drop?** Branch arms **share a position** — `step3` and
 `step3b` are both position 3 — and `idx_funnel_events_one_step_completion` is unique on
