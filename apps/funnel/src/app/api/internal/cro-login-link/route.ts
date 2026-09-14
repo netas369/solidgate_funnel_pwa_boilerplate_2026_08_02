@@ -26,6 +26,15 @@ export const dynamic = 'force-dynamic';
  * which would make one internal app a full-database credential for every
  * product built from this template.
  *
+ * FIRST-TIME ANALYSTS DEPEND ON SIGNUPS BEING ENABLED. Granting access is an
+ * INSERT into cro_analysts, which creates no auth user, so the first link for a
+ * new analyst is minted for an address GoTrue has never seen. generateLink
+ * creates the user on the way past — but only while Authentication → Providers
+ * → Email → "Allow new users to sign up" is on. Turning it off as a hardening
+ * step breaks every new analyst's first click and nothing else, which is a very
+ * confusing failure. The same assumption is what makes cro-otp.ts pass
+ * shouldCreateUser: true; see the note there.
+ *
  * THE LINK IS MINTED PER CLICK, NOT PER PAGE RENDER. The token is Supabase's
  * own single-use OTP hash and expires with the project's OTP lifetime; a hub
  * page that embeds freshly minted links in every row would put a live

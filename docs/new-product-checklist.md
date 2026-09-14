@@ -194,6 +194,10 @@ Everything it reads goes through `cro_*` functions gated on that table.
   **funnel** too — `/api/internal/cro-login-link` reads it — and give PMC Hub this
   product's `INTERNAL_API_SECRET`. That secret can only open the board for someone
   already in `cro_analysts`; it cannot grant access.
+- [ ] Leave email signups **enabled** in Supabase Auth. Adding an analyst is an
+  INSERT, which creates no auth user, so their first sign-in — by code or by hub
+  link — is what creates it. Disabling signups breaks only that first click, per
+  person, which reads as a broken link rather than a setting.
 
 Full tour: [`docs/cro-dropoff.md`](cro-dropoff.md).
 
