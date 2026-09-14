@@ -149,9 +149,9 @@ describe('formatChange', () => {
 
 describe('rankByLoss', () => {
   const rows = [
-    { id: 'one-of-four', dropPct: 25, droppedSessions: 1 },
-    { id: 'three-of-seventeen', dropPct: 18, droppedSessions: 3 },
-    { id: 'quiet', dropPct: 4, droppedSessions: 1 },
+    { id: 'one-of-four', dropPct: 25, dropped: 1 },
+    { id: 'three-of-seventeen', dropPct: 18, dropped: 3 },
+    { id: 'quiet', dropPct: 4, dropped: 1 },
   ];
 
   it('ranks by PEOPLE while the sample is small', () => {

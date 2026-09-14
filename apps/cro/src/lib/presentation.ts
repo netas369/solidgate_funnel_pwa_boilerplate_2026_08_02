@@ -126,10 +126,13 @@ export function isSmallSample(peak: number): boolean {
  * Order rows worst-first: by percentage once there is enough traffic to trust
  * one, by absolute people lost while there is not.
  *
- * Generic over anything carrying the two numbers, so it works on the funnel view
- * rows without this module importing them.
+ * Generic over anything carrying the two numbers, so it works on an
+ * AssembledStep without this module importing the assembler. The field names
+ * are the assembler's on purpose — the reference boards called it
+ * `droppedSessions` here and `dropped` there, and an adapter between two names
+ * for one number is where a wrong column gets passed.
  */
-export function rankByLoss<T extends { dropPct: number; droppedSessions: number }>(
+export function rankByLoss<T extends { dropPct: number; dropped: number }>(
   rows: readonly T[],
   peak: number,
 ): T[] {
@@ -138,7 +141,7 @@ export function rankByLoss<T extends { dropPct: number; droppedSessions: number 
     .slice()
     .sort((a, b) =>
       smallSample
-        ? b.droppedSessions - a.droppedSessions || b.dropPct - a.dropPct
-        : b.dropPct - a.dropPct || b.droppedSessions - a.droppedSessions,
+        ? b.dropped - a.dropped || b.dropPct - a.dropPct
+        : b.dropPct - a.dropPct || b.dropped - a.dropped,
     );
 }
