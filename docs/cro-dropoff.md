@@ -43,36 +43,48 @@ quiz already makes. It records *that* a question was answered and *when*, never 
 answered; answers stay in `sessions.quiz_answers` exactly as before.
 
 **2. A price list decodes it.** That note only stores codes like `step3b`. A small set of
-tables — the *catalog* — says what each code means: the question text, where it sits, and
-whether everyone sees it or only some people. One catalog per quiz version, so last
-month's data still reads correctly after you change the quiz.
+tables — the *catalog* — says what each code means: the question text, its answer options
+and their wording, where it sits, and whether everyone sees it or only some people. One
+catalog per quiz version, so last month's data still reads correctly after you change the
+quiz.
 
 **3. The dashboard renders it.** Two calls do the work, and the dashboard draws the result.
 
-## Building the dashboard
+## The dashboard
 
-It lives inside the app and queries directly with the service-role client. Two calls:
+It is already built: `apps/cro`, on port 3207, with five tabs — Overview, Drop-off,
+Right now, Answers, and Language & device.
 
-```ts
-const { data } = await admin.rpc('cro_step_funnel', {
-  p_from, p_to, p_quiz_variant, p_funnel_variant, p_locale,
-});
-const view = assembleFunnelResponse(data, { /* @repo/shared/cro/funnel-response */ });
+```sh
+npm run dev:cro     # http://localhost:3207
 ```
 
-`cro_step_funnel()` counts; `assembleFunnelResponse()` turns those counts into rows you can
-draw — positions in order, branch arms resolved, every percentage and badge worked out.
-`cro_funnel_segments()` backs the filter pickers.
+**It holds no god-mode key.** The board signs in with an email code and then carries
+only the public anon key, exactly like the funnel does. What makes it work is a short
+list of analysts:
 
-**Use those rather than querying `step_activity` yourself.** They carry four things a fresh
-query gets wrong without ever announcing it:
+```sql
+INSERT INTO cro_analysts (email, note) VALUES ('you@example.com', 'CRO');
+```
 
-- whether a session went on past a step (needs the branch graph)
-- the settle window, so someone who started ten minutes ago isn't counted as having quit
-- merging a step that comes back once per A/B variant
-- which screens everyone sees versus only some people
+Adding a colleague is that one line — no redeploy, no key to hand over. Anyone not on
+the list gets a "your account is not on the analyst list" message rather than an empty
+board, and the anon key on its own can read nothing at all. A test fails the build if a
+service-role key is ever referenced from this app.
 
-All four produce a chart that looks completely normal and is simply wrong.
+### Filters
+
+Three, and two of them behave in opposite ways:
+
+| | Absent means | Combining them |
+|---|---|---|
+| **Funnel** | every funnel | fine — same questions, different presentation |
+| **Quiz version** | the version running now | only where the tab offers it |
+| **Market** | every market | fine |
+
+Combining two quiz *versions* is the dangerous one: they ask different questions and
+number them differently, so a merged funnel chart describes neither. The two
+funnel-shaped tabs simply do not offer it.
 
 ## What you have to do
 
@@ -96,10 +108,16 @@ Leave off `--apply` for a dry run showing exactly what it would write.
 ## What it deliberately doesn't do
 
 **No "went back" or "hit an error" counts.** Recording those needs a row per event; this
-stores a summary per question instead.
+stores a summary per question instead. Going back also doesn't save, so on the live tab
+someone who returned to an earlier question still shows on the last one they moved
+forward into.
 
-**No answer breakdowns, live view, or device split.** Those need data this template doesn't
-collect. Each is additive if a product wants it.
+**No free-text answers, ever.** The Answers tab runs an allowlist of multiple-choice
+question types. Everything else — emails, names, anything typed — reports how many people
+completed it and nothing more. That is a rule in the database, not a habit of the page.
+
+**No "changed their mind" chart.** A session stores each answer's final value, not a
+history of it.
 
 **No stored history.** Numbers are computed from live session rows each time. When a
 customer exercises their right to deletion, their sessions go, and past figures shift
@@ -120,9 +138,22 @@ than hidden, so a screen nobody reaches is visible instead of silently missing.
 sample and ranks problems by how many people were lost rather than by percentage. A
 confident 33% off three sessions is worse than no number.
 
+**"Your account is not on the CRO analyst list."** The sign-in worked; the address just
+isn't in `cro_analysts`. Add it with the INSERT above.
+
+**An answer shows as `o1` rather than words.** That version was published before option
+wording was carried, or the option has since been removed — a removed one says so on the
+row. Either way the count is right.
+
+**The dashboard says fewer starts than you expected.** A visit that opened the quiz and
+left before answering anything records no activity, so it is not in the funnel. Overview
+states that number separately rather than folding it in.
+
 ## Where the detail lives
 
 | | |
 |---|---|
 | `docs/quiz-backend/CRO_TRACKING.md` | how recording and the catalog work |
 | `docs/quiz-backend/DATA_MODEL.md` | the session and event tables |
+| `apps/cro/src/lib/filters.ts` | why the three filters behave differently |
+| `packages/shared/src/cro/funnel-response.ts` | the maths behind every number on screen |

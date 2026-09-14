@@ -49,7 +49,7 @@ Three tables, written only by `scripts/publish-quiz-definition.ts`:
 | Table | Key | Holds |
 |---|---|---|
 | `quiz_definitions` | `quiz_variant` | `app_key`, `funnel_key`, `first_step_id`, `total_steps`, `config_hash` |
-| `quiz_definition_steps` | `(quiz_variant, step_id)` | `position`, `sort_index`, `step_type`, `phase_key`, `store_as`, `is_question`, `is_terminal`, `answer_keys`, `label_key`, `label`, `is_unconditional`, `entry_skippable` |
+| `quiz_definition_steps` | `(quiz_variant, step_id)` | `position`, `sort_index`, `step_type`, `phase_key`, `store_as`, `is_question`, `is_terminal`, `answer_keys`, `option_values`, `option_labels`, `label_key`, `label`, `is_unconditional`, `entry_skippable` |
 | `quiz_definition_step_edges` | `(quiz_variant, from_step_id, to_step_id, edge_index)` | `on_value` |
 
 About 18 rows for the shipped 8-step quiz. **They do not grow with traffic** — a million
@@ -158,11 +158,18 @@ string in `quiz-config.ts` is an i18n key, and copy edits are the most common CR
 there is — if they forced a variant bump, someone would disable the guard within two
 months.
 
+`option_values` and `option_labels` are the clearest case of that line. Both are
+published from the same `options[]` array, and only the first is hashed: the CODES are
+what every recorded answer is interpreted against, so changing them must force a
+`QUIZ_VARIANT` bump; the WORDS beside them are copy. The consequence to know about is
+that copy, like `label`, is frozen at publish — the immutability trigger means a reworded
+option keeps its published wording until the next variant.
+
 ## Reading it
 
-**There is no HTTP API.** The CRO dashboard lives inside the app, the same way
-`apps/cro` does in carnivore-app and glp-app, so it queries this data directly with the
-service-role client and never exposes it over the network.
+**There is no HTTP API, and no service-role key.** The dashboard is `apps/cro` on port
+3207, the same shape carnivore-app and glp-app have. It signs in by email OTP and then
+holds only the anon key.
 
 That was a deliberate reversal. An earlier design served a universal payload to one
 central dashboard covering every product; it was dropped because each app's quiz differs
@@ -170,13 +177,45 @@ enough that implementing the contract per app is exactly the sort of work that g
 subtly wrong, whereas an agent builds a self-contained in-app dashboard reliably in one
 pass. The cross-product view is a set of links, not a merged payload.
 
+### How the anon key reads anything
+
+It cannot, directly. `sessions`, `quiz_definition_steps` and the rest are revoked from
+`anon` and `authenticated`; `supabase/tests/cro_dashboard.sql` asserts that as the
+PREMISE of the whole design, because it is what makes a key-less dashboard safe.
+
+Every read goes through a `cro_*` SECURITY DEFINER function whose first statement is:
+
+```sql
+IF NOT public.is_cro_analyst() THEN
+  RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+END IF;
+```
+
+`is_cro_analyst()` compares `auth.jwt() ->> 'email'` against the `cro_analysts` table, so
+granting access is an INSERT rather than a deploy. The `42501` is load-bearing: the app
+branches on that SQLSTATE to say "ask for access" instead of showing an empty board that
+reads as a quiet day. A `WHERE`-based guard would return zero rows and lose that
+distinction.
+
+The functions are `EXECUTE`-granted to `authenticated` and revoked from `anon`. A loop
+over `pg_proc WHERE proname LIKE 'cro\_%'` asserts both halves, so a function added later
+without its REVOKE fails a test instead of shipping open.
+
 ### What the dashboard calls
 
+| Function | Tab |
+|---|---|
+| `cro_step_funnel` + `assembleFunnelResponse` | Drop-off, Overview |
+| `cro_quiz_catalog` | the labels and terminal ids the assembler needs |
+| `cro_session_totals` | Overview — including `no_activity`, which the funnel skips |
+| `cro_live_sessions` | Right now |
+| `cro_answer_distribution` | Answers |
+| `cro_segment_breakdown` | Language & device |
+| `cro_funnel_segments` | the filter chips on all five |
+
 ```ts
-const { data } = await admin.rpc('cro_step_funnel', {
-  p_from, p_to, p_quiz_variant, p_funnel_variant, p_locale,
-});
-const rows = assembleFunnelResponse(data, { /* @repo/shared/cro/funnel-response */ });
+const rows = await stepFunnel(range, filters, quizVariant);
+const view = assembleFunnelResponse(rows, { /* @repo/shared/cro/funnel-response */ });
 ```
 
 `cro_step_funnel()` returns one row per step; `assembleFunnelResponse()` turns them into
