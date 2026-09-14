@@ -38,7 +38,7 @@ Solidgate (`@solidgate/react-sdk`) · Serwist · Vitest · Turborepo
 
 ## Conventions
 
-- `apps/funnel` is `:3205`, `apps/pwa` is `:3206`.
+- `apps/funnel` is `:3205`, `apps/pwa` is `:3206`, `apps/cro` is `:3207`.
 - Feature code lives under `src/features/<feature>/{components,config,lib,hooks}`.
 - Content lives in `config/*.ts` + `packages/i18n/messages/en/*.json`, not inline in
   components. When adding content, extend the config — don't hardcode it in JSX.

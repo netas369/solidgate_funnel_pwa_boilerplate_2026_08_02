@@ -9,6 +9,7 @@
     "./supabase/server": "./src/supabase/server.ts",
     "./supabase/admin": "./src/supabase/admin.ts",
     "./supabase/middleware": "./src/supabase/middleware.ts",
+    "./auth/otp-length": "./src/auth/otp-length.ts",
     "./quiz-variant": "./src/quiz-variant.ts",
     "./cro/funnel-response": "./src/cro/funnel-response.ts",
     "./cro/segment-labels": "./src/cro/segment-labels.ts",

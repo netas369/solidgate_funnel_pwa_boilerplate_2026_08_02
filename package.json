@@ -14,6 +14,7 @@
     "test": "turbo run test",
     "dev:funnel": "turbo run dev --filter=@repo/funnel",
     "dev:pwa": "turbo run dev --filter=@repo/pwa",
+    "dev:cro": "turbo run dev --filter=@repo/cro",
     "clean": "rm -rf .turbo/cache apps/*/.next",
     "clean:all": "rm -rf .turbo/cache apps/*/.next apps/*/.turbo node_modules/.cache",
     "test:ci": "turbo run test",

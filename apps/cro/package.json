@@ -1,0 +1,36 @@
+{
+  "name": "@repo/cro",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3207",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@repo/shared": "*",
+    "@supabase/ssr": "^0.10.0",
+    "@supabase/supabase-js": "^2.101.1",
+    "next": "16.2.2",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.2",
+    "jsdom": "^27.0.1",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^3.2.4"
+  }
+}
