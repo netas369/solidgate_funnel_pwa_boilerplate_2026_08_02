@@ -6,8 +6,8 @@
 
 import { getSupabaseAdminClient } from '@repo/shared/supabase/admin';
 import { PRODUCT_ID_TO_CODE } from '@repo/shared/solidgate/catalog';
-import type { ProductId } from '@repo/shared/price-map';
-import { convertToEur } from './fx';
+import { z } from 'zod';
+import { financialReport, sumInEur } from './revenue';
 import type { DateRange } from './_shared';
 
 export interface OtoMetric {
@@ -15,7 +15,7 @@ export interface OtoMetric {
   /** The catalog offering code matched on orders.product_slug. */
   pattern: string;
   count: number;
-  amountEurCents: number;
+  amountEurCents: number | null;
 }
 
 // Map every oto* slug to its full catalog offering code. Solidgate writes that
@@ -28,50 +28,19 @@ const OTO_OFFERS: Array<{ offer: string; code: string }> = Object.entries(
   .filter(([slug]) => slug.startsWith('oto'))
   .map(([slug, code]) => ({ offer: slug, code }));
 
-// Subscription OTOs never reach 'completed' — their order lives as
-// trialing → active → past_due → canceled, and a sub start IS a take. Their
-// recurring revenue is reported separately by recurringOtoSnapshot
-// (renewal_events), so here only the order's own amount counts (the intro
-// charge, 0 for a free trial) — no double counting.
-//
-// TODO(new product): list every upsell slot that starts a subscription.
-// Typed as ProductId so a catalog rename fails the build instead of silently
-// mis-bucketing the offer.
-const SUBSCRIPTION_OFFERS = new Set<ProductId>(['oto2_addon_weekly']);
-const SUB_TAKE_STATUSES = ['trialing', 'active', 'past_due', 'canceled'];
-
-export async function otoCountsPerOffer({ from, to }: DateRange): Promise<OtoMetric[]> {
-  const admin = getSupabaseAdminClient();
-  const results: OtoMetric[] = [];
-  for (const { offer, code } of OTO_OFFERS) {
-    const base = admin
-      .from('orders')
-      .select('amount_cents,currency')
-      .eq('payment_environment', 'production');
-    const withStatus = SUBSCRIPTION_OFFERS.has(offer as ProductId)
-      ? base.in('status', SUB_TAKE_STATUSES)
-      : base.eq('status', 'completed');
-    const { data, error } = await withStatus
-      .eq('product_slug', code)
-      .gte('created_at', from)
-      .lt('created_at', to);
-    if (error || !data) {
-      console.error(`[admin/otos] count failed for ${offer}:`, error?.message);
-      results.push({ offer, pattern: code, count: 0, amountEurCents: 0 });
-      continue;
-    }
-    const amountEurCents = data.reduce(
-      (sum, row) =>
-        sum +
-        convertToEur(
-          (row.amount_cents as number) ?? 0,
-          (row.currency as string) ?? 'eur',
-        ),
-      0,
-    );
-    results.push({ offer, pattern: code, count: data.length, amountEurCents });
-  }
-  return results;
+export async function otoCountsPerOffer(range: DateRange): Promise<OtoMetric[]> {
+  const [report, counts] = await Promise.all([
+    financialReport(range),
+    getSupabaseAdminClient().rpc('get_solidgate_purchase_counts', {
+      p_environment: 'production', p_from: range.from, p_to: range.to, p_products: OTO_OFFERS.map(row => row.code),
+    }),
+  ]);
+  if (counts.error) throw new Error(`Purchase report unavailable: ${counts.error.message}`);
+  const rows = z.array(z.object({ product_slug: z.string(), count: z.number().int().nonnegative().safe() })).parse(counts.data);
+  return OTO_OFFERS.map(({ offer, code }) => ({ offer, pattern: code,
+    count: rows.find(row => row.product_slug === code)?.count ?? 0,
+    amountEurCents: sumInEur(report.rows.filter(row => row.billing_type === 'initial' && row.product_slug === code)),
+  }));
 }
 
 export async function otoTakeRates({
@@ -85,12 +54,13 @@ export async function otoTakeRates({
     // Use funnel_events with event_type containing the offer slug as a tighter
     // denominator than total sessions (RESEARCH.md recommendation). takeRate=0
     // when no events matched (avoid NaN).
-    const { count: viewed } = await admin
+    const { count: viewed, error } = await admin
       .from('funnel_events')
       .select('*', { count: 'exact', head: true })
       .ilike('event_type', `%${offer}%`)
       .gte('created_at', from)
       .lt('created_at', to);
+    if (error) throw new Error(`Offer views unavailable: ${error.message}`);
     const purchases = counts.find((c) => c.offer === offer)?.count ?? 0;
     const denom = viewed ?? 0;
     results.push({ offer, takeRate: denom > 0 ? purchases / denom : 0 });

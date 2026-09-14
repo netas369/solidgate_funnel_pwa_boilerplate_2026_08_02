@@ -85,8 +85,8 @@ never carries its own numbers, and a test pins the two together so they cannot d
    ```
    Creates products + one price per currency and writes
    `packages/shared/src/solidgate/catalog-ids.json`.
-   **Commit that file.** The ids are not secrets — it replaces the old per-locale
-   `STRIPE_PRICE_*` env blob. The version in this boilerplate is scrubbed to empty
+   **Commit that file.** The ids are not secrets and this file is the only place
+   they live; there is no env-var fallback. The version in this boilerplate is scrubbed to empty
    strings on purpose, so an unseeded install fails loudly at the Solidgate API instead
    of silently posting a plausible-looking id.
 

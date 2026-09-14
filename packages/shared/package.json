@@ -43,6 +43,7 @@
     "./solidgate/account-vault": "./src/solidgate/account-vault.ts",
     "./solidgate/subscription-token-sync": "./src/solidgate/subscription-token-sync.ts",
     "./solidgate/main-accepted-cookie": "./src/solidgate/main-accepted-cookie.ts",
-    "./locale-prefixes": "./src/locale-prefixes.ts"
+    "./locale-prefixes": "./src/locale-prefixes.ts",
+    "./solidgate/card-update-recovery": "./src/solidgate/card-update-recovery.ts"
   }
 }

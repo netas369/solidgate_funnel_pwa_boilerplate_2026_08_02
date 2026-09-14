@@ -90,8 +90,7 @@ export function SuccessClient({ orders, email, entitlements }: Props) {
   const t = useTranslations('success');
   const commonT = useTranslations('common');
   const setStage = useFunnelStore((s) => s.setStage);
-  // `authLinked === false` means the buyer paid but has no account attached
-  // yet, which is what gates the claim-purchase prompt below.
+  // Payment records can be attached before the browser verifies mailbox ownership.
   const authLinked = useQuizStore((s) => s.authLinked);
   const { track } = useAnalytics();
   const funnelCompletedFired = useRef(false);

@@ -16,6 +16,7 @@ import {
   drainAnalyticsOutbox,
   handleEvent,
   serveRequest,
+  replayStoredWebhookEvents,
   triggerFunnelFulfillment,
   WEBHOOK_CONTRACT_VERSION,
 } from '../index';
@@ -269,6 +270,7 @@ function makeDb(
       rows = rows.filter((r) => String(r[col] ?? '').toLowerCase().includes(needle));
       return chain;
     };
+    chain.or = () => chain;
     chain.order = () => chain;
     chain.limit = (limit: number) => {
       rows = rows.slice(0, limit);
@@ -369,6 +371,8 @@ function makeDb(
           grant_solidgate_pwa_entitlement: true,
           solidgate_special_free_card_ready: true,
           apply_solidgate_subscription_entitlement_lifecycle: 'applied',
+          restore_solidgate_subscription_entitlement: 'applied',
+          record_solidgate_subscription_snapshot: { applied: true },
           write_solidgate_session_vault_with_method: 'written',
           record_solidgate_pwa_confirmed_capture: 'hosted_form',
           write_solidgate_account_vault_with_method: 'written',
@@ -385,13 +389,38 @@ function makeDb(
         const legacyName = legacyRpcName(name);
         const failure = failures.rpc?.[name]
           ?? (legacyName ? failures.rpc?.[legacyName] : undefined);
+        // Financial reducers are verified against real Postgres in
+        // solidgate_financial_ledger.sql. This adapter only returns their state
+        // contract and captures transactional outbox arguments for parser tests.
+        let financialResult: Row | null = null;
+        if (name === 'apply_solidgate_financial_event' && !failure) {
+          const facts = args.p_facts as Row;
+          const source = tables.orders.find((order) => order.solidgate_order_id === args.p_solidgate_order_id);
+          const mapping = (tables.solidgate_invoice_orders ?? []).find((order) =>
+            order.solidgate_order_id === args.p_solidgate_order_id);
+          const renewal = (tables.renewal_events ?? []).find((row) =>
+            row.solidgate_invoice_id === (facts.invoice_id ?? mapping?.solidgate_invoice_id));
+          const gross = Number(facts.captured_amount_cents ?? renewal?.gross_amount_cents ??
+            source?.solidgate_original_amount_cents ?? source?.amount_cents ?? mapping?.amount_cents ?? 0);
+          const refunded = Number(facts.refunded_amount_cents ?? source?.solidgate_refunded_amount_cents ??
+            renewal?.refunded_amount_cents ?? mapping?.refunded_amount_cents ?? 0);
+          const disputed = ['reversed', 'resolved_reversal'].includes(String(facts.chargeback_status)) ? 0
+            : Number(facts.chargeback_amount_cents ?? source?.solidgate_chargeback_amount_cents ?? 0);
+          financialResult = { applied: true, captured_amount_cents: gross,
+            refunded_amount_cents: refunded, chargeback_amount_cents: disputed,
+            net_amount_cents: Math.max(0, gross - Math.max(refunded, disputed)),
+            status: disputed > 0 ? 'disputed' : refunded >= gross && refunded > 0 ? 'refunded' : 'paid' };
+          const analytics = args.p_analytics as Row | null;
+          if (analytics) writes.push({ table: 'solidgate_analytics_outbox', op: 'upsert',
+            payload: { ...analytics, environment: args.p_environment }, filters: [] });
+        }
         const data = failure
           ? null
           : Object.prototype.hasOwnProperty.call(rpcResults, name)
           ? rpcResults[name]
           : legacyName && Object.prototype.hasOwnProperty.call(rpcResults, legacyName)
           ? rpcResults[legacyName]
-          : (defaults[name] ?? null);
+          : (financialResult ?? defaults[name] ?? null);
         const claim = name === 'claim_solidgate_webhook_event_v2'
           ? (Array.isArray(data) ? data[0] : data) as Row | null
           : null;
@@ -450,6 +479,19 @@ function makeDb(
       return rpcCalls.filter((call) => call.name === canonicalName).map((call) => call.args);
     },
   };
+}
+
+function invoiceFinanceFacts(rpcsTo: (name: string) => Row[], paidOnly = true): Row[] {
+  return rpcsTo('apply_solidgate_financial_event').filter((call) => {
+    const facts = call.p_facts as Row;
+    return facts.invoice_id && (!paidOnly || Number(facts.subscription_term_number) > 0 && facts.captured_amount_cents !== undefined);
+  }).map((call) => {
+    const facts = call.p_facts as Row;
+    return { ...facts, solidgate_order_id: call.p_solidgate_order_id,
+      solidgate_invoice_id: facts.invoice_id, solidgate_subscription_id: facts.subscription_id,
+      amount_cents: facts.captured_amount_cents ?? facts.quoted_amount_cents,
+      status: paidOnly && facts.captured_amount_cents !== undefined ? 'paid' : facts.payment_status };
+  });
 }
 
 const ORDER_ROW = {
@@ -768,7 +810,7 @@ describe('fulfillment worker trigger routing', () => {
     };
     const previousEdgeRuntime = runtimeGlobal.EdgeRuntime;
     runtimeGlobal.EdgeRuntime = { waitUntil };
-    const { db } = makeDb(
+    const { db, rpcsTo } = makeDb(
       [ORDER_ROW],
       undefined,
       {},
@@ -812,7 +854,7 @@ describe('durable webhook inbox claim states', () => {
   const claimedToken = '11111111-1111-4111-8111-111111111111';
 
   it('ACKs a completed duplicate without dispatching or rewriting the inbox', async () => {
-    const { db, writes, rpcCalls } = makeDb(
+    const { db, writes, rpcCalls, rpcsTo } = makeDb(
       [{ ...ORDER_ROW }],
       undefined,
       {},
@@ -834,7 +876,7 @@ describe('durable webhook inbox claim states', () => {
   });
 
   it('returns a retryable response for a fresh processing lease and leaves its owner untouched', async () => {
-    const { db, writes, rpcCalls } = makeDb(
+    const { db, writes, rpcCalls, rpcsTo } = makeDb(
       [{ ...ORDER_ROW }],
       undefined,
       {},
@@ -1040,7 +1082,7 @@ describe('durable webhook inbox claim states', () => {
         status: 'failed',
         last_error: expect.stringContaining('unsupported subscription callback_type'),
       }));
-      expect(rpcsTo('release_solidgate_entity_event')).toHaveLength(1);
+      expect(rpcsTo('release_solidgate_entity_event')).toHaveLength(0);
       expect(rpcsTo('complete_solidgate_entity_event')).toHaveLength(0);
       expect(rpcsTo('complete_solidgate_webhook_event_v2')).toHaveLength(0);
       expect(writes.filter((write) => write.table !== 'solidgate_webhook_events')).toHaveLength(0);
@@ -1070,7 +1112,7 @@ describe('durable webhook inbox claim states', () => {
     expect(response.status).toBe(500);
     await expect(response.text()).resolves.toContain('unsupported subscription callback_type');
     expect(updatesTo('orders')).toHaveLength(0);
-    expect(rpcsTo('release_solidgate_entity_event')).toHaveLength(1);
+    expect(rpcsTo('release_solidgate_entity_event')).toHaveLength(0);
     expect(rpcsTo('complete_solidgate_entity_event')).toHaveLength(0);
     expect(rpcsTo('fail_solidgate_webhook_event_v2')).toContainEqual(expect.objectContaining({
       p_claim_token: claimedToken,
@@ -1127,8 +1169,8 @@ describe('durable webhook inbox claim states', () => {
       status: 'completed',
     }));
     expect(rpcsTo('fail_solidgate_webhook_event_v2')).toHaveLength(0);
-    expect(rpcsTo('claim_solidgate_entity_event')).toHaveLength(1);
-    expect(rpcsTo('complete_solidgate_entity_event')).toHaveLength(1);
+    expect(rpcsTo('claim_solidgate_entity_event')).toHaveLength(0);
+    expect(rpcsTo('complete_solidgate_entity_event')).toHaveLength(0);
     expect(writes.filter((write) => write.table !== 'solidgate_webhook_events')).toHaveLength(0);
   });
 
@@ -1147,7 +1189,7 @@ describe('durable webhook inbox claim states', () => {
         locale: 'en',
       },
     };
-    const { db, updatesTo, upsertsTo } = makeDb(
+    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb(
       [claimedOrder],
       undefined,
       {},
@@ -1176,7 +1218,7 @@ describe('durable webhook inbox claim states', () => {
 
   it('cannot complete or fail the inbox after its token/generation fence is stale', async () => {
     const staleToken = '44444444-4444-4444-8444-444444444444';
-    const { db, writes, rpcCalls } = makeDb(
+    const { db, writes, rpcCalls, rpcsTo } = makeDb(
       [],
       undefined,
       {},
@@ -1275,8 +1317,8 @@ describe('fail-closed database boundaries', () => {
       eventType: 'card_gate.order.updated',
       payload: positiveOrderPayload(ORDER_ROW),
       orders: [{ ...ORDER_ROW }],
-      failures: { writes: { orders: 'orders write unavailable' } },
-      error: 'order settlement update failed',
+      failures: { rpc: { apply_solidgate_financial_event: 'orders write unavailable' } },
+      error: 'atomic financial event failed',
     },
     {
       name: 'refund write',
@@ -1290,8 +1332,8 @@ describe('fail-closed database boundaries', () => {
         },
       },
       orders: [{ ...ORDER_ROW, status: 'completed' }],
-      failures: { writes: { orders: 'refund write unavailable' } },
-      error: 'order refund update failed',
+      failures: { rpc: { apply_solidgate_financial_event: 'refund write unavailable' } },
+      error: 'atomic financial event failed',
     },
     {
       name: 'void entitlement revoke',
@@ -1343,13 +1385,13 @@ describe('fail-closed database boundaries', () => {
       payload: {
         callback_type: 'active',
         subscription: { id: 'sub-raced', status: 'active', trial: true },
-        customer: { customer_account_id: 'sess-1' },
+        customer: { customer_account_id: 'b5555555-5555-4555-8555-555555555555' },
         invoices: {
           raced: {
             id: 'inv-raced',
             status: 'success',
             amount: 1767,
-            order_metadata: { session_id: 'sess-1', product_slug: 'trial4' },
+            order_metadata: { session_id: 'b5555555-5555-4555-8555-555555555555', product_slug: 'trial4' },
           },
         },
       },
@@ -1365,8 +1407,8 @@ describe('fail-closed database boundaries', () => {
         chargeback: { id: 'cb-write-error', status: 'in_progress', amount: 1767 },
       },
       orders: [{ ...ORDER_ROW, status: 'completed' }],
-      failures: { writes: { orders: 'chargeback write unavailable' } },
-      error: 'chargeback order update failed',
+      failures: { rpc: { apply_solidgate_financial_event: 'chargeback write unavailable' } },
+      error: 'atomic financial event failed',
     },
     {
       name: 'renewal chargeback mapping read',
@@ -1389,7 +1431,7 @@ describe('fail-closed database boundaries', () => {
     failures,
     error,
   }) => {
-    const { db, writes, updatesTo, upsertsTo } = makeDb(
+    const { db, writes, updatesTo, upsertsTo, rpcsTo } = makeDb(
       orders,
       undefined,
       extras ?? {},
@@ -1513,7 +1555,7 @@ describe('positive settlement binding', () => {
     row,
     payload,
   }) => {
-    const { db, writes, upsertsTo, updatesTo } = makeDb([row]);
+    const { db, writes, upsertsTo, updatesTo, rpcsTo } = makeDb([row]);
     const response = await serveRequest(
       await makeWebhookRequest(
         'card_gate.order.updated',
@@ -1576,7 +1618,7 @@ describe('positive settlement binding', () => {
 
   it('rejects a settle whose unclaimed order session belongs to a different account', async () => {
     const pendingOrder = { ...ORDER_ROW, user_id: null, solidgate_subscription_id: null };
-    const { db, writes, updatesTo, upsertsTo } = makeDb(
+    const { db, writes, updatesTo, upsertsTo, rpcsTo } = makeDb(
       [pendingOrder],
       [{ id: 'sess-1', email: 'buyer@example.com', locale: 'en', user_id: 'foreign-user' }],
       {},
@@ -1643,26 +1685,18 @@ describe('card_gate.order.updated', () => {
       solidgate_chargeback_amount_cents: 1767,
     }],
   ])('does not resurrect a %s order from a later settle replay', async (_label, terminal) => {
-    const { db, updatesTo, upsertsTo } = makeDb([{ ...ORDER_ROW, ...terminal }]);
+    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb([{ ...ORDER_ROW, ...terminal }]);
 
-    await handleEvent(db, 'card_gate.order.updated', {
-      order: {
-        order_id: 'sess-1:trial4:1',
-        status: 'settle_ok',
-        amount: 1767,
-        currency: 'USD',
-        subscription_id: 'sub-uuid-1',
-      },
-    });
+    await handleEvent(db, 'card_gate.order.updated', positiveOrderPayload(ORDER_ROW));
 
     expect(updatesTo('orders')).toHaveLength(0);
     expect(upsertsTo('entitlements')).toHaveLength(0);
   });
 
   it('does not clear a matching entitlement revoke tombstone on settle replay', async () => {
-    const { db, upsertsTo } = makeDb(
+    const { db, upsertsTo, rpcsTo } = makeDb(
       [{ ...ORDER_ROW, status: 'completed' }],
-      [],
+      undefined,
       {
         entitlements: [{
           order_id: 'order-1',
@@ -1673,15 +1707,7 @@ describe('card_gate.order.updated', () => {
       },
     );
 
-    await handleEvent(db, 'card_gate.order.updated', {
-      order: {
-        order_id: 'sess-1:trial4:1',
-        status: 'settle_ok',
-        amount: 1767,
-        currency: 'USD',
-        subscription_id: 'sub-uuid-1',
-      },
-    });
+    await handleEvent(db, 'card_gate.order.updated', positiveOrderPayload(ORDER_ROW));
 
     expect(upsertsTo('entitlements')).toHaveLength(0);
   });
@@ -1732,7 +1758,7 @@ describe('card_gate.order.updated', () => {
   });
 
   it('settles a charge our API route left pending (the async-charge safety net)', async () => {
-    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb([{ ...ORDER_ROW }]);
+    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb([{ ...ORDER_ROW, auth_verified_at: '2026-07-16T08:55:00.000Z' }]);
     await handleEvent(db, 'card_gate.order.updated', {
       ...positiveOrderPayload(ORDER_ROW),
       transactions: {
@@ -1752,8 +1778,8 @@ describe('card_gate.order.updated', () => {
       p_card_brand: 'VISA',
       p_card_last4: '9265',
     });
-    // If the browser grant vanished after payment, the webhook still promotes
-    // the session token to the authenticated account before acknowledging.
+    // An already verified source can still recover account promotion when the
+    // browser disappears after payment.
     expect(rpcsTo('promote_solidgate_session_vault_monotonic')[0]).toEqual({
       p_payment_environment: 'production',
       p_user_id: 'user-1',
@@ -2000,6 +2026,43 @@ describe('card_gate.order.updated', () => {
       .toBeLessThan(rpcCalls.findIndex((call) => call.name === 'grant_solidgate_main_entitlement'));
   });
 
+  it('acknowledges an unverified email match without treating legacy claimed_at as account-card authorization', async () => {
+    const unverifiedOrder = {
+      ...ORDER_ROW, claimed_at: '2026-07-16T08:55:00.000Z', auth_verified_at: null,
+    };
+    const { db, rpcsTo, updatesTo } = makeDb(
+      [unverifiedOrder], undefined, {},
+      { promote_solidgate_session_vault_monotonic: 'unverified' },
+    );
+    await handleEvent(db, 'card_gate.order.updated', {
+      ...positiveOrderPayload(unverifiedOrder),
+      transaction: webhookTokenAuthorization('unverified-session-token'),
+    });
+    // The atomic SQL gate checks the exact vault source. Its safe no-op must
+    // not fail the paid webhook or stop this checkout's session card/access.
+    expect(rpcsTo('promote_solidgate_session_vault_monotonic')).toHaveLength(1);
+    expect(rpcsTo('write_solidgate_account_vault_monotonic')).toHaveLength(0);
+    expect(rpcsTo('write_solidgate_session_vault_monotonic')).toHaveLength(1);
+    expect(rpcsTo('grant_solidgate_main_entitlement')).toHaveLength(1);
+    expect(updatesTo('orders').some((values) => 'auth_verified_at' in values)).toBe(false);
+  });
+
+  it('does not create account-card authentication proof when email resolution creates an unverified user', async () => {
+    const unverifiedOrder = { ...ORDER_ROW, user_id: null, auth_verified_at: null };
+    const { db, rpcsTo, updatesTo, createUser } = makeDb(
+      [unverifiedOrder],
+      [{ id: 'sess-1', email: 'buyer@example.com', locale: 'en', user_id: null }],
+      {}, { promote_solidgate_session_vault_monotonic: 'unverified' },
+      { authCreate: { userId: 'created-unverified-user' } },
+    );
+    await handleEvent(db, 'card_gate.order.updated', positiveOrderPayload(unverifiedOrder));
+    expect(createUser).toHaveBeenCalledWith(expect.objectContaining({ email_confirm: false }));
+    expect(updatesTo('orders')).toContainEqual(expect.objectContaining({ user_id: 'created-unverified-user' }));
+    expect(updatesTo('orders').some((values) => 'auth_verified_at' in values)).toBe(false);
+    expect(rpcsTo('write_solidgate_account_vault_monotonic')).toHaveLength(0);
+    expect(rpcsTo('grant_solidgate_main_entitlement')).toHaveLength(1);
+  });
+
   it('does not acknowledge a captured main order when account promotion reports missing', async () => {
     const { db, rpcsTo } = makeDb(
       [{ ...ORDER_ROW }],
@@ -2105,7 +2168,6 @@ describe('card_gate.order.updated', () => {
     expect(first.updatesTo('orders')).toContainEqual(expect.objectContaining({
       status: 'trialing',
       solidgate_subscription_id: 'sub-new',
-      solidgate_payment_status: 'settle_ok',
     }));
     expect(first.createUser).toHaveBeenCalledTimes(1);
 
@@ -2225,7 +2287,7 @@ describe('card_gate.order.updated', () => {
       solidgate_subscription_id: 'sub-main',
       product_slug: 'BRAND_000000_SUB',
     };
-    const { db, upsertsTo } = makeDb([lifetime, main]);
+    const { db, upsertsTo, rpcsTo } = makeDb([lifetime, main]);
 
     await handleEvent(db, 'card_gate.order.updated', positiveOrderPayload(lifetime));
 
@@ -2250,7 +2312,7 @@ describe('card_gate.order.updated', () => {
       ...ORDER_ROW,
       solidgate_subscription_id: 'sub-superseded',
     };
-    const { db, upsertsTo, rpcCalls } = makeDb(
+    const { db, upsertsTo, rpcCalls, rpcsTo } = makeDb(
       [supersededOrder],
       undefined,
       {},
@@ -2262,7 +2324,7 @@ describe('card_gate.order.updated', () => {
     expect(rpcCalls).toContainEqual(expect.objectContaining({
       name: 'grant_solidgate_main_entitlement',
     }));
-    expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({
+    expect(upsertsTo('solidgate_analytics_outbox').find((event) => event.event_name === 'intro_offer_conflict')).toMatchObject({
       event_name: 'intro_offer_conflict',
       distinct_id: 'sess-1',
       properties: {
@@ -2289,7 +2351,7 @@ describe('card_gate.order.updated', () => {
       ...ORDER_ROW,
       solidgate_subscription_id: 'sub-conflict',
     };
-    const { db, upsertsTo } = makeDb(
+    const { db, upsertsTo, rpcsTo } = makeDb(
       [conflictOrder],
       undefined,
       {},
@@ -2301,14 +2363,14 @@ describe('card_gate.order.updated', () => {
     ).rejects.toThrow('intro offer conflict');
 
     expect(upsertsTo('entitlements')).toHaveLength(0);
-    expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({
+    expect(upsertsTo('solidgate_analytics_outbox').find((event) => event.event_name === 'intro_offer_conflict')).toMatchObject({
       event_name: 'intro_offer_conflict',
       properties: { resolution: 'aborted' },
     });
   });
 
   it('never downgrades an order that already succeeded (events arrive out of order)', async () => {
-    const { db, updatesTo } = makeDb([{ ...ORDER_ROW, status: 'completed' }]);
+    const { db, updatesTo, rpcsTo } = makeDb([{ ...ORDER_ROW, status: 'completed' }]);
     await handleEvent(db, 'card_gate.order.updated', {
       order: { order_id: 'sess-1:trial4:1', status: 'auth_failed' },
     });
@@ -2316,7 +2378,7 @@ describe('card_gate.order.updated', () => {
   });
 
   it('marks a decline failed', async () => {
-    const { db, updatesTo } = makeDb([{ ...ORDER_ROW }]);
+    const { db, updatesTo, rpcsTo } = makeDb([{ ...ORDER_ROW }]);
     await handleEvent(db, 'card_gate.order.updated', {
       order: { order_id: 'sess-1:trial4:1', status: 'auth_failed' },
     });
@@ -2364,7 +2426,7 @@ describe('card_gate.order.updated', () => {
     await handleEvent(full.db, 'card_gate.order.updated', {
       order: { order_id: 'sess-1:trial4:1', status: 'refunded', refunded_amount: 1767 },
     });
-    expect(full.updatesTo('orders')[0]).toMatchObject({ status: 'refunded' });
+    expect(full.rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ refunded_amount_cents: 1767, order_db_id: 'order-1' });
     expect(full.updatesTo('entitlements')[0]).toMatchObject({ status: 'canceled' });
     expect(
       full.writes.find((write) => write.table === 'entitlements' && write.op === 'update')?.filters,
@@ -2374,11 +2436,8 @@ describe('card_gate.order.updated', () => {
     await handleEvent(partial.db, 'card_gate.order.updated', {
       order: { order_id: 'sess-1:trial4:1', status: 'refunded', refunded_amount: 500 },
     });
-    expect(partial.updatesTo('orders')[0]).toMatchObject({
-      amount_cents: 1267,
-      solidgate_refunded_amount_cents: 500,
-    });
-    expect(partial.updatesTo('orders')[0]).not.toHaveProperty('status');
+    expect(partial.rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ refunded_amount_cents: 500 });
+    expect(partial.updatesTo('orders')).toHaveLength(0);
     expect(partial.updatesTo('entitlements')).toHaveLength(0);
   });
 
@@ -2410,7 +2469,7 @@ describe('card_gate.order.updated', () => {
       },
     });
 
-    expect(attempt.updatesTo('orders')[0]).toMatchObject({ status: 'refunded' });
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ refunded_amount_cents: 1767, order_db_id: 'order-1' });
     expect(attempt.updatesTo('entitlements')).toHaveLength(1);
     const revoke = attempt.writes.find((write) =>
       write.table === 'entitlements' && write.op === 'update'
@@ -2447,16 +2506,13 @@ describe('card_gate.order.updated', () => {
       },
     });
 
-    expect(attempt.updatesTo('orders')[0]).toMatchObject({
-      amount_cents: 1267,
-      solidgate_refunded_amount_cents: 500,
-    });
-    expect(attempt.updatesTo('orders')[0]).not.toHaveProperty('status');
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ refunded_amount_cents: 500 });
+    expect(attempt.updatesTo('orders')).toHaveLength(0);
     expect(attempt.updatesTo('entitlements')).toHaveLength(0);
   });
 
   it('does NOT grant on a positive auth_ok reservation', async () => {
-    const { db, updatesTo, upsertsTo } = makeDb([{ ...ORDER_ROW, amount_cents: 1767 }]);
+    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb([{ ...ORDER_ROW, amount_cents: 1767 }]);
     await handleEvent(db, 'card_gate.order.updated', {
       order: {
         order_id: 'sess-1:trial4:1',
@@ -2497,7 +2553,7 @@ describe('card_gate.order.updated', () => {
         }),
       },
     );
-    expect(updatesTo('orders')[0]).toMatchObject({ status: 'trialing', amount_cents: 0 });
+    expect(updatesTo('orders')[0]).toMatchObject({ status: 'trialing' });
     expect(rpcsTo('write_solidgate_session_vault_monotonic')).toEqual([
       expect.objectContaining({
         p_source_order_id: 'order-1',
@@ -3280,27 +3336,18 @@ describe('card_gate.order.updated', () => {
       .toBeLessThan(rpcCalls.findIndex((call) => call.name === 'grant_solidgate_pwa_entitlement'));
   });
 
-  it('keeps an under-captured partial settlement pending without access or revenue', async () => {
-    const { db, updatesTo, upsertsTo } = makeDb([{ ...ORDER_ROW, amount_cents: 1767 }]);
-    await handleEvent(db, 'card_gate.order.updated', {
-      order: {
-        order_id: 'sess-1:trial4:1',
-        status: 'partial_settled',
-        amount: 1767,
-        settled_amount: 1200,
-        currency: 'USD',
-        subscription_id: 'sub-uuid-1',
-      },
-    });
+  it('keeps an under-captured partial settlement pending without access while recording actual money', async () => {
+    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb([{ ...ORDER_ROW, amount_cents: 1767 }]);
+    await handleEvent(db, 'card_gate.order.updated', positiveOrderPayload(ORDER_ROW, { status: 'partial_settled', settled_amount: 1200 }));
 
     expect(updatesTo('orders')[0]).toMatchObject({ solidgate_payment_status: 'partial_settled' });
     expect(updatesTo('orders')[0]).not.toHaveProperty('status');
     expect(upsertsTo('entitlements')).toHaveLength(0);
-    expect(upsertsTo('solidgate_analytics_outbox')).toHaveLength(0);
+    expect(rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ captured_amount_cents: 1200 });
   });
 
   it('does not mistake order.amount for captured money when partial_settled omits settlement fields', async () => {
-    const { db, updatesTo, upsertsTo } = makeDb([{ ...ORDER_ROW }]);
+    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb([{ ...ORDER_ROW }]);
     await handleEvent(db, 'card_gate.order.updated', {
       order: {
         order_id: ORDER_ROW.solidgate_order_id,
@@ -3343,7 +3390,7 @@ describe('card_gate.order.updated', () => {
       },
     );
 
-    expect(updatesTo('orders')[0]).toMatchObject({ status: 'trialing', amount_cents: 1767 });
+    expect(updatesTo('orders')[0]).toMatchObject({ status: 'trialing' });
     expect(rpcsTo('grant_solidgate_main_entitlement')[0]).toMatchObject({
       p_amount_cents: 1767,
       p_subscription_id: 'sub-uuid-1',
@@ -3354,15 +3401,11 @@ describe('card_gate.order.updated', () => {
   });
 
   it('marks a void failed, zeros net revenue and revokes an accidental grant', async () => {
-    const { db, updatesTo } = makeDb([{ ...ORDER_ROW, status: 'trialing' }]);
+    const { db, updatesTo, rpcsTo } = makeDb([{ ...ORDER_ROW, status: 'trialing' }]);
     await handleEvent(db, 'card_gate.order.updated', {
       order: { order_id: 'sess-1:trial4:1', status: 'void_ok', amount: 1767, currency: 'USD' },
     });
-    expect(updatesTo('orders')[0]).toMatchObject({
-      status: 'failed',
-      amount_cents: 0,
-      solidgate_payment_status: 'void_ok',
-    });
+    expect(rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ payment_status: 'void_ok' });
     expect(updatesTo('entitlements')[0]).toMatchObject({ status: 'canceled' });
   });
 
@@ -3395,10 +3438,7 @@ describe('card_gate.order.updated', () => {
       },
     });
 
-    expect(attempt.updatesTo('orders')[0]).toMatchObject({
-      status: 'failed',
-      solidgate_payment_status: 'void_ok',
-    });
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ payment_status: 'void_ok' });
     expect(attempt.updatesTo('entitlements')).toHaveLength(1);
     expect(
       attempt.writes.find((write) =>
@@ -3408,7 +3448,7 @@ describe('card_gate.order.updated', () => {
   });
 
   it('maps a generated renewal order refund back to its invoice ledger', async () => {
-    const { db, updatesTo, upsertsTo } = makeDb([], [], {
+    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb([capturedSubscriptionOrder()], [], {
       solidgate_invoice_orders: [{
         solidgate_order_id: 'sg-generated-order',
         solidgate_invoice_id: 'inv-renewal',
@@ -3443,11 +3483,7 @@ describe('card_gate.order.updated', () => {
         currency: 'USD',
       },
     });
-    expect(updatesTo('renewal_events')[0]).toMatchObject({
-      amount_cents: 4700,
-      refunded_amount_cents: 1200,
-      status: 'partially_refunded',
-    });
+    expect(rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ refunded_amount_cents: 1200, invoice_id: 'inv-renewal' });
     expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({
       event_name: 'payment_refunded',
       properties: {
@@ -3463,13 +3499,13 @@ describe('card_gate.order.updated', () => {
         funnel_code: 'BRAND',
         utm_source: 'fb',
         utm_campaign: 'Renewal cohort',
-        refund_amount_cents: 1200,
+        refunded_amount_cents: 1200,
       },
     });
   });
 
   it('ignores an order that is not ours', async () => {
-    const { db, writes } = makeDb([]);
+    const { db, writes, rpcsTo } = makeDb([]);
     await handleEvent(db, 'card_gate.order.updated', {
       order: { order_id: 'someone-else:x:1', status: 'settle_ok' },
     });
@@ -3483,7 +3519,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
     process.env.NEXT_PUBLIC_POSTHOG_HOST = 'https://eu.i.posthog.com';
     configureWebhookRuntime({ analyticsEnabled: true });
     const createdAt = '2026-07-16T08:50:10.000Z';
-    const { db } = makeDb([], [], {}, {
+    const { db, rpcsTo } = makeDb([], [], {}, {
       claim_solidgate_analytics_outbox: [{
         id: 'outbox-1',
         event_name: 'subscription_started',
@@ -3513,7 +3549,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
     posthogCapture.mockImplementationOnce(() => {
       throw new Error('temporary PostHog failure');
     });
-    const { db, updatesTo } = makeDb([], [], {}, {
+    const { db, updatesTo, rpcsTo } = makeDb([], [], {}, {
       claim_solidgate_analytics_outbox: [{
         id: 'outbox-failed',
         event_name: 'purchase_completed',
@@ -3551,7 +3587,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
         utm_campaign: 'Creative Testing',
       },
     };
-    const { db, upsertsTo } = makeDb([attributedOrder]);
+    const { db, upsertsTo, rpcsTo } = makeDb([attributedOrder]);
     await handleEvent(db, 'card_gate.order.updated', positiveOrderPayload(attributedOrder));
     expect(upsertsTo('solidgate_analytics_outbox')[0]).toMatchObject({
       event_key: 'order:sess-1:trial4:1:settled',
@@ -3597,7 +3633,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
         utm_campaign: 'Creative Testing',
       },
     };
-    const { db, upsertsTo, rpcCalls } = makeDb(
+    const { db, upsertsTo, rpcCalls, rpcsTo } = makeDb(
       [oneTimeOrder],
       [{ id: sessionId, user_id: userId, locale: 'lt', email: 'buyer@example.com' }],
     );
@@ -3664,7 +3700,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
         product_slug: 'oto3_bundle_all',
       },
     };
-    const { db, upsertsTo } = makeDb(
+    const { db, upsertsTo, rpcsTo } = makeDb(
       [sandboxOneTimeOrder],
       [{ id: sessionId, user_id: userId, locale: 'lt', email: 'buyer@example.com' }],
     );
@@ -3686,7 +3722,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
   });
 
   it('uses the same deterministic outbox key and insert id on a retry', async () => {
-    const { db, upsertsTo } = makeDb([{ ...ORDER_ROW }]);
+    const { db, upsertsTo, rpcsTo } = makeDb([{ ...ORDER_ROW }]);
     const payload = positiveOrderPayload(ORDER_ROW);
     await handleEvent(db, 'card_gate.order.updated', payload);
     await handleEvent(db, 'card_gate.order.updated', payload);
@@ -3743,7 +3779,7 @@ describe('durable server-side lifecycle analytics outbox', () => {
   });
 
   it('queues a payment_failed lifecycle event for declines', async () => {
-    const { db, upsertsTo } = makeDb([{ ...ORDER_ROW, analytics_captured_at: null }]);
+    const { db, upsertsTo, rpcsTo } = makeDb([{ ...ORDER_ROW, analytics_captured_at: null }]);
     await handleEvent(db, 'card_gate.order.updated', {
       order: { order_id: 'sess-1:trial4:1', status: 'auth_failed' },
     });
@@ -3784,7 +3820,7 @@ describe('subscription.updated.v2', () => {
       expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toEqual([
         expect.objectContaining({ p_status: 'active', p_access_level: 'full', p_expires_at: '2026-08-31T10:00:00.000Z' }),
       ]);
-      expect(attempt.upsertsTo('renewal_events')).toHaveLength(1);
+      expect(invoiceFinanceFacts(attempt.rpcsTo)).toHaveLength(2); // stale finance is still replayed idempotently
       if (callbackType === 'scheduled_for_cancellation') {
         expect(attempt.upsertsTo('solidgate_analytics_outbox')).toContainEqual(
           expect.objectContaining({ event_name: 'subscription_cancellation_scheduled' }),
@@ -3820,7 +3856,7 @@ describe('subscription.updated.v2', () => {
         status: scenario.mappingStatus,
       }] : [],
     });
-    await handleEvent(attempt.db, 'subscription.updated.v2', initialSubscriptionPayload(captured, {
+    const processing = handleEvent(attempt.db, 'subscription.updated.v2', initialSubscriptionPayload(captured, {
       callbackType: 'order_update',
       subscription: { status: scenario.subscriptionStatus ?? 'active', trial: false },
       ...(scenario.productId ? { product: { product_id: scenario.productId, currency: 'USD' } } : {}),
@@ -3831,8 +3867,11 @@ describe('subscription.updated.v2', () => {
         orders: { rebill: { id: 'snapshot-order', status: scenario.orderStatus ?? 'settle_ok', amount: scenario.orderAmount ?? 5900 } },
       },
     }));
+    const incomplete = Boolean(scenario.orderStatus || scenario.orderAmount || scenario.productId);
+    if (incomplete) await expect(processing).rejects.toThrow();
+    else await processing;
     expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toHaveLength(0);
-    expect(attempt.upsertsTo('renewal_events')).toHaveLength(0);
+    expect(invoiceFinanceFacts(attempt.rpcsTo)).toHaveLength(incomplete || scenario.term === 0 ? 0 : 1);
   });
 
   it.each(['active', 'past_due'])('renews a main membership after a partial refund while %s', async (status) => {
@@ -3882,7 +3921,7 @@ describe('subscription.updated.v2', () => {
     await expect(handleEvent(db, 'subscription.updated.v2', initialSubscriptionPayload(captured, {
       callbackType: 'renew',
       subscription: { status: 'active', trial: false },
-      invoice: { subscription_term_number: 1, amount: 5900 },
+      invoice: { subscription_term_number: 1, amount: 5900, orders: { rebill: { id: 'independent-paid-rebill', status: 'settle_ok', amount: 5900 } } },
     }))).rejects.toThrow('waiting for card settlement finalization');
     expect(rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toHaveLength(0);
   });
@@ -4029,13 +4068,13 @@ describe('subscription.updated.v2', () => {
     expect(lifecycle).toMatchObject({ p_access_level: 'full', p_status: 'active' });
     // Access expires when the next charge is due: stop paying, stop having it.
     expect(lifecycle.p_expires_at).toBe(new Date('2026-08-19T20:08:51Z').toISOString());
-    expect(upsertsTo('renewal_events')[0]).toMatchObject({
+    expect(invoiceFinanceFacts(rpcsTo)[0]).toMatchObject({
       solidgate_invoice_id: 'inv-1',
       solidgate_order_id: 'sg-renewal-order-1',
       subscription_term_number: 1,
       amount_cents: 5900,
     });
-    expect(upsertsTo('solidgate_invoice_orders')[0]).toMatchObject({
+    expect(invoiceFinanceFacts(rpcsTo, false)[0]).toMatchObject({
       solidgate_order_id: 'sg-renewal-order-1',
       solidgate_invoice_id: 'inv-1',
       status: 'settle_ok',
@@ -4099,6 +4138,7 @@ describe('subscription.updated.v2', () => {
         invoices: {
           renewal: {
             id: `invoice-${subscriptionId}`,
+            orders: { charge: { id: `order-${subscriptionId}`, status: 'settle_ok', amount: 5900 } },
             status: 'success',
             amount: 5900,
             subscription_term_number: 1,
@@ -4127,7 +4167,7 @@ describe('subscription.updated.v2', () => {
       solidgate_original_amount_cents: 1767,
       solidgate_payment_status: 'settle_ok',
     };
-    const { db, updatesTo, upsertsTo } = makeDb(
+    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb(
       [captured],
       [{ id: 'sess-1', email: 'buyer@example.com', locale: 'en', user_id: 'user-1' }],
       {
@@ -4148,8 +4188,8 @@ describe('subscription.updated.v2', () => {
     }));
 
     expect(updatesTo('orders')[0]).toMatchObject({ status: 'trialing' });
-    expect(upsertsTo('renewal_events')).toHaveLength(0);
-    expect(upsertsTo('solidgate_invoice_orders')).toHaveLength(1);
+    expect(invoiceFinanceFacts(rpcsTo)).toHaveLength(0);
+    expect(invoiceFinanceFacts(rpcsTo, false)).toHaveLength(1);
   });
 
   it('retries active-before-card without mutation, then lets the card finalizer create the user and grant', async () => {
@@ -4189,7 +4229,6 @@ describe('subscription.updated.v2', () => {
     expect(card.updatesTo('orders')).toContainEqual(expect.objectContaining({
       status: 'trialing',
       solidgate_subscription_id: 'sub-raced',
-      solidgate_payment_status: 'settle_ok',
     }));
     expect(card.updatesTo('orders')).toContainEqual(expect.objectContaining({ user_id: 'user-raced' }));
     expect(card.rpcsTo('grant_solidgate_main_entitlement')).toContainEqual(expect.objectContaining({
@@ -4577,7 +4616,7 @@ describe('subscription.updated.v2', () => {
       status: 'trialing',
       created_at: '2026-07-16T09:00:00.000Z', // newer — the old fallback would pick this for BOTH subs
     };
-    const { db, writes } = makeDb(
+    const { db, writes, rpcsTo } = makeDb(
       [deadAttempt, liveRetry],
       [{ id: 'sess-1', email: 'buyer@example.com', locale: 'en', user_id: 'user-1' }],
     );
@@ -4749,7 +4788,7 @@ describe('subscription.updated.v2', () => {
         price_id: 'c7099f1a-f012-4cef-b2f4-d78a7b686742',
       },
     };
-    const { db, updatesTo } = makeDb([pending]);
+    const { db, updatesTo, rpcsTo } = makeDb([pending]);
     await handleEvent(db, 'subscription.updated.v2', initialSubscriptionPayload(pending, {
       callbackType: 'create',
       subscriptionId: 'sub-pwa-raced',
@@ -4775,7 +4814,7 @@ describe('subscription.updated.v2', () => {
       solidgate_order_id: 'sess-1:trial4:2',
       created_at: '2026-07-16T09:00:00.000Z',
     };
-    const { db, writes } = makeDb(
+    const { db, writes, rpcsTo } = makeDb(
       [newerAttempt, pending],
       [{ id: 'sess-1', email: 'buyer@example.com', locale: 'en', user_id: 'user-1' }],
     );
@@ -4863,8 +4902,8 @@ describe('subscription.updated.v2', () => {
   });
 
   it('still rejects a term-0-less callback when a local session anchors it', async () => {
-    const pending = { ...ORDER_ROW, solidgate_subscription_id: null };
-    const attempt = makeDb([pending]);
+    const pending = { ...ORDER_ROW, session_id: 'b5555555-5555-4555-8555-555555555555', solidgate_subscription_id: null };
+    const attempt = makeDb([pending], [{ id: pending.session_id, user_id: 'user-1' }]);
     const payload = {
       callback_type: 'order_update',
       subscription: { id: 'sub-anchored-renewal', status: 'active' },
@@ -5131,7 +5170,7 @@ describe('subscription.updated.v2', () => {
       successPayload,
       { eventId: 'zzz-success-first', eventCreatedAt: timestamp, environment: 'production' },
     );
-    const paidMarker = successFirst.upsertsTo('renewal_events')[0];
+    const paidMarker = invoiceFinanceFacts(successFirst.rpcsTo)[0];
     expect(paidMarker).toMatchObject({
       solidgate_invoice_id: invoiceId,
       solidgate_subscription_id: 'sub-uuid-1',
@@ -5244,7 +5283,7 @@ describe('subscription.updated.v2', () => {
 
   it('does not restore access when a restore callback carries a failed invoice', async () => {
     const pastDue = capturedSubscriptionOrder({ status: 'past_due' });
-    const { db, updatesTo, upsertsTo } = makeDb(
+    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb(
       [pastDue],
       [{ id: 'sess-1', email: 'b@e.com', locale: 'en', user_id: 'user-1' }],
       { entitlements: [subscriptionEntitlement(pastDue, { status: 'past_due' })] },
@@ -5265,7 +5304,7 @@ describe('subscription.updated.v2', () => {
 
     expect(updatesTo('orders')).toHaveLength(0);
     expect(upsertsTo('entitlements')).toHaveLength(0);
-    expect(upsertsTo('renewal_events')).toHaveLength(0);
+    expect(invoiceFinanceFacts(rpcsTo)).toHaveLength(0);
   });
 
   it('cuts addon access on dunning without writing a terminal revocation tombstone', async () => {
@@ -5349,7 +5388,7 @@ describe('subscription.updated.v2', () => {
   it('revokes on cancel and on expire', async () => {
     for (const callbackType of ['cancel', 'expire']) {
       const captured = capturedSubscriptionOrder();
-      const { db, updatesTo } = makeDb(
+      const { db, updatesTo, rpcsTo } = makeDb(
         [captured],
         [{ id: 'sess-1', email: 'b@e.com', locale: 'en', user_id: 'user-1' }],
         { entitlements: [subscriptionEntitlement(captured)] },
@@ -5366,7 +5405,7 @@ describe('subscription.updated.v2', () => {
   });
 
   it('ignores a subscription belonging to another brand', async () => {
-    const { db, writes } = makeDb([{ ...ORDER_ROW, product_slug: 'EN_OTHERBRAND_000000_SUB' }]);
+    const { db, writes, rpcsTo } = makeDb([{ ...ORDER_ROW, product_slug: 'EN_OTHERBRAND_000000_SUB' }]);
     await handleEvent(db, 'subscription.updated.v2', {
       callback_type: 'cancel',
       subscription: { id: 'sub-uuid-1', status: 'cancelled', trial: false },
@@ -5377,7 +5416,7 @@ describe('subscription.updated.v2', () => {
   });
 
   it('drops a stale subscription event before it can reopen cancelled access', async () => {
-    const { db, writes, rpcCalls } = makeDb(
+    const { db, writes, rpcCalls, rpcsTo } = makeDb(
       [{ ...ORDER_ROW, status: 'canceled' }],
       [{ id: 'sess-1', email: 'b@e.com', locale: 'en', user_id: 'user-1' }],
       {},
@@ -5398,13 +5437,13 @@ describe('subscription.updated.v2', () => {
         environment: 'production',
       },
     );
-    expect(rpcCalls[0]).toMatchObject({ name: 'claim_solidgate_entity_event' });
+    expect(rpcCalls).toContainEqual(expect.objectContaining({ name: 'claim_solidgate_entity_event' }));
     expect(writes.filter((w) => w.op === 'update' || w.op === 'upsert')).toHaveLength(0);
   });
 
   it('does not reopen canceled access even when a positive callback is newer', async () => {
     const canceled = capturedSubscriptionOrder({ status: 'canceled' });
-    const { db, updatesTo, upsertsTo } = makeDb(
+    const { db, updatesTo, upsertsTo, rpcsTo } = makeDb(
       [canceled],
       [{ id: 'sess-1', email: 'b@e.com', locale: 'en', user_id: 'user-1' }],
       {
@@ -5423,6 +5462,7 @@ describe('subscription.updated.v2', () => {
       invoices: {
         newer: {
           id: 'newer',
+          orders: { charge: { id: 'newer-order', status: 'settle_ok', amount: 5900 } },
           status: 'success',
           amount: 5900,
           subscription_term_number: 1,
@@ -5437,16 +5477,16 @@ describe('subscription.updated.v2', () => {
 
 describe('card_gate.chargeback.received', () => {
   it('marks the order disputed and pulls access immediately', async () => {
-    const { db, updatesTo } = makeDb([{ ...ORDER_ROW, status: 'completed' }]);
+    const { db, updatesTo, rpcsTo } = makeDb([{ ...ORDER_ROW, status: 'completed' }]);
     await handleEvent(db, 'card_gate.chargeback.received', {
       order: { order_id: 'sess-1:trial4:1', amount: 1767, currency: 'USD' },
       chargeback: { id: 'cb-1', status: 'in_progress', type: '1st_chb', reason_description: 'Fraud' },
     });
-    expect(updatesTo('orders')[0]).toMatchObject({ status: 'disputed' });
+    expect(rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ chargeback_status: 'in_progress', chargeback_amount_cents: 1767 });
     expect(updatesTo('entitlements')[0]).toMatchObject({ status: 'canceled' });
   });
 
-  it('retries the status CAS, records the browser winner, and revokes its exact chargeback grant', async () => {
+  it('delegates the concurrent chargeback to the locked reducer and revokes its exact grant', async () => {
     const pending = { ...ORDER_ROW, user_id: null, status: 'pending' };
     const browserWinner = capturedSubscriptionOrder({
       user_id: 'user-1',
@@ -5480,10 +5520,9 @@ describe('card_gate.chargeback.received', () => {
       },
     });
 
-    expect(attempt.updatesTo('orders')).toHaveLength(2);
-    expect(attempt.updatesTo('orders')[1]).toMatchObject({
-      status: 'disputed',
-      solidgate_pre_dispute_status: 'trialing',
+    expect(attempt.updatesTo('orders')).toHaveLength(0);
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({
+      order_db_id: 'order-1', chargeback_status: 'in_progress', chargeback_amount_cents: 1767,
     });
     expect(attempt.updatesTo('entitlements')).toHaveLength(1);
     expect(
@@ -5523,13 +5562,13 @@ describe('card_gate.chargeback.received', () => {
       },
     });
 
-    expect(attempt.updatesTo('orders')[0]).toMatchObject({ status: 'trialing' });
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ chargeback_status: 'reversed' });
     expect(attempt.updatesTo('entitlements')).toHaveLength(0);
     expect(attempt.upsertsTo('entitlements')).toHaveLength(0);
   });
 
   it('maps a generated renewal chargeback to the invoice and subscription', async () => {
-    const { db, updatesTo } = makeDb([], [], {
+    const { db, updatesTo, rpcsTo } = makeDb([capturedSubscriptionOrder({ solidgate_subscription_id: 'sub-renewal' })], [], {
       solidgate_invoice_orders: [{
         solidgate_order_id: 'sg-renewal-order',
         solidgate_invoice_id: 'inv-renewal',
@@ -5549,12 +5588,202 @@ describe('card_gate.chargeback.received', () => {
       order: { order_id: 'sg-renewal-order', amount: 5900, currency: 'USD' },
       chargeback: { id: 42, amount: 5900, status: 'in_progress', reason_description: 'Fraud' },
     });
-    expect(updatesTo('renewal_events')[0]).toMatchObject({
-      amount_cents: 0,
-      status: 'disputed',
-      chargeback_id: '42',
-      chargeback_amount_cents: 5900,
-    });
+    expect(rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({ chargeback_id: '42', chargeback_status: 'in_progress', chargeback_amount_cents: 5900 });
     expect(updatesTo('entitlements')[0]).toMatchObject({ status: 'canceled' });
+  });
+});
+
+describe('audited financial facts and lifecycle separation', () => {
+  const paidRenewal = (row: Row, callbackType = 'renew') => initialSubscriptionPayload(row, {
+    callbackType,
+    subscription: { trial: false, status: 'active' },
+    invoice: {
+      id: 'audit-paid-term', amount: 5900, subscription_term_number: 1,
+      created_at: '2026-08-01 10:00:00',
+      billing_period_started_at: '2026-08-01 10:00:00',
+      billing_period_ended_at: '2026-08-31 10:00:00',
+      orders: { charge: { id: 'audit-renewal-order', status: 'settle_ok', amount: 5900 } },
+    },
+  });
+  const eventContext = { environment: 'production' as const, eventId: 'audit-inbox-event', eventCreatedAt: '2026-08-01T10:00:00Z' };
+
+  it.each(['canceled', 'refunded', 'disputed'])('records a paid renewal after initial order %s without granting access', async (status) => {
+    const row = capturedSubscriptionOrder({ status,
+      ...(status === 'refunded' && { amount_cents: 0, solidgate_refunded_amount_cents: 1767, solidgate_payment_status: 'refunded' }),
+      ...(status === 'disputed' && { amount_cents: 0, solidgate_chargeback_id: 'old-dispute', solidgate_chargeback_amount_cents: 1767 }),
+    });
+    const attempt = makeDb([row], undefined, { entitlements: [subscriptionEntitlement(row, {
+      status: 'canceled', revoked_at: '2026-07-20T10:00:00Z',
+    })] });
+    await handleEvent(attempt.db, 'subscription.updated.v2', paidRenewal(row), eventContext);
+    expect(invoiceFinanceFacts(attempt.rpcsTo)[0]).toMatchObject({ captured_amount_cents: 5900, subscription_term_number: 1 });
+    expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toHaveLength(0);
+    expect(attempt.rpcsTo('restore_solidgate_subscription_entitlement')).toHaveLength(0);
+    expect(attempt.updatesTo('orders')).toHaveLength(0);
+  });
+
+  it('ingests a stale paid invoice before applying the lifecycle watermark', async () => {
+    const row = capturedSubscriptionOrder();
+    const attempt = makeDb([row], undefined, {}, { claim_solidgate_entity_event: 'stale' });
+    await handleEvent(attempt.db, 'subscription.updated.v2', paidRenewal(row, 'pause'), eventContext);
+    expect(attempt.rpcCalls.map((call) => call.name)).toEqual([
+      'apply_solidgate_financial_event', 'record_solidgate_subscription_snapshot', 'claim_solidgate_entity_event',
+    ]);
+    expect(invoiceFinanceFacts(attempt.rpcsTo)).toHaveLength(1);
+    expect(attempt.updatesTo('orders')).toHaveLength(0);
+  });
+
+  it('selects the latest paid billing term despite a newer modification to historical invoice', async () => {
+    const row = capturedSubscriptionOrder();
+    const attempt = makeDb([row], undefined, { entitlements: [subscriptionEntitlement(row)] });
+    const payload = paidRenewal(row);
+    payload.invoices = { ...payload.invoices, historical: {
+      ...payload.invoices.initial, id: 'historical-invoice', subscription_term_number: 0,
+      updated_at: '2026-08-01 10:00:05',
+      billing_period_started_at: '2026-07-25 10:00:00', billing_period_ended_at: '2026-08-01 10:00:00',
+      orders: { initial: { id: row.solidgate_order_id, status: 'settle_ok', amount: 1767 } },
+    } } as typeof payload.invoices;
+    await handleEvent(attempt.db, 'subscription.updated.v2', payload, eventContext);
+    expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')[0]).toMatchObject({
+      p_expires_at: '2026-08-31T10:00:00.000Z', p_access_level: 'full',
+    });
+    expect(invoiceFinanceFacts(attempt.rpcsTo)).toHaveLength(1);
+  });
+
+  it.each([undefined, null, -1, 1.5, '1'])('rejects missing or invalid renewal term %s without financial writes', async (term) => {
+    const row = capturedSubscriptionOrder();
+    const attempt = makeDb([row]);
+    const payload = paidRenewal(row);
+    (payload.invoices.initial as Row).subscription_term_number = term;
+    await expect(handleEvent(attempt.db, 'subscription.updated.v2', payload)).rejects.toThrow('integer subscription term');
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')).toHaveLength(0);
+  });
+
+  it.each(['renew', 'active', 'recurring', 'restore', 'resume'])('records late %s capture while a refunded invoice continues blocking access', async (callbackType) => {
+    const row = capturedSubscriptionOrder();
+    const attempt = makeDb([row], undefined, {
+      entitlements: [subscriptionEntitlement(row)],
+      solidgate_invoice_orders: [{ environment: 'production', solidgate_order_id: 'audit-renewal-order',
+        solidgate_invoice_id: 'audit-paid-term', solidgate_subscription_id: row.solidgate_subscription_id,
+        status: 'refunded', refunded_amount_cents: 5900 }],
+    });
+    await handleEvent(attempt.db, 'subscription.updated.v2', paidRenewal(row, callbackType), eventContext);
+    const facts = attempt.rpcsTo('apply_solidgate_financial_event')[0].p_facts as Row;
+    expect(facts.captured_amount_cents).toBe(5900);
+    expect(facts).not.toHaveProperty('refunded_amount_cents');
+    expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toHaveLength(0);
+    expect(attempt.rpcsTo('restore_solidgate_subscription_entitlement')).toHaveLength(0);
+  });
+
+  it('allows canceled access restoration only through the exact timed provider restore RPC', async () => {
+    const row = capturedSubscriptionOrder({ status: 'canceled' });
+    const attempt = makeDb([row], undefined, { entitlements: [subscriptionEntitlement(row, {
+      status: 'canceled', revoked_at: '2026-07-25T10:00:00Z',
+    })] });
+    await handleEvent(attempt.db, 'subscription.updated.v2', paidRenewal(row, 'restore'), eventContext);
+    expect(attempt.rpcsTo('restore_solidgate_subscription_entitlement')).toEqual([
+      expect.objectContaining({ p_event_key: eventContext.eventId, p_event_created_at: eventContext.eventCreatedAt,
+        p_order_db_id: row.id, p_expires_at: '2026-08-31T10:00:00.000Z' }),
+    ]);
+    expect(attempt.updatesTo('orders')).toHaveLength(0);
+    const names = attempt.rpcCalls.map((call) => call.name);
+    expect(names.indexOf('record_solidgate_subscription_snapshot')).toBeLessThan(names.indexOf('restore_solidgate_subscription_entitlement'));
+  });
+
+  it('records partial capture from real settlement transactions while retaining quote and withholding access', async () => {
+    const attempt = makeDb([{ ...ORDER_ROW }]);
+    const payload = positiveOrderPayload(ORDER_ROW, { status: 'partial_settled' });
+    payload.transactions = { 'settlement-partial': { operation: 'settle', status: 'success', amount: 1200,
+      currency: 'USD', created_at: '2026-08-01 09:59:00' } };
+    await handleEvent(attempt.db, 'card_gate.order.updated', payload, eventContext);
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')[0]).toMatchObject({ p_facts: {
+      captured_amount_cents: 1200, provider_transaction_ids: ['settlement-partial'],
+      occurred_at: '2026-08-01T09:59:00.000Z', occurred_at_source: 'provider_operation',
+    } });
+    expect(attempt.rpcsTo('grant_solidgate_main_entitlement')).toHaveLength(0);
+    expect(attempt.updatesTo('orders').some((write) => 'amount_cents' in write)).toBe(false);
+  });
+
+  it.each(['nct_external-account', 'mr_external-account'])('never queries a UUID session column with %s', async (account) => {
+    const attempt = makeDb([], [], {}, {}, { reads: { sessions: 'invalid input syntax for uuid' } });
+    await expect(handleEvent(attempt.db, 'subscription.updated.v2', {
+      callback_type: 'renew', subscription: { id: 'external-subscription' },
+      customer: { customer_account_id: account }, product: {}, invoices: {},
+    })).resolves.toBeUndefined();
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')).toHaveLength(0);
+  });
+  it('queues a recurring capture atomically even when its card event beats the paid subscription snapshot', async () => {
+    const row = capturedSubscriptionOrder();
+    const attempt = makeDb([row], [], { solidgate_invoice_orders: [{
+      environment: 'production', solidgate_order_id: 'card-first-rebill', solidgate_invoice_id: 'card-first-invoice',
+      solidgate_subscription_id: row.solidgate_subscription_id, amount_cents: 5900, currency: 'USD', refunded_amount_cents: 0,
+    }] });
+    await handleEvent(attempt.db, 'card_gate.order.updated', { order: {
+      order_id: 'card-first-rebill', status: 'settle_ok', amount: 5900, currency: 'USD',
+    } }, eventContext);
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')[0]).toMatchObject({
+      p_facts: { order_db_id: row.id, captured_amount_cents: 5900 },
+      p_analytics: { event_key: 'renewal:card-first-invoice:paid', event_name: 'subscription_renewed' },
+    });
+  });
+
+  it('uses the reducer total when distinct partial settlements together cover the quote', async () => {
+    const attempt = makeDb([{ ...ORDER_ROW }], undefined, {}, {
+      apply_solidgate_financial_event: { applied: true, captured_amount_cents: 1767,
+        refunded_amount_cents: 0, chargeback_amount_cents: 0, net_amount_cents: 1767, status: 'paid' },
+    });
+    const payload = positiveOrderPayload(ORDER_ROW, { status: 'partial_settled' });
+    payload.transactions = { 'last-partial': { operation: 'settle', status: 'success', amount: 567, currency: 'USD' } };
+    await handleEvent(attempt.db, 'card_gate.order.updated', payload, eventContext);
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({
+      capture_transactions: [{ id: 'last-partial', amount_cents: 567, currency: 'USD' }],
+    });
+    expect(attempt.rpcsTo('grant_solidgate_main_entitlement')).toHaveLength(1);
+  });
+
+});
+
+describe('durable webhook recovery', () => {
+  const missingMappingDispute = { order: { order_id: 'delayed-renewal-order', amount: 5900, currency: 'USD' },
+    chargeback: { id: 'delayed-dispute', amount: 5900, status: 'in_progress' } };
+
+  it('keeps unknown chargebacks failed for reconciliation and completes once the invoice mapping is available', async () => {
+    const inbox = { environment: 'production', event_id: 'delayed-dispute-event',
+      type: 'card_gate.chargeback.received', event_created_at: '2026-08-01T10:00:00Z',
+      status: 'failed', payload: missingMappingDispute };
+    const unresolved = makeDb([], [], { solidgate_webhook_events: [inbox] });
+    expect(await replayStoredWebhookEvents(unresolved.db, { environment: 'production' }))
+      .toMatchObject({ attempted: 1, failed: 1, completed: 0 });
+    expect(unresolved.rpcsTo('fail_solidgate_webhook_event_v2')[0].p_last_error).toContain('unresolved chargeback');
+    const resolved = makeDb([capturedSubscriptionOrder({ solidgate_subscription_id: 'local-subscription' })], [], { solidgate_webhook_events: [inbox], solidgate_invoice_orders: [{
+      environment: 'production', solidgate_order_id: 'delayed-renewal-order', solidgate_invoice_id: 'delayed-invoice',
+      solidgate_subscription_id: 'local-subscription', amount_cents: 5900, currency: 'USD', refunded_amount_cents: 0,
+    }] });
+    expect(await replayStoredWebhookEvents(resolved.db, { environment: 'production' }))
+      .toMatchObject({ attempted: 1, failed: 0, completed: 1 });
+    expect(resolved.rpcsTo('apply_solidgate_financial_event')[0].p_facts).toMatchObject({
+      invoice_id: 'delayed-invoice', chargeback_id: 'delayed-dispute', chargeback_amount_cents: 5900,
+    });
+  });
+
+  it('rejects unauthenticated recovery and replays only stored verified events for authenticated recovery', async () => {
+    configureWebhookRuntime({ fulfillmentWorkerSecret: 'internal-recovery-test', analyticsEnabled: false });
+    const attempt = makeDb([], [], {});
+    const request = (authorized: boolean) => new Request('https://example.test/webhooks', { method: 'POST',
+      headers: { 'x-solidgate-recovery': '1', 'content-type': 'application/json',
+        ...(authorized ? { authorization: 'Bearer internal-recovery-test' } : {}) },
+      body: JSON.stringify({ action: 'recover', expected_environment: 'production', payload: missingMappingDispute, environment: 'sandbox' }),
+    });
+    expect((await serveRequest(request(false), attempt.db)).status).toBe(401);
+    expect(attempt.rpcCalls).toHaveLength(0);
+    const response = await serveRequest(request(true), attempt.db);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ attempted: 0 });
+    expect(attempt.rpcsTo('apply_solidgate_financial_event')).toHaveLength(0);
+    const mismatch = new Request('https://example.test/webhooks', { method: 'POST',
+      headers: { 'x-solidgate-recovery': '1', authorization: 'Bearer internal-recovery-test' },
+      body: JSON.stringify({ action: 'recover', expected_environment: 'sandbox' }),
+    });
+    expect((await serveRequest(mismatch, attempt.db)).status).toBe(409);
   });
 });

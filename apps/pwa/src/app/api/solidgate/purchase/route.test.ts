@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
     utm_term: "Broad",
   } as Record<string, string> | null,
   owned: null as { id: string } | null,
+  billable: null as { id: string } | null,
+  billableError: null as { message: string } | null,
+  ownershipFilters: [] as string[],
   ownedError: null as { message: string } | null,
   identityRows: [] as Array<{
     offer_slug: string;
@@ -49,6 +52,7 @@ function query(result: Record<string, unknown>) {
   (chain.select as ReturnType<typeof vi.fn>).mockReturnValue(chain);
   (chain.eq as ReturnType<typeof vi.fn>).mockReturnValue(chain);
   (chain.is as ReturnType<typeof vi.fn>).mockReturnValue(chain);
+  for (const method of ["or", "not", "in", "limit"]) chain[method] = vi.fn(() => chain);
   return chain;
 }
 
@@ -198,6 +202,9 @@ describe("Solidgate PWA purchase authority and idempotency", () => {
     };
     mocks.owned = null;
     mocks.ownedError = null;
+    mocks.billable = null;
+    mocks.billableError = null;
+    mocks.ownershipFilters = [];
     mocks.identityRows = [];
     mocks.openOverrides = {};
     mocks.getUser.mockResolvedValue({ data: { user } });
@@ -237,12 +244,15 @@ describe("Solidgate PWA purchase authority and idempotency", () => {
         return query({ data: mocks.acquisition, error: null });
       }
       if (table === "entitlements") {
-        return query({ data: mocks.owned, error: mocks.ownedError });
+        const chain = query({ data: mocks.owned, error: mocks.ownedError });
+        chain.or = vi.fn((filter: string) => { mocks.ownershipFilters.push(filter); return chain; });
+        return chain;
       }
-      if (table === "orders") throw new Error("PWA opener must not write orders directly");
+      if (table === "orders") return query({ data: mocks.billable, error: mocks.billableError });
       throw new Error(`Unexpected table: ${table}`);
     });
     mocks.rpc.mockImplementation(async (name: string, args: RpcArgs) => {
+      if (name === "apply_solidgate_financial_event") return { data: { net_amount_cents: 1200 }, error: null };
       if (name === "get_solidgate_pwa_checkout_identity") {
         return { data: mocks.identityRows, error: null };
       }
@@ -1647,4 +1657,63 @@ describe("Solidgate PWA purchase authority and idempotency", () => {
     expect(mocks.buildFormMerchantData).not.toHaveBeenCalled();
     expect(mocks.chargeSavedCard).not.toHaveBeenCalled();
   });
+  it('requires active unexpired ownership instead of treating a past-due add-on as owned', async () => {
+    mocks.billable = { id: 'prior-billable-subscription' };
+    const response = await POST(request({ slug: 'oto2_addon_weekly' }));
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ recoveryRequired: true, recoveryPath: '/billing/update-payment' });
+    expect(mocks.ownershipFilters).toContain('status.eq.active,and(status.eq.past_due,access_level.eq.grace)');
+    expect(mocks.ownershipFilters.some((filter) => filter.startsWith('expires_at.is.null,expires_at.gt.'))).toBe(true);
+    expect(mocks.subscribeSavedCard).not.toHaveBeenCalled();
+    expect(mocks.buildFormMerchantData).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith('open_solidgate_pwa_purchase_v2', expect.anything());
+  });
+
+  it('fails closed if existing billable subscriptions cannot be read', async () => {
+    mocks.billableError = { message: 'database unavailable' };
+    const response = await POST(request({ slug: 'oto2_addon_weekly' }));
+    expect(response.status).toBe(503);
+    expect(mocks.subscribeSavedCard).not.toHaveBeenCalled();
+  });
+
+  it("persists an under-capture and polls the same order until the original quote is fully paid", async () => {
+    mocks.getAccountVault.mockResolvedValue({ cardToken: "token", customerAccountId: "solidgate-customer-1" });
+    let originalQuote = 0;
+    mocks.chargeSavedCard.mockImplementationOnce(async (_client, params) => {
+      originalQuote = params.amount;
+      return {
+        status: "pending", orderId: params.orderId, providerOrderId: params.orderId,
+        customerAccountId: params.customerAccountId, orderAmount: params.amount,
+        settledAmount: 1200, currency: params.currency, providerStatus: "partial_settled",
+      };
+    });
+    const first = await POST(request({ slug: "oto3_bundle_all" }));
+    expect(first.status).toBe(202);
+    expect(mocks.rpc).toHaveBeenCalledWith("apply_solidgate_financial_event", expect.objectContaining({
+      p_facts: expect.objectContaining({
+        order_db_id: orderDbId, captured_amount_cents: 1200, quoted_amount_cents: originalQuote,
+      }),
+    }));
+    const rpcNames = mocks.rpc.mock.calls.map(([name]) => name);
+    expect(rpcNames.indexOf("record_solidgate_pwa_submission_result")).toBeLessThan(
+      rpcNames.indexOf("apply_solidgate_financial_event"),
+    );
+    mocks.openOverrides = {
+      is_new: false, should_submit: false, claim_token: null,
+      bound_payment_status: "partial_settled", last_result_kind: "pending",
+      last_result_net_amount_cents: originalQuote,
+    };
+    const existingOrderId = `u-${user.id}:oto3_bundle_all:1`;
+    mocks.providerStatus.mockResolvedValue({ order: providerOrder({
+      orderId: existingOrderId, amount: originalQuote, currency: "eur",
+      status: "settle_ok", settledAmount: originalQuote,
+    }) });
+    const next = await POST(request({ slug: "oto3_bundle_all" }));
+    expect(next.status).toBe(200);
+    await expect(next.json()).resolves.toMatchObject({ confirmRequired: true, orderId: existingOrderId });
+    expect(mocks.chargeSavedCard).toHaveBeenCalledTimes(1);
+    expect(mocks.providerStatus).toHaveBeenCalledTimes(1);
+  });
+
+
 });

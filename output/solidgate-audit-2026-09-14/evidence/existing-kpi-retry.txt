@@ -1,0 +1,14 @@
+
+> test
+> vitest run src/app/admin/dashboard/_components/__tests__/KpiCardsRow.test.tsx --reporter=dot
+
+
+ RUN  v3.2.4 /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel
+
+·
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:44:54
+   Duration  2.18s (transform 53ms, setup 84ms, collect 162ms, tests 718ms, environment 826ms, prepare 66ms)
+

@@ -1,0 +1,2 @@
+psql:supabase/tests/solidgate_intro_claims.sql:137: NOTICE:  ALL SCENARIOS PASSED
+DO

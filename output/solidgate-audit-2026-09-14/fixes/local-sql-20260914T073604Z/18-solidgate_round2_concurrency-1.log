@@ -1,0 +1,95 @@
+CREATE FUNCTION
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:18: NOTICE:  schema "extensions" already exists, skipping
+CREATE SCHEMA
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:19: NOTICE:  extension "dblink" already exists, skipping
+CREATE EXTENSION
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:44: NOTICE:  WEBHOOK CLAIM RPC ACL SCENARIOS PASSED
+DO
+DELETE 0
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:255: NOTICE:  WEBHOOK CLAIM CONCURRENCY SCENARIOS PASSED
+DO
+DELETE 0
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:292: NOTICE:  ENTITY EQUAL-TIMESTAMP ORDERING SCENARIOS PASSED
+DO
+DELETE 1
+INSERT 0 1
+ clear_solidgate_financial_test_orders 
+---------------------------------------
+ 
+(1 row)
+
+DELETE 0
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:656: NOTICE:  a Solidgate OTO step is already payable, settled, or uncertain
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:656: NOTICE:  OTO OPEN/SUBMISSION CONCURRENCY SCENARIOS PASSED
+DO
+ clear_solidgate_financial_test_orders 
+---------------------------------------
+ 
+(1 row)
+
+DELETE 2
+DELETE 1
+INSERT 0 1
+ clear_solidgate_financial_test_orders 
+---------------------------------------
+ 
+(1 row)
+
+DELETE 0
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:930: NOTICE:  oto_step_already_bound
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:930: NOTICE:  oto_step_already_bound
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:930: NOTICE:  oto_step_already_bound
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:930: NOTICE:  OTO3 MUTUALLY-EXCLUSIVE VARIANT SCENARIOS PASSED
+DO
+ clear_solidgate_financial_test_orders 
+---------------------------------------
+ 
+(1 row)
+
+DELETE 1
+DELETE 1
+INSERT 0 1
+INSERT 0 3
+DELETE 0
+ clear_solidgate_financial_test_orders 
+---------------------------------------
+ 
+(1 row)
+
+DELETE 0
+INSERT 0 1
+UPDATE 1
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:1688: NOTICE:  a Solidgate main checkout is already payable or settled
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:1688: NOTICE:  MAIN CHECKOUT IDENTITY/BUILDER CONCURRENCY SCENARIOS PASSED
+DO
+DELETE 0
+ clear_solidgate_financial_test_orders 
+---------------------------------------
+ 
+(1 row)
+
+DELETE 4
+DELETE 3
+DELETE 1
+DELETE 0
+DELETE 0
+ clear_solidgate_financial_test_orders 
+---------------------------------------
+ 
+(1 row)
+
+DELETE 0
+INSERT 0 1
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:2818: NOTICE:  a Solidgate PWA order is already payable or uncertain
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:2818: NOTICE:  PWA OPEN/MODE/FORM/SUBMISSION CONCURRENCY SCENARIOS PASSED
+DO
+DELETE 7
+ clear_solidgate_financial_test_orders 
+---------------------------------------
+ 
+(1 row)
+
+DELETE 10
+DELETE 1
+DELETE 3
+ALL ROUND-2 SOLIDGATE CONCURRENCY SCENARIOS PASSED

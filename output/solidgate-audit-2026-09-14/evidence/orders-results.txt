@@ -1,0 +1,171 @@
+
+ RUN  v3.2.4 /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel
+
+ ❯ ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts (6 tests | 6 failed) 34ms
+   × cumulative refund must not regress on a lower snapshot with equal provider timestamp 11ms
+     → expected { amount_cents: 1267, …(5) } to match object { amount_cents: 767, …(1) }
+(4 matching properties omitted from actual)
+   × refund after a full chargeback must not resurrect disputed money 1ms
+     → expected { amount_cents: 1267, …(5) } to match object { amount_cents: +0 }
+(5 matching properties omitted from actual)
+   × refund outbox failure followed by retry must retain the original refund delta 2ms
+     → expected { session_id: 'sess-1', …(37) } to match object { revenue: -500, …(1) }
+(36 matching properties omitted from actual)
+   × partial settlement followed by refund of all captured funds must retain no net money 1ms
+     → expected { amount_cents: 567, …(5) } to match object { amount_cents: +0, …(2) }
+(4 matching properties omitted from actual)
+   × renewal refund after full chargeback must preserve zero net and dispute status 1ms
+     → expected { amount_cents: 4700, …(3) } to match object { Object (amount_cents, status) }
+(2 matching properties omitted from actual)
+   × late same-second settlement after first partial refund must not overwrite collected net 17ms
+     → expected { status: 'trialing', …(8) } to match object { amount_cents: 1267 }
+(8 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts > cumulative refund must not regress on a lower snapshot with equal provider timestamp
+AssertionError: expected { amount_cents: 1267, …(5) } to match object { amount_cents: 767, …(1) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "amount_cents": 767,
+-   "solidgate_refunded_amount_cents": 1000,
++   "amount_cents": 1267,
++   "solidgate_refunded_amount_cents": 500,
+  }
+
+ ❯ ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts:401:36
+    399|   const b = makeDb([alreadyRefunded]);
+    400|   await handleEvent(b.db, 'card_gate.order.updated', refundPayload(500…
+    401|   expect(b.updatesTo('orders')[0]).toMatchObject({ amount_cents: 767, …
+       |                                    ^
+    402| });
+    403| it('refund after a full chargeback must not resurrect disputed money',…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts > refund after a full chargeback must not resurrect disputed money
+AssertionError: expected { amount_cents: 1267, …(5) } to match object { amount_cents: +0 }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "amount_cents": 0,
++   "amount_cents": 1267,
+  }
+
+ ❯ ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts:407:36
+    405|   const a = makeDb([disputed]);
+    406|   await handleEvent(a.db, 'card_gate.order.updated', refundPayload(500…
+    407|   expect(a.updatesTo('orders')[0]).toMatchObject({ amount_cents: 0 });
+       |                                    ^
+    408| });
+    409| it('refund outbox failure followed by retry must retain the original r…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts > refund outbox failure followed by retry must retain the original refund delta
+AssertionError: expected { session_id: 'sess-1', …(37) } to match object { revenue: -500, …(1) }
+(36 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "refund_amount_cents": 500,
+-   "revenue": -500,
++   "refund_amount_cents": 0,
++   "revenue": -0,
+  }
+
+ ❯ ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts:415:67
+    413|   const b = makeDb([committed]);
+    414|   await handleEvent(b.db, 'card_gate.order.updated', refundPayload(500…
+    415|   expect(b.upsertsTo('solidgate_analytics_outbox')[0].properties).toMa…
+       |                                                                   ^
+    416| });
+    417| it('partial settlement followed by refund of all captured funds must r…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts > partial settlement followed by refund of all captured funds must retain no net money
+AssertionError: expected { amount_cents: 567, …(5) } to match object { amount_cents: +0, …(2) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "amount_cents": 0,
++   "amount_cents": 567,
+    "solidgate_refunded_amount_cents": 1200,
+-   "status": "refunded",
+  }
+
+ ❯ ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts:423:36
+    421|   const b = makeDb([captured]);
+    422|   await handleEvent(b.db, 'card_gate.order.updated', refundPayload(120…
+    423|   expect(b.updatesTo('orders')[0]).toMatchObject({ amount_cents: 0, st…
+       |                                    ^
+    424| });
+    425| it('renewal refund after full chargeback must preserve zero net and di…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts > renewal refund after full chargeback must preserve zero net and dispute status
+AssertionError: expected { amount_cents: 4700, …(3) } to match object { Object (amount_cents, status) }
+(2 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "amount_cents": 0,
+-   "status": "disputed",
++   "amount_cents": 4700,
++   "status": "partially_refunded",
+  }
+
+ ❯ ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts:431:44
+    429|   });
+    430|   await handleEvent(a.db, 'card_gate.order.updated', { order: { order_…
+    431|   expect(a.updatesTo('renewal_events')[0]).toMatchObject({ amount_cent…
+       |                                            ^
+    432| });
+    433| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts > late same-second settlement after first partial refund must not overwrite collected net
+AssertionError: expected { status: 'trialing', …(8) } to match object { amount_cents: 1267 }
+(8 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "amount_cents": 1267,
++   "amount_cents": 1767,
+  }
+
+ ❯ ../../supabase/functions/solidgate-webhooks/__tests__/orders-audit.tmp.test.ts:444:36
+    442|     order_metadata: { ...ORDER_ROW.tracking_metadata },
+    443|   }, { ...context, eventId: 'late-settle' });
+    444|   expect(b.updatesTo('orders')[0]).toMatchObject({ amount_cents: 1267 …
+       |                                    ^
+    445| });
+    446| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed (6)
+   Start at  09:45:42
+   Duration  1.35s (transform 145ms, setup 102ms, collect 165ms, tests 34ms, environment 727ms, prepare 86ms)
+

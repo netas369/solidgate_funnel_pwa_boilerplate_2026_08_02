@@ -1,0 +1,12 @@
+DO
+INSERT 0 1
+psql:supabase/tests/solidgate_oto_progress.sql:95: NOTICE:  SOLIDGATE OTO PROGRESS SCENARIOS PASSED
+DO
+DO
+DELETE 1
+INSERT 0 1
+DELETE 0
+psql:supabase/tests/solidgate_oto_progress.sql:208: NOTICE:  SOLIDGATE OTO PAYABLE/SKIP INTERLOCK SCENARIOS PASSED
+DO
+DELETE 1
+DELETE 1

@@ -97,7 +97,7 @@ export async function handleRequestOtp(request: Request): Promise<Response> {
           // Create auth user (idempotent  -  race vs. webhook handled below).
           const { data: created, error: createErr } = await admin.auth.admin.createUser({
             email,
-            email_confirm: true,
+            email_confirm: false,
           });
           let userId: string | null = created?.user?.id ?? null;
           if (
@@ -111,9 +111,8 @@ export async function handleRequestOtp(request: Request): Promise<Response> {
           }
           if (!userId) {
             // Lookup existing user (race or already-exists path).
-            const { data: list } = await admin.auth.admin.listUsers({ perPage: 200 });
-            userId =
-              list?.users.find((u) => u.email?.toLowerCase() === email)?.id ?? null;
+            const { data: existingUserId } = await admin.rpc('find_auth_user_id_by_email', { p_email: email });
+            userId = typeof existingUserId === 'string' ? existingUserId : null;
           }
 
           if (userId) {

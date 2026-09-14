@@ -12,16 +12,6 @@
     "updateProcessing": "Updating...",
     "updateSuccess": "Success! Processing payment...",
     "updateError": "Update failed. Please try again or contact support.",
-    "useDifferentCard": "Use a different card",
-    "errorByCode": {
-      "invoice_payment_intent_requires_action": "Your bank needs extra confirmation for this card. Please use a different card.",
-      "authentication_required": "Your bank needs extra confirmation for this card. Please use a different card.",
-      "requires_action": "Your bank needs extra confirmation for this card. Please use a different card.",
-      "card_declined": "Your card was declined. Please try a different card.",
-      "expired_card": "This card has expired. Please use a different card.",
-      "insufficient_funds": "Insufficient funds on this card. Please use a different card.",
-      "incorrect_cvc": "Incorrect security code. Please try again or use a different card.",
-      "processing_error": "Your card processor returned an error. Please try a different card."
-    }
+    "useDifferentCard": "Use a different card"
   }
 }

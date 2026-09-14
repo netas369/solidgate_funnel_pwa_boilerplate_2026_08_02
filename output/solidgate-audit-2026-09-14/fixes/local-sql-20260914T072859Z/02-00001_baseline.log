@@ -1,0 +1,504 @@
+CREATE SEQUENCE
+REVOKE
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:283: NOTICE:  policy "Anyone can create a session" for relation "public.sessions" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:287: NOTICE:  policy "Authenticated users can read their own sessions" for relation "public.sessions" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:292: NOTICE:  policy "Authenticated users can update their own sessions" for relation "public.sessions" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:317: NOTICE:  policy "Anyone can insert funnel events" for relation "public.funnel_events" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:323: NOTICE:  policy "Authenticated can insert funnel events" for relation "public.funnel_events" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+ALTER TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:361: NOTICE:  policy "Users read own prefs" for relation "public.user_prefs" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:366: NOTICE:  policy "Users insert own prefs" for relation "public.user_prefs" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:371: NOTICE:  policy "Users update own prefs" for relation "public.user_prefs" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:588: NOTICE:  policy "Authenticated users can read their own orders" for relation "public.orders" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+COMMENT
+COMMENT
+COMMENT
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:637: NOTICE:  policy "Authenticated users can read their own entitlements" for relation "public.entitlements" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+COMMENT
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:945: NOTICE:  constraint "solidgate_fulfillment_outbox_effect_type_check" of relation "solidgate_fulfillment_outbox" does not exist, skipping
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+COMMENT
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+COMMENT
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+REVOKE
+COMMENT
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+REVOKE
+COMMENT
+CREATE VIEW
+REVOKE
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9282: NOTICE:  trigger "orders_updated_at_trigger" for relation "public.orders" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9288: NOTICE:  trigger "guard_solidgate_checkout_identity_trigger" for relation "public.orders" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9302: NOTICE:  trigger "guard_solidgate_main_payable_order_trigger" for relation "public.orders" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9326: NOTICE:  trigger "guard_solidgate_oto_payable_order_trigger" for relation "public.orders" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9351: NOTICE:  trigger "guard_solidgate_pwa_payable_order_trigger" for relation "public.orders" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9371: NOTICE:  trigger "prevent_solidgate_entitlement_replay" for relation "public.entitlements" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9386: NOTICE:  trigger "solidgate_subscription_token_sync_entitlement_trigger" for relation "public.entitlements" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9403: NOTICE:  trigger "guard_solidgate_session_vault_card_source_insert_trigger" for relation "public.solidgate_session_vault" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9410: NOTICE:  trigger "guard_solidgate_session_vault_card_source_update_trigger" for relation "public.solidgate_session_vault" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9426: NOTICE:  trigger "guard_solidgate_session_vault_payment_method_insert_trigger" for relation "public.solidgate_session_vault" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9433: NOTICE:  trigger "guard_solidgate_session_vault_payment_method_update_trigger" for relation "public.solidgate_session_vault" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9446: NOTICE:  trigger "guard_solidgate_account_vault_card_source_insert_trigger" for relation "public.solidgate_account_vault" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9453: NOTICE:  trigger "guard_solidgate_account_vault_card_source_update_trigger" for relation "public.solidgate_account_vault" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9468: NOTICE:  trigger "guard_solidgate_account_vault_payment_method_insert_trigger" for relation "public.solidgate_account_vault" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9475: NOTICE:  trigger "guard_solidgate_account_vault_payment_method_update_trigger" for relation "public.solidgate_account_vault" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+GRANT
+REVOKE
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+REVOKE
+GRANT
+REVOKE
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+REVOKE
+GRANT
+REVOKE
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+REVOKE
+GRANT
+CREATE TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9739: NOTICE:  column "first_captured_at_source" of relation "solidgate_payment_balances" already exists, skipping
+ALTER TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9740: NOTICE:  column "capture_evidence_source" of relation "solidgate_payment_balances" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9787: NOTICE:  trigger "solidgate_financial_movements_immutable" for relation "public.solidgate_financial_movements" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+REVOKE
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:9807: NOTICE:  trigger "solidgate_capture_transactions_immutable" for relation "public.solidgate_capture_transactions" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+REVOKE
+GRANT
+GRANT
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:10150: NOTICE:  trigger "solidgate_subscription_history_immutable" for relation "public.solidgate_subscription_history" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+INSERT 0 0
+INSERT 0 0
+INSERT 0 0
+CREATE FUNCTION
+REVOKE
+GRANT
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/migrations/00001_baseline.sql:11713: NOTICE:  trigger "solidgate_confirmed_capture_ledger" for relation "public.orders" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+CREATE VIEW
+REVOKE
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT

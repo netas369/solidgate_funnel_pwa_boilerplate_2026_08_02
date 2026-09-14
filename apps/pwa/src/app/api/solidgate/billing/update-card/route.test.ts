@@ -49,6 +49,7 @@ vi.mock("@repo/shared/solidgate", () => ({
 }));
 
 import { POST } from "./route";
+import { drainSolidgateCardUpdates } from "@repo/shared/solidgate/card-update-recovery";
 
 const user = { id: "11111111-1111-1111-1111-111111111111", email: "buyer@example.com" };
 const orderId = `u-${user.id}:card_update:1`;
@@ -671,4 +672,29 @@ describe("Solidgate update-card route", () => {
     });
     expect(mocks.buildFormMerchantData).not.toHaveBeenCalled();
   });
+  it('finishes an issued card update from the durable worker with no browser auth session', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null } });
+    const rpc = mocks.rpc.getMockImplementation()!;
+    mocks.rpc.mockImplementation(async (name: string, args: Record<string, unknown>) => name === 'list_due_solidgate_card_update_attempts'
+      ? { data: [{ user_id: user.id, solidgate_order_id: orderId }], error: null }
+      : rpc(name, args));
+    mocks.status.mockResolvedValue({ order: providerOrder(), transactions: { auth: successfulZeroAuth() } });
+    const result = await drainSolidgateCardUpdates({ paymentEnvironment: 'sandbox' });
+    expect(result).toEqual({ checked: 1, completed: 1, pending: 0, failed: 0 });
+    expect(mocks.getUser).not.toHaveBeenCalled();
+    expect(mocks.buildFormMerchantData).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_solidgate_card_update_attempt', expect.objectContaining({ p_solidgate_order_id: orderId }));
+  });
+
+  it('keeps an unconfirmed recovery pending instead of issuing another authorization', async () => {
+    const rpc = mocks.rpc.getMockImplementation()!;
+    mocks.rpc.mockImplementation(async (name: string, args: Record<string, unknown>) => name === 'list_due_solidgate_card_update_attempts'
+      ? { data: [{ user_id: user.id, solidgate_order_id: orderId }], error: null }
+      : rpc(name, args));
+    mocks.status.mockResolvedValue({ order: providerOrder({ status: 'processing' }) });
+    expect(await drainSolidgateCardUpdates({ paymentEnvironment: 'sandbox' })).toEqual({ checked: 1, completed: 0, pending: 1, failed: 0 });
+    expect(mocks.buildFormMerchantData).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith('write_solidgate_account_vault_with_method', expect.anything());
+  });
+
 });

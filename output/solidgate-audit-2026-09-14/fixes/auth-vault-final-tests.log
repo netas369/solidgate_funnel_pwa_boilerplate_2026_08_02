@@ -1,0 +1,297 @@
+
+> test
+> vitest run src/lib/payment/__tests__/provision-account.test.ts src/app/api/auth/claim-purchase/__tests__/route.test.ts src/app/api/auth/verify-otp/__tests__/route.test.ts src/app/api/solidgate/__tests__/grant-intro-offer.test.ts
+
+
+ RUN  v3.2.4 /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel
+
+stderr | src/lib/payment/__tests__/provision-account.test.ts > purchase ownership never proves mailbox ownership > preserves purchase ownership if browser-session verification is unavailable
+[test] unable to verify the current browser session
+
+ ✓ src/lib/payment/__tests__/provision-account.test.ts (7 tests) 5ms
+stderr | src/app/api/auth/verify-otp/__tests__/route.test.ts > POST /api/auth/verify-otp > returns 400 when the token is invalid or expired
+[auth/verify-otp] verifyOtp failed: {
+  errorMessage: 'Token has expired or is invalid',
+  errorStatus: undefined,
+  email: 'buyer@example.com',
+  hasUser: false
+}
+
+stderr | src/app/api/auth/verify-otp/__tests__/route.test.ts > POST /api/auth/verify-otp > records a failure attempt when token verification fails
+[auth/verify-otp] verifyOtp failed: {
+  errorMessage: 'Token has expired or is invalid',
+  errorStatus: undefined,
+  email: 'buyer@example.com',
+  hasUser: false
+}
+
+ ✓ src/app/api/auth/verify-otp/__tests__/route.test.ts (13 tests) 160ms
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > keeps the anonymous buyer card out of an existing email owner account vault
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > promotes the current purchase card after a matching verified browser login
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+ ✓ src/app/api/auth/claim-purchase/__tests__/route.test.ts (14 tests) 239ms
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > still grants access when the claim was superseded — the buyer already paid
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > still grants access when the claim was superseded — the buyer already paid
+[solidgate/grant] background enrichment drain failed: SOLIDGATE_API_PUBLIC_KEY / SOLIDGATE_API_SECRET_KEY env vars are not set
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > vaults the unique exact successful main authorization token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > uses signed order payment_method when Payment Form omits token provenance
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > vaults an operation-aligned Apple Pay token with provider provenance
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > vaults an operation-aligned Google Pay token with provider provenance
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > fails before entitlement/cookie success when the source watermark cannot persist
+[solidgate/grant] vault unavailable
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks a mapped key/id mismatch without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks conflicting direct and nested tokens without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks conflicting duplicate card data without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks conflicting direct and nested payment-method provenance without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks an operation/provenance mismatch without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks missing payment-method provenance without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks a malformed payment-method provenance value without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks a non-authorization operation without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks a different amount without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks a different currency without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks multiple distinct authorization tokens without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > queues the per-purchase welcome even when the webhook already created the auth user
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > fails closed on an unrecognised consume result rather than guessing
+[solidgate/grant] unexpected intro consume result {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1',
+  result: 'something_new'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants an exact historical snapshot after live catalog price and UUIDs change
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-historical'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a local amount change during provider confirmation without mutation
+[solidgate/grant] local binding changed during confirmation { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched provider order id before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched original amount before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched currency before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched customer before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched product before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched subscription before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > deduplicates singular and mapped settle transactions for exact partial capture
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > sums distinct successful settle transactions for exact partial capture
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > keeps exact settlement proof when an unrelated auth has malformed provenance
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants special_free only after its exact reusable token persists in the session vault
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:special_free:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-free'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > accepts an exact webhook-completed special_free grant when pay/status omits transactions
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:special_free:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-free'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > recovers a card-ready special_free grant when the webhook failed before entitlement
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:special_free:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-free'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > accepts a DB-verified newer main-card source for an already granted special_free order
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:special_free:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-free'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > fails retryably without a cookie when the card-readiness helper errors
+[solidgate/grant] Failed to verify special_free reusable card: readiness unavailable
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > keeps token-backed special_free pending when the exact vault read-back is missing
+[solidgate/grant] special-free reusable card is not durably ready {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:special_free:1',
+  grantOrderId: 'db-order-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > accepts a zero-row finalizer only when an identical success webhook won
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > never downgrades an already webhook-finalized main order before repairing access
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > does not return a success cookie while the settled buyer has no resolved auth user
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > fails closed when the atomic entitlement grant reports an authoritative block
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+ ✓ src/app/api/solidgate/__tests__/grant-intro-offer.test.ts (65 tests) 159ms
+
+ Test Files  4 passed (4)
+      Tests  99 passed (99)
+   Start at  10:35:04
+   Duration  2.05s (transform 466ms, setup 499ms, collect 633ms, tests 563ms, environment 3.75s, prepare 513ms)
+

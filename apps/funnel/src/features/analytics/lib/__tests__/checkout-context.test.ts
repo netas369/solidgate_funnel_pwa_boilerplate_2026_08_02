@@ -43,14 +43,14 @@ describe('canonical payment product context', () => {
     });
   });
 
-  it('reports a subscription OTO with a zero intro and its future recurring amount', () => {
+  it('reports the paid subscription intro separately from its future recurring amount', () => {
     expect(isSubscriptionOto('oto2_addon_weekly')).toBe(true);
     expect(otoProductContext('oto2_addon_weekly', 'lt')).toMatchObject({
       billing_type: 'subscription_initial',
       funnel_variant: 'oto2',
       product_id: SOLIDGATE_PRODUCT_CODES.addon,
       product_slug: 'oto2_addon_weekly',
-      amount_cents: 0,
+      amount_cents: 100,
       recurring_amount_cents: PRICE_MAP.oto2_addon_weekly.lt.amountCents,
       currency: 'EUR',
     });

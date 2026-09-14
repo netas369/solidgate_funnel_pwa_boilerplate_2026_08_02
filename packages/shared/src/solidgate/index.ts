@@ -78,3 +78,5 @@ export {
   type IntroOfferClaimResult,
   type IntroOfferConsumeResult,
 } from './intro-offer';
+
+export { persistSolidgatePartialCapture } from './partial-capture';

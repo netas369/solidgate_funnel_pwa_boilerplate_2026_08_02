@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   after: vi.fn(),
   afterCallbacks: [] as Array<() => void | Promise<void>>,
   linkAuthUser: vi.fn(),
+  promoteSessionVaultToAccount: vi.fn(),
   status: vi.fn(),
   signAcceptedCookie: vi.fn(),
   upsertSessionVault: vi.fn(),
@@ -169,6 +170,7 @@ vi.mock('@repo/shared/supabase/admin', () => ({
     from: (table: string) => query(table),
     rpc: (name: string, args: Record<string, unknown>) => {
       state.rpcCalls.push({ name, args });
+      if (name === 'apply_solidgate_financial_event') return Promise.resolve({ data: { net_amount_cents: 1200 }, error: null });
       if (name === 'grant_solidgate_main_entitlement') {
         return Promise.resolve({
           data: state.entitlementGrantResult,
@@ -202,7 +204,7 @@ vi.mock('@repo/shared/solidgate/session-vault', () => ({
   upsertSessionVault: state.upsertSessionVault,
   getSessionVault: state.getSessionVault,
 }));
-vi.mock('@repo/shared/solidgate/account-vault', () => ({ promoteSessionVaultToAccount: vi.fn() }));
+vi.mock('@repo/shared/solidgate/account-vault', () => ({ promoteSessionVaultToAccount: state.promoteSessionVaultToAccount }));
 vi.mock('@repo/shared/payment-cookie', () => ({
   signPaymentCookie: vi.fn().mockResolvedValue('signed'),
   PAYMENT_COOKIE_NAME: 'payment_session',
@@ -326,6 +328,25 @@ describe('Solidgate funnel grant introductory-offer claim', () => {
         customer_account_id: SESSION_ID,
         product_id: '799a95f5-3628-4bcb-a644-9e7ba1b45ea7',
       },
+    });
+  });
+
+  it('keeps the anonymous buyer card out of an existing email owner account vault', async () => {
+    state.linkAuthUser.mockResolvedValue({ linked: false, userId: 'victim-id', isNewUser: false });
+    const response = await POST(request());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ authLinked: false });
+    expect(state.promoteSessionVaultToAccount).not.toHaveBeenCalled();
+    expect(state.rpcCalls).toContainEqual(expect.objectContaining({
+      name: 'grant_solidgate_main_entitlement', args: expect.objectContaining({ p_user_id: 'victim-id' }),
+    }));
+  });
+
+  it('promotes the current purchase card after a matching verified browser login', async () => {
+    const response = await POST(request());
+    expect(response.status).toBe(200);
+    expect(state.promoteSessionVaultToAccount).toHaveBeenCalledWith(expect.anything(), {
+      userId: 'user-1', sessionId: SESSION_ID, paymentEnvironment: 'sandbox',
     });
   });
 
@@ -1113,6 +1134,9 @@ describe('Solidgate funnel grant introductory-offer claim', () => {
       status: 'partial_settled',
     });
     expect(state.orderUpdates).toHaveLength(0);
+    const finance = state.rpcCalls.filter((call) => call.name === 'apply_solidgate_financial_event');
+    expect(finance).toHaveLength(_case === 'under-capture' ? 1 : 0);
+    if (finance.length) expect(finance[0].args.p_facts).toMatchObject({ captured_amount_cents: 1200, quoted_amount_cents: 1300 });
   });
 
   it.each([

@@ -1,0 +1,54 @@
+psql:supabase/tests/solidgate_round2_concurrency.sql:17: NOTICE:  schema "extensions" already exists, skipping
+CREATE SCHEMA
+psql:supabase/tests/solidgate_round2_concurrency.sql:18: NOTICE:  extension "dblink" already exists, skipping
+CREATE EXTENSION
+psql:supabase/tests/solidgate_round2_concurrency.sql:43: NOTICE:  WEBHOOK CLAIM RPC ACL SCENARIOS PASSED
+DO
+DELETE 0
+psql:supabase/tests/solidgate_round2_concurrency.sql:254: NOTICE:  WEBHOOK CLAIM CONCURRENCY SCENARIOS PASSED
+DO
+DELETE 0
+psql:supabase/tests/solidgate_round2_concurrency.sql:291: NOTICE:  ENTITY EQUAL-TIMESTAMP ORDERING SCENARIOS PASSED
+DO
+DELETE 1
+INSERT 0 1
+DELETE 0
+psql:supabase/tests/solidgate_round2_concurrency.sql:652: NOTICE:  a Solidgate OTO step is already payable, settled, or uncertain
+psql:supabase/tests/solidgate_round2_concurrency.sql:652: NOTICE:  OTO OPEN/SUBMISSION CONCURRENCY SCENARIOS PASSED
+DO
+DELETE 2
+DELETE 1
+INSERT 0 1
+DELETE 0
+psql:supabase/tests/solidgate_round2_concurrency.sql:920: NOTICE:  oto_step_already_bound
+psql:supabase/tests/solidgate_round2_concurrency.sql:920: NOTICE:  oto_step_already_bound
+psql:supabase/tests/solidgate_round2_concurrency.sql:920: NOTICE:  oto_step_already_bound
+psql:supabase/tests/solidgate_round2_concurrency.sql:920: NOTICE:  OTO3 MUTUALLY-EXCLUSIVE VARIANT SCENARIOS PASSED
+DO
+DELETE 1
+DELETE 1
+INSERT 0 1
+INSERT 0 3
+DELETE 0
+DELETE 0
+INSERT 0 1
+UPDATE 1
+psql:supabase/tests/solidgate_round2_concurrency.sql:1668: NOTICE:  a Solidgate main checkout is already payable or settled
+psql:supabase/tests/solidgate_round2_concurrency.sql:1668: NOTICE:  MAIN CHECKOUT IDENTITY/BUILDER CONCURRENCY SCENARIOS PASSED
+DO
+DELETE 0
+DELETE 4
+DELETE 3
+DELETE 1
+DELETE 0
+DELETE 0
+DELETE 0
+INSERT 0 1
+psql:supabase/tests/solidgate_round2_concurrency.sql:2788: NOTICE:  a Solidgate PWA order is already payable or uncertain
+psql:supabase/tests/solidgate_round2_concurrency.sql:2788: NOTICE:  PWA OPEN/MODE/FORM/SUBMISSION CONCURRENCY SCENARIOS PASSED
+DO
+DELETE 7
+DELETE 10
+DELETE 1
+DELETE 3
+ALL ROUND-2 SOLIDGATE CONCURRENCY SCENARIOS PASSED

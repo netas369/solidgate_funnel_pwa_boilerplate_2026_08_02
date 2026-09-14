@@ -1,0 +1,23 @@
+
+> test
+> vitest run --reporter=dot
+
+
+ RUN  v3.2.4 /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/packages/shared
+
+·············································································································································································································································stderr | src/__tests__/payment-session-access.test.ts > authorizePaymentSessionAccess > returns 500 when auth.getUser() fails with a real error
+[payment-access] auth lookup failed: outage
+
+······················································stdout | src/__tests__/send-welcome-email.test.ts > sendWelcomeEmail deadline > forwards a stable Resend idempotency key
+[welcome-email] sent to buyer@example.com
+
+·················stderr | src/__tests__/otp-rate-limit.test.ts > checkOtpRateLimit > returns allowed:true on DB error (fail-open)
+[otp-rate-limit] failed to query otp_attempts: connection refused
+
+·····························
+
+ Test Files  28 passed (28)
+      Tests  337 passed (337)
+   Start at  09:43:33
+   Duration  13.17s (transform 3.38s, setup 0ms, collect 7.47s, tests 836ms, environment 74.84s, prepare 9.55s)
+

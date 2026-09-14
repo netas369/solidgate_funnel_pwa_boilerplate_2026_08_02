@@ -346,16 +346,11 @@ export async function POST(request: Request) {
     if (!sessionLocale || !(sessionLocale in LOCALE_CURRENCY_MAP)) {
       return NextResponse.json({ error: 'Session locale missing' }, { status: 500 });
     }
-    const effectiveLocale: Locale = existingIdentity
-      ? sessionLocale as Locale
-      : enabledLocales.includes(sessionLocale)
-        ? sessionLocale as Locale
-        : 'en';
-    if (!existingIdentity && effectiveLocale !== sessionLocale) {
-      console.warn('[solidgate/create-session] locale not checkout-enabled, falling back to en', {
-        sessionLocale,
-      });
+    if (!existingIdentity && !enabledLocales.includes(sessionLocale)) {
+      return NextResponse.json({ error: 'Checkout is unavailable for this locale', code: 'checkout_locale_disabled' }, { status: 409 });
     }
+    // Locale controls currency; never silently substitute a different quote.
+    const effectiveLocale = sessionLocale as Locale;
 
     const ip = resolveClientIp(request);
     if (!ip) {

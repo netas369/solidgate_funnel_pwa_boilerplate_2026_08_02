@@ -1,19 +1,12 @@
-// Authenticated PWA shell. Renders the grace-period banner above children
-// when the signed-in user has an active past_due+grace entitlement (and is
-// NOT currently on the /billing/update-payment page where the banner would
-// be redundant).
-//
-// pathname detection note: Next.js App Router does not expose pathname to
-// layouts directly. We rely on the `x-pathname` header set by middleware
-// (or `x-invoke-path` from the framework). If neither is present in this
-// runtime, the banner simply renders on the update-payment page too — that
-// is a graceful fallback, not a correctness issue (the page still works).
+// Authenticated paid-content shell. Billing recovery is a sibling route group,
+// so it remains reachable without relying on client-supplied pathname headers.
 
-import { headers } from 'next/headers';
+import { redirect } from '@repo/i18n/navigation';
+import { AccessRecoveryScreen } from '@/components/billing/AccessRecoveryScreen';
 import { Suspense } from 'react';
 import { createClient } from '@repo/shared/supabase/server';
 import { getSupabaseAdminClient } from '@repo/shared/supabase/admin';
-import { getActiveGracePeriodSubscription } from '@repo/shared/grace-period';
+import { getActiveGracePeriodSubscription, getRecoverableSubscription } from '@repo/shared/grace-period';
 import { appAccessEntitlementState } from '@repo/shared/entitlements';
 import { currentPaymentEnvironment } from '@repo/shared/payment-environment';
 import { GracePeriodBanner } from '@/components/billing/grace-period-banner';
@@ -36,13 +29,21 @@ export default async function AppLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Solidgate UAT item 8: after a hard cancel the member area must lock, not
-  // just the add-ons. 'revoked' means the newest app-access entitlement (main
-  // sub or lifetime) is an explicit tombstone with nothing live left. Lapsed
-  // expiry alone or no rows at all stays admitted — the renewal boundary and
-  // the fresh-buyer provisioning race must never brick a paying customer.
-  if (user?.id && (await appAccessEntitlementState(user.id)) === 'revoked') {
-    return <SubscriptionEndedScreen />;
+  if (!user) redirect({ href: '/login', locale: locale as 'en' });
+  const access = await appAccessEntitlementState(user!.id);
+  // Billing recovery has its own authenticated route group outside this gate.
+  if (access !== 'active') {
+    let canRecoverBilling = false;
+    if (access !== 'unavailable') {
+      try {
+        canRecoverBilling = Boolean(await getRecoverableSubscription(user!.id, { mainOnly: true }));
+      } catch {
+        console.error('[pwa/access] unable to check billing recovery');
+      }
+    }
+    return access === 'revoked'
+      ? <SubscriptionEndedScreen canRecoverBilling={canRecoverBilling} />
+      : <AccessRecoveryScreen state={access} canRecoverBilling={canRecoverBilling} />;
   }
 
   const grace = user?.id ? await getActiveGracePeriodSubscription(user.id) : null;
@@ -61,11 +62,7 @@ export default async function AppLayout({
     }
   }
 
-  // Suppress the banner on the /billing/update-payment page itself.
-  const hdrs = await headers();
-  const pathname = hdrs.get('x-pathname') ?? hdrs.get('x-invoke-path') ?? '';
-  const onUpdatePaymentPage = pathname.includes('/billing/update-payment');
-  const showBanner = !!grace && !onUpdatePaymentPage;
+  const showBanner = !!grace;
   const analytics = user?.id ? (
     <Suspense fallback={null}>
       <PwaAnalytics userId={user.id} locale={locale} acquisition={acquisition} />

@@ -1,0 +1,16 @@
+You are now connected to database "solidgate_final_verify_20260914_072351_5809d6" as user "supabase_admin".
+BEGIN
+INSERT 0 1
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 3
+SET
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072351Z/inputs/supabase/tests/solidgate_financial_events.sql:166: NOTICE:  FINANCIAL EVENT PERMUTATIONS PASSED
+DO
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072351Z/inputs/supabase/tests/solidgate_financial_events.sql:223: NOTICE:  FINANCIAL RESTORE AND LIFECYCLE PASSED
+DO
+RESET
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072351Z/inputs/supabase/tests/solidgate_financial_events.sql:239: NOTICE:  FINANCIAL SECURITY PASSED
+DO
+ROLLBACK

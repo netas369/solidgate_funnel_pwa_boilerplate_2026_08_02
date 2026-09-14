@@ -13,7 +13,7 @@ export type OtosPayload = {
     offer: string;
     pattern: string;
     count: number;
-    amountEurCents: number;
+    amountEurCents: number | null;
   }>;
   rates: Array<{ offer: string; takeRate: number }>;
 };
@@ -25,21 +25,25 @@ function defaultDateStrings() {
   return { from, to };
 }
 
-function eur(cents: number) {
+function eur(cents: number | null) {
+  if (cents === null) return 'FX unavailable';
   return `€${(cents / 100).toLocaleString('en-IE', { maximumFractionDigits: 0 })}`;
 }
 
 export function OtosClient({ initialData }: { initialData: OtosPayload }) {
   const [data, setData] = useState<OtosPayload>(initialData);
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const init = defaultDateStrings();
 
   const onApply = (range: { from: string; to: string }) => {
     startTransition(async () => {
+      setError(null);
       try {
         const fresh = await refetchOtos(range);
         setData(fresh);
       } catch (e) {
+        setError('Report could not be refreshed. The previous range is still shown.');
         console.error('[admin/otos] refetch failed:', e);
       }
     });
@@ -58,6 +62,7 @@ export function OtosClient({ initialData }: { initialData: OtosPayload }) {
           disabled={isPending}
         />
       </div>
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <div className="rounded-lg border border-neutral-200 bg-white p-4">
         <h3 className="mb-3 text-sm font-medium text-neutral-700">OTO offers</h3>
         <table className="w-full text-sm">
@@ -65,7 +70,7 @@ export function OtosClient({ initialData }: { initialData: OtosPayload }) {
             <tr>
               <th className="py-1">Offer</th>
               <th className="py-1">Count</th>
-              <th className="py-1">Revenue (EUR)</th>
+              <th className="py-1">Initial net (EUR estimate)</th>
               <th className="py-1">Take rate</th>
             </tr>
           </thead>

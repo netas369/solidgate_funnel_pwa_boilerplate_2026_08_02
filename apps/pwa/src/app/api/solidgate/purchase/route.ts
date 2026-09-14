@@ -19,6 +19,7 @@ import {
   resolveSolidgateVerifyUrl,
   paymentEnvironmentForVercel,
   solidgateCapturedAmount,
+  persistSolidgatePartialCapture,
   solidgateDynamicDescriptor,
   subscribeSavedCard,
   type PaymentEnvironment,
@@ -716,12 +717,36 @@ export async function POST(request: Request) {
       .eq("payment_environment", paymentEnvironment)
       .eq("user_id", user.id)
       .eq("product_slug", productCode)
+      .or("status.eq.active,and(status.eq.past_due,access_level.eq.grace)")
       .is("revoked_at", null)
+      .or("expires_at.is.null,expires_at.gt." + new Date().toISOString())
       .maybeSingle();
     if (ownedError) {
       return NextResponse.json({ error: "Failed to verify purchase ownership" }, { status: 500 });
     }
     if (owned) return NextResponse.json({ ok: true, alreadyOwned: true });
+
+    const recoveryResponse = () => NextResponse.json({
+      ok: false, recoveryRequired: true, code: 'subscription_recovery_required',
+      recoveryPath: '/billing/update-payment',
+      error: 'Update the payment method for your existing subscription.',
+    }, { status: 409 });
+    if (productId === PWA_SUBSCRIPTION_PRODUCT) {
+      const { data: billable, error: billableError } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('payment_environment', paymentEnvironment)
+        .eq('user_id', user.id)
+        .eq('product_slug', productCode)
+        .eq('psp', 'solidgate')
+        .in('status', ['completed', 'trialing', 'past_due'])
+        .not('solidgate_subscription_id', 'is', null)
+        .limit(1)
+        .maybeSingle();
+      if (billableError) return NextResponse.json({ error: 'Unable to verify subscription' }, { status: 503 });
+      if (billable) return recoveryResponse();
+    }
+
 
     const forwardedIp =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -809,7 +834,7 @@ export async function POST(request: Request) {
       | { ok: false; status: number; message: string }
     > => {
       const { data, error } = await rpc("open_solidgate_pwa_purchase_v2", openArgs);
-      if (error) return { ok: false, status: 503, message: error.message };
+      if (error) return { ok: false, status: error.message.includes("subscription_recovery_required") ? 409 : 503, message: error.message };
       const reservation = asSingleReservation(data);
       if (!reservation) return { ok: false, status: 500, message: "unexpected RPC result" };
       const mismatch = reservationMismatch(reservation, expected);
@@ -819,6 +844,7 @@ export async function POST(request: Request) {
 
     let loaded = await loadReservation();
     if (!loaded.ok) {
+      if (loaded.message.includes("subscription_recovery_required")) return recoveryResponse();
       console.error("[solidgate/purchase] atomic purchase open failed:", loaded.message);
       return NextResponse.json({ error: "Unable to open purchase safely" }, { status: loaded.status });
     }
@@ -1028,6 +1054,14 @@ export async function POST(request: Request) {
           subscriptionId: order.subscription_id,
           verifyUrl,
         });
+        if (providerStatus === "partial_settled") {
+          await persistSolidgatePartialCapture(supabase, {
+            environment: paymentEnvironment, orderDbId: reservation.order_db_id,
+            orderId: reservation.solidgate_order_id, quotedAmountCents: amountCents,
+            capturedAmountCents: order.settled_amount, currency, providerStatus,
+            userId: user.id, productCode,
+          });
+        }
         if (!persisted) return pendingResponse(reservation.solidgate_order_id);
         if (verifyUrl) {
           return NextResponse.json({
@@ -1079,6 +1113,29 @@ export async function POST(request: Request) {
       if (resumeError || resumed !== true) return pendingResponse(reservation.solidgate_order_id);
       shouldSubmit = true;
     } else if (!shouldSubmit) {
+      // A previously observed under-capture may finish without a webhook.
+      // Re-read this exact provider order; confirmation performs the final
+      // ownership/capture check before access, and no new charge is submitted.
+      if (reservation.bound_order_status === "pending" &&
+        reservation.bound_payment_status === "partial_settled" &&
+        reservation.last_result_kind !== "captured") {
+        let status: ProviderStatus;
+        try { status = await client.status<ProviderStatus>({ order_id: reservation.solidgate_order_id }); }
+        catch { return pendingResponse(reservation.solidgate_order_id); }
+        const observed = normalizedProviderOrder(status, amountCents);
+        if (!observed || !providerOrderMatches(observed, reservation.solidgate_order_id,
+          vault.customerAccountId, expected, false)) return pendingResponse(reservation.solidgate_order_id);
+        if (providerOrderMatches(observed, reservation.solidgate_order_id,
+          vault.customerAccountId, expected, true)) {
+          return capturedResponse(reservation.solidgate_order_id, observed.subscription_id ?? null);
+        }
+        await persistSolidgatePartialCapture(supabase, {
+          environment: paymentEnvironment, orderDbId: reservation.order_db_id,
+          orderId: reservation.solidgate_order_id, quotedAmountCents: amountCents,
+          capturedAmountCents: observed.settled_amount, currency, providerStatus: observed.status,
+          userId: user.id, productCode,
+        });
+      }
       return responseFromStoredState(reservation);
     }
 
@@ -1222,6 +1279,12 @@ export async function POST(request: Request) {
         providerStatus: result.providerStatus,
         netAmountCents: amountCents,
         subscriptionId: result.subscriptionId,
+      });
+      await persistSolidgatePartialCapture(supabase, {
+        environment: paymentEnvironment, orderDbId: reservation.order_db_id,
+        orderId: reservation.solidgate_order_id, quotedAmountCents: amountCents,
+        capturedAmountCents: result.settledAmount, currency, providerStatus: result.providerStatus,
+        userId: user.id, productCode,
       });
       return pendingResponse(reservation.solidgate_order_id);
     }

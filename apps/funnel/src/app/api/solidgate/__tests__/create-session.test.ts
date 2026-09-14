@@ -711,11 +711,12 @@ describe('solidgate create-session gates', () => {
     expect(intent.ip_address).toBe('185.179.185.6');
   });
 
-  it('falls back to en/usd when the session locale is not checkout-enabled', async () => {
+  it('rejects a disabled locale before silently changing the quoted currency', async () => {
     state.session = { ...mockSession, locale: 'ja' };
     const res = await post({ productId: 'trial1', sessionId: SESSION_ID });
-    expect(res.status).toBe(200);
-    expect(state.insertedOrders[0].currency).toBe('usd');
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toMatchObject({ code: 'checkout_locale_disabled' });
+    expect(state.insertedOrders).toHaveLength(0);
   });
 
   it('increments the attempt so a retry never reuses a burnt order_id', async () => {
