@@ -21,7 +21,10 @@ const display = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(BOILERPLATE_BRAND.croUrl),
+  // The env var first, matching apps/pwa. The brand constant is the template's
+  // placeholder (cro.example.com), so a deploy that relied on it would unfurl
+  // every pasted link under a domain nobody owns.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_CRO_URL ?? BOILERPLATE_BRAND.croUrl),
   title: 'Quiz performance',
   applicationName: BOILERPLATE_BRAND.name,
   // Belt and braces with the X-Robots-Tag header in next.config.ts. This board
