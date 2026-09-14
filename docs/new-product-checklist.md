@@ -14,8 +14,14 @@ the PWA shell are the platform. Copy, prices, products, branding and assets are 
 | What | Where |
 |---|---|
 | Package name | `package.json` → `"name"` |
-| Supabase project ref | `supabase/config.toml` → `project_id` |
-| App names / ports | `apps/funnel/package.json`, `apps/pwa/package.json` (3205 / 3206) |
+| Supabase project ref | `supabase/config.toml` → `project_id` — **not optional**, see below |
+| App names / ports | `apps/funnel/package.json`, `apps/pwa/package.json`, `apps/cro/package.json` (3205 / 3206 / 3207) |
+
+**`project_id` must be unique across every repo on the machine.** The CLI names its
+local containers `supabase_db_<project_id>`, so two clones sharing a value share ONE
+local stack: whichever ran `supabase start` last owns it, and `supabase db reset` from
+either replaces the other's schema while both apps carry on pointing at it. Three repos
+inherited `funnel-boilerplate` before anyone noticed.
 
 ---
 
@@ -148,6 +154,43 @@ Available generic step types ship as a library — single/multi select, picture 
 select, chips, likert, slider, date and time wheels, input groups, email capture with
 consent, loader/interstitial screens, expert note, social wall, price step.
 
+**Every quiz change is a new version.** Bump `QUIZ_VARIANT` in
+`apps/funnel/src/features/quiz/server/quiz-definition.ts`, add an entry to
+`packages/shared/src/cro/segment-labels.ts` saying what changed, then publish the
+structure so the CRO board can label it:
+
+```sh
+npx tsx scripts/publish-quiz-definition.ts            # dry run
+npx tsx scripts/publish-quiz-definition.ts --apply
+```
+
+Publishing a changed config under an unchanged `QUIZ_VARIANT` fails loudly rather than
+blending two question sets under one name. Run it BEFORE the first session of a new
+version arrives, or its drop-off is recorded under step ids the board cannot label.
+
+---
+
+## 4b. CRO dashboard
+
+`apps/cro` (:3207) ships working — five tabs over this product's own data. What a new
+product has to do:
+
+- [ ] Its own Vercel project, root `apps/cro`, on a subdomain nobody links to publicly
+- [ ] `NEXT_PUBLIC_CRO_URL` set, so a pasted link unfurls with the right name
+- [ ] The first analyst added — **this is the entire access model**:
+
+```sql
+INSERT INTO cro_analysts (email, note) VALUES ('you@example.com', 'CRO');
+```
+
+- [ ] Supabase Auth email template checked. The board signs in with a **6-digit code**,
+  and a stock `confirmation` template mails a magic LINK instead — the login then dies
+  with no error at all. The template must contain `{{ .Token }}`.
+
+The board never holds a service-role key; a test fails the build if one is referenced.
+Everything it reads goes through `cro_*` functions gated on that table. Full tour:
+[`docs/cro-dropoff.md`](cro-dropoff.md).
+
 ---
 
 ## 5. Offer, OTOs, success
@@ -246,3 +289,6 @@ npx supabase gen types typescript --linked > packages/shared/src/types/database.
 - [ ] Legal pages reviewed by someone qualified
 - [ ] Consent approach decided
 - [ ] A real end-to-end purchase completed in sandbox, including a 3DS card
+- [ ] `supabase/config.toml` → `project_id` changed away from `project-template`
+- [ ] Quiz definition published (`publish-quiz-definition.ts --apply`) and at least one
+  row in `cro_analysts`, or the CRO board is an empty screen for everybody

@@ -2,7 +2,14 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "funnel-boilerplate"
+#
+# CHANGE THIS PER PRODUCT. The CLI names its local containers after it
+# (supabase_db_<project_id>), so two repos sharing a value share ONE local stack:
+# whichever ran `supabase start` last owns it, and a `db reset` from either
+# silently replaces the other's schema while both apps keep pointing at it.
+# This value was "funnel-boilerplate" in the template and in two products cloned
+# from it, which is exactly how that happened.
+project_id = "project-template"
 
 [api]
 enabled = true
