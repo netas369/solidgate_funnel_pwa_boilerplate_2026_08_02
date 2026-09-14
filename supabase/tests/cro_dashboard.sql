@@ -24,11 +24,13 @@ SELECT public.publish_quiz_definition(
   '[{"step_id":"q1","position":1,"sort_index":1,"step_type":"radio",
      "is_question":true,"is_terminal":false,"answer_keys":["goal"],
      "option_values":["lose","gain"],"store_as":"goal","label":"Your goal?",
+     "option_labels":{"lose":"Lose weight","gain":"Gain muscle"},
      "is_unconditional":true,"entry_skippable":false,
      "next":[{"to_step_id":"q2","on_value":null}]},
     {"step_id":"q2","position":2,"sort_index":2,"step_type":"multi_select",
      "is_question":true,"is_terminal":false,"answer_keys":["chal"],
      "option_values":["o1","o2","o3"],"store_as":"chal","label":"Challenges?",
+     "option_labels":{"o1":"No time","o2":"No motivation"},
      "is_unconditional":true,"entry_skippable":false,
      "next":[{"to_step_id":"q3","on_value":null}]},
     {"step_id":"q3","position":3,"sort_index":3,"step_type":"email_capture",
@@ -51,7 +53,7 @@ VALUES
   ('e0000000-0000-4000-8000-000000000001','en','cro-v1','main-v1','quiz','active',
    now() - INTERVAL '3 hours', now() - INTERVAL '3 hours',
    '{"device_type":"mobile","country":"LT","browser":"Safari","ip_address":"203.0.113.9","city":"Vilnius"}'::JSONB,
-   '{"goal":"lose","chal":["o1","o3"],"email":"buyer@example.test","strayKey":"undeclared"}'::JSONB,
+   '{"goal":"lose","chal":["o1","o3","o9"],"email":"buyer@example.test","strayKey":"undeclared"}'::JSONB,
    '{"q1":{"viewed_at":"2026-09-14T09:00:00Z","answered_at":"2026-09-14T09:00:10Z","skipped":false,"views":1},
      "q2":{"viewed_at":"2026-09-14T09:00:10Z","answered_at":"2026-09-14T09:00:40Z","skipped":false,"views":1},
      "q3":{"viewed_at":"2026-09-14T09:00:40Z","answered_at":null,"skipped":false,"views":1}}'::JSONB,
@@ -269,11 +271,12 @@ BEGIN
     RAISE EXCEPTION 'cro_answer_distribution accepted a NULL quiz_variant';
   EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
 
-  -- ["o1","o3"] is TWO value rows but ONE answered session. Getting that
-  -- denominator wrong is the easiest way to publish percentages over 100.
+  -- ["o1","o3","o9"] is THREE value rows but ONE answered session. Getting
+  -- that denominator wrong is the easiest way to publish percentages over 100.
+  -- o9 is deliberately a code the published step does not declare.
   SELECT count(*) INTO n FROM public.cro_answer_distribution(
     now() - INTERVAL '1 day', now() + INTERVAL '1 hour', 'cro-v1', 'q2');
-  ASSERT n = 2, format('expected 2 multi-select rows, got %s', n);
+  ASSERT n = 3, format('expected 3 multi-select rows, got %s', n);
 
   SELECT * INTO r FROM public.cro_answer_distribution(
     now() - INTERVAL '1 day', now() + INTERVAL '1 hour', 'cro-v1', 'q2')
@@ -282,6 +285,27 @@ BEGIN
   ASSERT r.answered_sessions = 1,
     format('answered_sessions must count the KEY once, got %s', r.answered_sessions);
   ASSERT r.in_option_set, 'o1 is a declared option and should be flagged as one';
+  ASSERT r.answer_label = 'No time',
+    format('option copy did not resolve, got %s', COALESCE(r.answer_label, '<null>'));
+
+  -- An answer recorded under a code the step no longer offers. in_option_set
+  -- says so, and the label is NULL rather than a stale word from another
+  -- version — this is the whole reason both columns exist.
+  SELECT * INTO r FROM public.cro_answer_distribution(
+    now() - INTERVAL '1 day', now() + INTERVAL '1 hour', 'cro-v1', 'q2')
+  WHERE answer_value = 'o9';
+  ASSERT FOUND, 'a retired answer code vanished instead of being reported';
+  ASSERT NOT r.in_option_set, 'o9 is not a declared option and must not be flagged as one';
+  ASSERT r.answer_label IS NULL, 'a retired code resolved to copy it never had';
+
+  -- Published without copy, so the row still counts and simply has no words.
+  -- A dashboard falls back to the code; it must not go missing.
+  SELECT * INTO r FROM public.cro_answer_distribution(
+    now() - INTERVAL '1 day', now() + INTERVAL '1 hour', 'cro-v1', 'q2')
+  WHERE answer_value = 'o3';
+  ASSERT FOUND, 'an option published without copy was dropped from the distribution';
+  ASSERT r.in_option_set, 'o3 is declared and must stay flagged even with no copy';
+  ASSERT r.answer_label IS NULL, 'o3 has no published copy and must not invent any';
 
   -- A scalar must come back unquoted. `::text` on a jsonb string keeps the
   -- quotes and every label in the chart renders as "lose" rather than lose.

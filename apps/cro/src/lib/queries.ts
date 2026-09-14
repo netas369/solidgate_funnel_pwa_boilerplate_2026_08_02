@@ -55,6 +55,8 @@ export interface CatalogRow {
   entry_skippable: boolean;
   answer_keys: string[];
   option_values: string[];
+  /** Option code → resolved copy. Empty for steps with no options. */
+  option_labels: Record<string, string>;
 }
 
 export interface SessionTotalsRow {
@@ -98,6 +100,12 @@ export interface AnswerRow {
   /** 'freeform' means the value was withheld, not missing. See the PII note. */
   value_kind: 'scalar' | 'array_member' | 'freeform';
   answer_value: string | null;
+  /**
+   * Resolved copy for answer_value, or null when the published step has none —
+   * either because the option was retired, or because the variant was published
+   * before option copy was carried. Fall back to the code, never hide the row.
+   */
+  answer_label: string | null;
   in_option_set: boolean | null;
   sessions: number;
   answered_sessions: number;

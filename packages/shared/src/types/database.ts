@@ -444,6 +444,7 @@ export type Database = {
           is_unconditional: boolean
           label: string | null
           label_key: string | null
+          option_labels: Json
           option_values: Json
           phase_key: string | null
           position: number
@@ -461,6 +462,7 @@ export type Database = {
           is_unconditional?: boolean
           label?: string | null
           label_key?: string | null
+          option_labels?: Json
           option_values?: Json
           phase_key?: string | null
           position: number
@@ -478,6 +480,7 @@ export type Database = {
           is_unconditional?: boolean
           label?: string | null
           label_key?: string | null
+          option_labels?: Json
           option_values?: Json
           phase_key?: string | null
           position?: number
@@ -1567,6 +1570,7 @@ export type Database = {
         }
         Returns: {
           answer_key: string
+          answer_label: string
           answer_value: string
           answered_sessions: number
           in_option_set: boolean
@@ -1637,6 +1641,7 @@ export type Database = {
           is_terminal: boolean
           is_unconditional: boolean
           label: string
+          option_labels: Json
           option_values: Json
           phase_key: string
           published_at: string

@@ -32,6 +32,16 @@ export interface PublishedStepRow {
    * rendering a bare code for an answer whose option was later removed.
    */
   option_values: string[];
+  /**
+   * Resolved English copy for those codes, as `{ o1: 'Lose weight' }`.
+   *
+   * NOT in the hash, and that asymmetry with option_values is the point: the
+   * codes are structure, so changing them must force a QUIZ_VARIANT bump; the
+   * words beside them are copy, and copy edits are the most common CRO change
+   * there is. Hashing them would make a wording tweak a version bump, and the
+   * guard would be disabled within two months.
+   */
+  option_labels: Record<string, string>;
   /** i18n key the label came from, kept so a dashboard can localise later. */
   label_key: string | null;
   /** Resolved English text. The i18n KEY is useless in a dashboard. */
@@ -106,11 +116,37 @@ export function sha256(input: string): string {
  * that key, whereas renaming the label does not.
  */
 function optionValues(step: QuizStep): string[] {
-  const candidate = step as unknown as { options?: Array<{ value?: unknown }> };
-  if (!Array.isArray(candidate.options)) return [];
-  return candidate.options
-    .map((option) => option?.value)
+  return stepOptions(step)
+    .map((option) => option.value)
     .filter((value): value is string => typeof value === 'string');
+}
+
+/**
+ * Readable copy for each option code, resolved against the message pack.
+ *
+ * The same job labelKeyForStep does for the step itself, and for the same
+ * reason: `options[].label` in quiz-config.ts is an i18n KEY, so publishing it
+ * faithfully would put `steps.step3.options.o1.label` in a chart, which is no
+ * more readable than `o1`.
+ *
+ * Options whose key misses the pack are simply absent from the map rather than
+ * present with a null. A dashboard reading `labels[code]` then gets undefined
+ * either way, and the row stays small for the common case of a step with no
+ * options at all.
+ */
+function optionLabels(step: QuizStep, messages: unknown): Record<string, string> {
+  const labels: Record<string, string> = {};
+  for (const option of stepOptions(step)) {
+    if (typeof option.value !== 'string' || typeof option.label !== 'string') continue;
+    const text = lookupMessage(messages, option.label);
+    if (text !== null) labels[option.value] = text;
+  }
+  return labels;
+}
+
+function stepOptions(step: QuizStep): Array<{ value?: unknown; label?: unknown }> {
+  const candidate = step as unknown as { options?: Array<{ value?: unknown; label?: unknown }> };
+  return Array.isArray(candidate.options) ? candidate.options : [];
 }
 
 /**
@@ -357,6 +393,7 @@ export function buildDefinitionSnapshot(
       is_terminal: options.terminalTypes.has(step.type),
       answer_keys: answerKeys,
       option_values: optionValues(step),
+      option_labels: optionLabels(step, options.messages),
       next: stepEdges(step, options.terminalTypes),
       label_key: labelKey,
       label: labelKey ? lookupMessage(options.messages, labelKey) : null,

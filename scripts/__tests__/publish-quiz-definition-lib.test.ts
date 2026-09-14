@@ -260,6 +260,7 @@ describe('option values are part of the hash', () => {
       funnelKey: 'main',
       firstStepId: FIRST_STEP_ID,
       terminalTypes: TERMINAL_STEP_TYPES,
+      messages,
     });
   }
 
@@ -300,6 +301,40 @@ describe('option values are part of the hash', () => {
       (options[0] as unknown as { label: string }).label = 'steps.step3.options.o1.reworded';
     });
     expect(recopied.config_hash).toBe(snapshot().config_hash);
+  });
+
+  it('resolves option COPY against the message pack, beside the codes', () => {
+    // The codes are structure and are hashed; the words are copy and are not.
+    // Publishing `options[].label` faithfully would put
+    // 'steps.step3.options.o1.label' in a chart, which is no more readable
+    // than 'o1'.
+    const byId = Object.fromEntries(snapshot().steps.map((s) => [s.step_id, s]));
+    expect(byId.step3.option_labels).toEqual({
+      o1: 'Multi option one',
+      o2: 'Multi option two',
+      o3: 'Multi option three',
+      o4: 'Multi option four',
+    });
+    expect(byId.step1.option_labels).toEqual({
+      female: 'Option A label',
+      male: 'Option B label',
+    });
+    expect(byId.step7.option_labels).toEqual({});
+  });
+
+  it('omits an option whose key misses the pack rather than storing the key', () => {
+    const orphaned = withOptionChanged((options) => {
+      (options[0] as unknown as { label: string }).label = 'steps.step3.options.nope.label';
+    });
+    const step3 = orphaned.steps.find((s) => s.step_id === 'step3')!;
+    expect(step3.option_labels).not.toHaveProperty('o1');
+    expect(step3.option_labels.o2).toBe('Multi option two');
+  });
+
+  it('publishes no copy at all when no message pack was supplied', () => {
+    // --dry-run without a pack must not silently invent labels.
+    const byId = Object.fromEntries(snapshot(false).steps.map((s) => [s.step_id, s]));
+    expect(byId.step3.option_labels).toEqual({});
   });
 
   it('names option_values in a diff so the operator can see what moved', () => {

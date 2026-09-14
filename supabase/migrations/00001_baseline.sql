@@ -581,6 +581,19 @@ CREATE TABLE IF NOT EXISTS public.quiz_definition_steps (
   -- "no longer an option" instead of rendering a bare code for an answer whose
   -- option was later removed.
   option_values JSONB NOT NULL DEFAULT '[]'::JSONB,
+  -- Resolved English copy for those codes, as {"o1": "Lose weight", ...}.
+  --
+  -- SEPARATE FROM option_values, and deliberately NOT part of the config hash,
+  -- for the same reason `label` is not: every string in quiz-config.ts is an
+  -- i18n key, copy edits are the most common CRO change there is, and if they
+  -- forced a QUIZ_VARIANT bump someone would disable the guard within two
+  -- months. The CODES are structure and are hashed; the words beside them are
+  -- not.
+  --
+  -- An object rather than a parallel array so the `?` membership test on
+  -- option_values keeps working unchanged, and so a missing entry is simply a
+  -- NULL lookup rather than an index that has to line up.
+  option_labels JSONB NOT NULL DEFAULT '{}'::JSONB,
   -- The i18n key the label came from, kept so a dashboard can be localised
   -- later without republishing.
   label_key     TEXT,
@@ -614,11 +627,15 @@ CREATE TABLE IF NOT EXISTS public.quiz_definition_steps (
   CONSTRAINT quiz_definition_steps_answer_keys_array_check
     CHECK (jsonb_typeof(answer_keys) = 'array'),
   CONSTRAINT quiz_definition_steps_option_values_array_check
-    CHECK (jsonb_typeof(option_values) = 'array')
+    CHECK (jsonb_typeof(option_values) = 'array'),
+  CONSTRAINT quiz_definition_steps_option_labels_object_check
+    CHECK (jsonb_typeof(option_labels) = 'object')
 );
 
 ALTER TABLE public.quiz_definition_steps
   ADD COLUMN IF NOT EXISTS option_values JSONB NOT NULL DEFAULT '[]'::JSONB;
+ALTER TABLE public.quiz_definition_steps
+  ADD COLUMN IF NOT EXISTS option_labels JSONB NOT NULL DEFAULT '{}'::JSONB;
 ALTER TABLE public.quiz_definition_steps ADD COLUMN IF NOT EXISTS label_key TEXT;
 ALTER TABLE public.quiz_definition_steps ADD COLUMN IF NOT EXISTS label TEXT;
 ALTER TABLE public.quiz_definition_steps
@@ -778,7 +795,7 @@ BEGIN
     INSERT INTO public.quiz_definition_steps (
       quiz_variant, step_id, position, sort_index, step_type,
       phase_key, store_as, is_question, is_terminal, answer_keys, option_values,
-      label_key, label, is_unconditional, entry_skippable
+      option_labels, label_key, label, is_unconditional, entry_skippable
     ) VALUES (
       p_quiz_variant,
       v_step ->> 'step_id',
@@ -791,6 +808,7 @@ BEGIN
       COALESCE((v_step ->> 'is_terminal')::BOOLEAN, false),
       COALESCE(v_step -> 'answer_keys', '[]'::JSONB),
       COALESCE(v_step -> 'option_values', '[]'::JSONB),
+      COALESCE(v_step -> 'option_labels', '{}'::JSONB),
       v_step ->> 'label_key',
       v_step ->> 'label',
       COALESCE((v_step ->> 'is_unconditional')::BOOLEAN, true),
@@ -1859,7 +1877,8 @@ RETURNS TABLE (
   is_unconditional BOOLEAN,
   entry_skippable  BOOLEAN,
   answer_keys      JSONB,
-  option_values    JSONB
+  option_values    JSONB,
+  option_labels    JSONB
 )
 LANGUAGE plpgsql
 STABLE
@@ -1877,7 +1896,8 @@ BEGIN
          d.total_steps, d.config_hash, d.published_at,
          st.step_id, st.position, st.sort_index, st.step_type, st.phase_key,
          st.store_as, st.label, st.is_question, st.is_terminal,
-         st.is_unconditional, st.entry_skippable, st.answer_keys, st.option_values
+         st.is_unconditional, st.entry_skippable, st.answer_keys, st.option_values,
+         st.option_labels
   FROM public.quiz_definitions d
   JOIN public.quiz_definition_steps st ON st.quiz_variant = d.quiz_variant
   WHERE (p_quiz_variant IS NULL OR d.quiz_variant = p_quiz_variant)
@@ -2138,6 +2158,10 @@ RETURNS TABLE (
   answer_key        TEXT,
   value_kind        TEXT,
   answer_value      TEXT,
+  -- Resolved English copy for answer_value, or NULL when the option has none.
+  -- NULL is the interesting case: an answer recorded under a code the published
+  -- step no longer offers, which in_option_set also reports.
+  answer_label      TEXT,
   in_option_set     BOOLEAN,
   sessions          BIGINT,
   answered_sessions BIGINT
@@ -2181,7 +2205,7 @@ BEGIN
   ),
   keys AS (
     SELECT st.step_id, st.position, st.sort_index, st.label, st.step_type,
-           st.option_values,
+           st.option_values, st.option_labels,
            -- The allowlist. Closed-vocabulary types only.
            (st.step_type IN ('radio','picture_select','text_select','chip_select',
                              'multi_select','likert','slider','trial_price')) AS emits_values,
@@ -2198,7 +2222,7 @@ BEGIN
   ),
   raw AS (
     SELECT k.step_id, k.position, k.sort_index, k.label, k.step_type,
-           k.answer_key, k.emits_values, k.option_values,
+           k.answer_key, k.emits_values, k.option_values, k.option_labels,
            sc.id, sc.quiz_answers -> k.answer_key AS v
     FROM keys k
     JOIN scoped sc ON sc.quiz_answers ? k.answer_key
@@ -2206,7 +2230,7 @@ BEGIN
   exploded AS (
     -- multi_select and friends: one row per chosen code.
     SELECT r.step_id, r.position, r.sort_index, r.label, r.step_type, r.answer_key,
-           r.option_values, r.id, 'array_member'::TEXT AS value_kind, e.value AS answer_value
+           r.option_values, r.option_labels, r.id, 'array_member'::TEXT AS value_kind, e.value AS answer_value
     FROM raw r
     CROSS JOIN LATERAL jsonb_array_elements_text(r.v) AS e(value)
     WHERE r.emits_values AND jsonb_typeof(r.v) = 'array'
@@ -2214,13 +2238,13 @@ BEGIN
     -- #>> '{}' unwraps a JSON scalar to text. ::text would keep the quotes and
     -- every label in the chart would render as "female" rather than female.
     SELECT r.step_id, r.position, r.sort_index, r.label, r.step_type, r.answer_key,
-           r.option_values, r.id, 'scalar'::TEXT, r.v #>> '{}'
+           r.option_values, r.option_labels, r.id, 'scalar'::TEXT, r.v #>> '{}'
     FROM raw r
     WHERE r.emits_values AND jsonb_typeof(r.v) IN ('string','number','boolean')
     UNION ALL
     -- The PII path: counted, never read.
     SELECT r.step_id, r.position, r.sort_index, r.label, r.step_type, r.answer_key,
-           r.option_values, r.id, 'freeform'::TEXT, NULL
+           r.option_values, r.option_labels, r.id, 'freeform'::TEXT, NULL
     FROM raw r
     WHERE NOT r.emits_values
   ),
@@ -2231,6 +2255,10 @@ BEGIN
   SELECT x.step_id, x.position, x.sort_index, x.label, x.step_type, x.answer_key,
          x.value_kind,
          x.answer_value,
+         -- ->> on a missing key is NULL, which is exactly what an option
+         -- published before this column existed should render as.
+         CASE WHEN x.answer_value IS NULL THEN NULL
+              ELSE x.option_labels ->> x.answer_value END,
          CASE WHEN x.answer_value IS NULL THEN NULL
               ELSE x.option_values ? x.answer_value END,
          count(DISTINCT x.id)::BIGINT,
@@ -2240,9 +2268,9 @@ BEGIN
          max(pk.answered_sessions)::BIGINT
   FROM exploded x
   JOIN per_key pk ON pk.step_id = x.step_id AND pk.answer_key = x.answer_key
-  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
   HAVING count(DISTINCT x.id) >= GREATEST(COALESCE(p_min_sessions, 1), 1)
-  ORDER BY 3, 6, 10 DESC, 8;
+  ORDER BY 3, 6, 11 DESC, 8;
 END;
 $$;
 
