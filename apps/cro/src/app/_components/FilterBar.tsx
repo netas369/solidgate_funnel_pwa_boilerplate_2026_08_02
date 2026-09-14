@@ -50,9 +50,9 @@ export function FilterBar({
    */
   showPeriod?: boolean;
 }) {
-  const funnels = segments.filter((s) => s.kind === 'funnel');
-  const versions = segments.filter((s) => s.kind === 'version');
-  const locales = segments.filter((s) => s.kind === 'locale');
+  const funnels = withSelection(segments, 'funnel', filters.funnelVariant);
+  const versions = withSelection(segments, 'version', filters.quizVersion);
+  const locales = withSelection(segments, 'locale', filters.locale);
 
   return (
     <div className="card px-4 py-3">
@@ -146,6 +146,28 @@ export function FilterBar({
       </div>
     </div>
   );
+}
+
+/**
+ * One dimension's options, with the current selection guaranteed present.
+ *
+ * cro_funnel_segments reports what had TRAFFIC in the window, so the thing you
+ * are filtered to can be missing from it: a version deployed this morning, or
+ * any selection inside a window nobody used. The row would then either vanish
+ * or show only the options you are not looking at, and in both cases the board
+ * silently reports on something it never names.
+ *
+ * The synthesised chip carries zero sessions, which is the honest count — it
+ * says "this is what you picked, and it has nothing here".
+ */
+function withSelection(
+  segments: SegmentOptionRow[],
+  kind: SegmentOptionRow['kind'],
+  selected: string | undefined,
+): SegmentOptionRow[] {
+  const options = segments.filter((s) => s.kind === kind);
+  if (!selected || options.some((o) => o.id === selected)) return options;
+  return [...options, { kind, id: selected, sessions: 0, first_seen: '', last_seen: '' }];
 }
 
 /**

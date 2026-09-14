@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { OtpInput } from '@repo/shared/auth/otp-input';
-import { OTP_LENGTH, isCompleteOtp } from '@repo/shared/auth/otp-length';
+import { OTP_LENGTH, isCompleteOtp, otpArticle } from '@repo/shared/auth/otp-length';
 import { BrandMark } from '../_components/BrandMark';
 
 /**
@@ -82,7 +82,7 @@ export function CroLoginForm() {
         <BrandMark size="lg" />
         <p className="mt-3 text-sm text-ink-soft">
           {step === 'email'
-            ? `Sign in with your work email — we will send you an ${OTP_LENGTH}-digit code.`
+            ? `Sign in with your work email — we will send you ${otpArticle()} ${OTP_LENGTH}-digit code.`
             : `Enter the ${OTP_LENGTH}-digit code we just sent.`}
         </p>
       </header>

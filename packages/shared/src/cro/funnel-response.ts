@@ -432,7 +432,11 @@ export function assembleFunnelResponse(
         "This quiz version has no published definition. Step labels and branch handling are unavailable until the publisher runs.",
     });
   }
-  if (steps.some((group) => group.retired)) {
+  // Only meaningful against a published catalog. With no catalog at all EVERY
+  // step lands in the retired bucket, and saying they were "removed from the
+  // published quiz" contradicts the CATALOG_NOT_PUBLISHED warning printed right
+  // above it — they were never published in the first place.
+  if (options.configHash !== null && steps.some((group) => group.retired)) {
     warnings.push({
       code: "RETIRED_STEPS",
       message: "Some recorded steps are no longer in the published quiz.",

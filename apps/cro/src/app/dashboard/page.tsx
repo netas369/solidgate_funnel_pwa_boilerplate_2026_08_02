@@ -168,6 +168,15 @@ export default async function OverviewPage({
         <div className="card px-4 py-12 text-center text-sm text-ink-faint">
           Nobody has taken this version of the quiz in this period yet.
         </div>
+      ) : view.quiz.configHash === null ? (
+        // No published definition means no step order, so every panel below
+        // that counts positions would report zeros against real traffic. The
+        // warning above already says what to do; repeating it as a wall of 0%
+        // would just look like a dead funnel.
+        <div className="card px-4 py-12 text-center text-sm text-ink-faint">
+          {formatPeople(sessions)} visits used this quiz version, but its structure has
+          never been published — so there is no question order to chart yet.
+        </div>
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

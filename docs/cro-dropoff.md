@@ -72,6 +72,35 @@ the list gets a "your account is not on the analyst list" message rather than an
 board, and the anon key on its own can read nothing at all. A test fails the build if a
 service-role key is ever referenced from this app.
 
+### Opening it from PMC Hub
+
+A plain link works — the analyst signs in with a code like anywhere else. To skip
+that, PMC Hub can ask the product's funnel for a one-time link:
+
+```
+POST https://<funnel>/api/internal/cro-login-link
+x-internal-secret: <that product's INTERNAL_API_SECRET>
+{ "email": "analyst@example.com" }
+
+→ { "url": "https://cro.<product>/sso?token=..." }
+```
+
+Redirect the browser there and the board opens signed in.
+
+**Call it when the link is clicked, not when the page renders.** The token is
+single-use and short-lived; a hub page that embeds a freshly minted link in every
+row puts a live credential in the HTML for every analyst it lists.
+
+**The secret cannot grant access.** An address that is not already in
+`cro_analysts` is refused before a link exists, so the worst a leaked secret does
+is open a board for someone who could already open it. That is the reason this
+endpoint lives on the funnel rather than PMC Hub holding each product's
+service-role key — which would make one internal app a full-database credential
+for every product.
+
+Any failure — stale link, reused link, access revoked since it was minted — lands
+on the normal sign-in page with a line saying why.
+
 ### Filters
 
 Three, and two of them behave in opposite ways:

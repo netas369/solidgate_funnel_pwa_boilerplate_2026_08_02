@@ -20,16 +20,21 @@ export function PositionRow({
   showArms,
   showDetail,
   filters,
+  catalogPublished = true,
 }: {
   group: AssembledPosition;
   showArms: boolean;
   showDetail: boolean;
   filters: DashboardFilters;
+  /** False before the publisher has ever run for this version. */
+  catalogPublished?: boolean;
 }) {
   // A retired bucket has no position, no displayIndex and no bar. Neither
   // reference handles it, and without this branch the row renders "—" against
   // a bar computed from a null.
-  if (group.retired) return <RetiredRow group={group} />;
+  if (group.retired) {
+    return <UnplacedRow group={group} catalogPublished={catalogPublished} />;
+  }
 
   const { lead } = group;
 
@@ -158,19 +163,32 @@ export function PositionRow({
 }
 
 /**
- * Steps with recorded traffic that the published catalog does not contain.
+ * Steps with recorded traffic that the published catalog does not place.
  *
  * They have no slot in the funnel, so a bar, a position or a change against the
  * previous question would all be meaningless. What matters is that they are on
  * screen at all: silently dropping them would hide traffic, and inventing a
  * position for them would put a phantom question in the middle of the chart.
+ *
+ * TWO DIFFERENT CAUSES, and they need opposite wording. Against a published
+ * catalog, a step it does not contain was genuinely removed from the quiz.
+ * With NO catalog, nothing was removed — the publisher has not run, so every
+ * step lands here and "no longer in the quiz" is the opposite of the truth.
  */
-function RetiredRow({ group }: { group: AssembledPosition }) {
+function UnplacedRow({
+  group,
+  catalogPublished,
+}: {
+  group: AssembledPosition;
+  catalogPublished: boolean;
+}) {
   return (
     <li className="border-b border-hairline px-4 py-3 last:border-0">
       <div className="flex items-center gap-4">
         <span className="w-6 shrink-0 text-right text-xs tabular-nums text-ink-soft">—</span>
-        <span className="text-sm text-ink-soft">No longer in the quiz</span>
+        <span className="text-sm text-ink-soft">
+          {catalogPublished ? 'No longer in the quiz' : 'Not published yet'}
+        </span>
       </div>
       <ul className="mt-2 space-y-2 pl-10">
         {[group.lead, ...group.branches].map((row) => (

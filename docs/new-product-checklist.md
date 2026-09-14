@@ -188,8 +188,14 @@ INSERT INTO cro_analysts (email, note) VALUES ('you@example.com', 'CRO');
   with no error at all. The template must contain `{{ .Token }}`.
 
 The board never holds a service-role key; a test fails the build if one is referenced.
-Everything it reads goes through `cro_*` functions gated on that table. Full tour:
-[`docs/cro-dropoff.md`](cro-dropoff.md).
+Everything it reads goes through `cro_*` functions gated on that table.
+
+- [ ] For a PMC Hub link that skips the sign-in, set `NEXT_PUBLIC_CRO_URL` on the
+  **funnel** too — `/api/internal/cro-login-link` reads it — and give PMC Hub this
+  product's `INTERNAL_API_SECRET`. That secret can only open the board for someone
+  already in `cro_analysts`; it cannot grant access.
+
+Full tour: [`docs/cro-dropoff.md`](cro-dropoff.md).
 
 ---
 

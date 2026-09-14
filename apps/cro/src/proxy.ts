@@ -32,6 +32,14 @@ export async function proxy(request: NextRequest) {
     return await updateSession(request);
   }
 
+  // The PMC Hub handoff. Must be reachable with no session — establishing one
+  // is its entire job. Opening it is not a way in: it redeems a single-use
+  // token minted by a caller that already proved the address is an analyst,
+  // then re-checks membership itself and signs out anyone who is not.
+  if (pathname === '/sso') {
+    return await updateSession(request);
+  }
+
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

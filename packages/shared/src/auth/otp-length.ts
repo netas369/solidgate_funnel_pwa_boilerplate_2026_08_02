@@ -42,3 +42,15 @@ export const OTP_TOKEN_PATTERN = new RegExp(`^\\d{${OTP_LENGTH}}$`);
 export function isCompleteOtp(value: string): boolean {
   return OTP_TOKEN_PATTERN.test(value);
 }
+
+/**
+ * "a" or "an" for a digit count.
+ *
+ * The CRO board shipped saying "an 6-digit code". The article depends on how
+ * the NUMERAL is read aloud rather than on its first letter — 8 is "an eight",
+ * 6 is "a six" — so it cannot be hardcoded beside a constant a product may
+ * change. GoTrue accepts 6-10, and 8 is the one that flips it.
+ */
+export function otpArticle(n: number = OTP_LENGTH): 'a' | 'an' {
+  return String(n).startsWith('8') ? 'an' : 'a';
+}

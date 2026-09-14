@@ -40,6 +40,12 @@ export default async function StepsPage({
   }
 
   const { totals, biggestLoss } = view;
+  // Before the publisher has run there is no step order, so there is no funnel:
+  // every step lands in the unplaced bucket, `entered` comes from the first
+  // PLACED position and is therefore 0, and the three cards confidently report
+  // that nobody took a quiz 52 people took. Counts without an order is all this
+  // state honestly has, so it is all it shows.
+  const catalogPublished = view.quiz.configHash !== null;
 
   return (
     <div className="space-y-8">
@@ -59,6 +65,30 @@ export default async function StepsPage({
         <p className="card p-8 text-sm text-ink-soft">
           Nobody has taken this version of the quiz in this period yet.
         </p>
+      ) : !catalogPublished ? (
+        <section className="card overflow-hidden">
+          <div className="border-b border-hairline px-4 py-4">
+            <h3 className="text-sm font-medium text-ink">
+              What was recorded · {rangeLabel(filters)}
+            </h3>
+            <p className="mt-1 text-xs text-ink-faint">
+              Every step that saw traffic, by its id. Publish the definition and this
+              becomes the funnel — in order, named, with the branches resolved.
+            </p>
+          </div>
+          <ol>
+            {view.steps.map((group) => (
+              <PositionRow
+                key={group.position ?? `unplaced:${group.lead.stepId}`}
+                group={group}
+                showArms={showArms}
+                showDetail={showDetail}
+                filters={filters}
+                catalogPublished={false}
+              />
+            ))}
+          </ol>
+        </section>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">

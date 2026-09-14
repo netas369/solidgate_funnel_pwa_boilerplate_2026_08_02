@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkCroOtpRateLimit, sendCroOtp } from '@/lib/cro-otp';
-import { OTP_LENGTH } from '@repo/shared/auth/otp-length';
+import { OTP_LENGTH, otpArticle } from '@repo/shared/auth/otp-length';
 
 /**
  * Always the same answer, whoever asks. Anything else turns this endpoint into
@@ -9,7 +9,7 @@ import { OTP_LENGTH } from '@repo/shared/auth/otp-length';
  */
 const GENERIC_SUCCESS = {
   ok: true,
-  message: `If that email can access this dashboard, check your inbox for an ${OTP_LENGTH}-digit code.`,
+  message: `If that email can access this dashboard, check your inbox for ${otpArticle()} ${OTP_LENGTH}-digit code.`,
 };
 
 /**
