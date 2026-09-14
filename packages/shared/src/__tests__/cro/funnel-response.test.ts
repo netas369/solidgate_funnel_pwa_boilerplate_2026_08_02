@@ -36,21 +36,12 @@ function row(over: Partial<CroStepFunnelRow> & { step_id: string }): CroStepFunn
 }
 
 const OPTIONS = {
-  appKey: "acme",
-  appLabel: "Acme",
-  capabilities: ["overview", "dropoff"],
   quizVariant: "v1",
   configHash: "a".repeat(64),
   firstStepId: "step1",
   totalSteps: 4,
   terminalStepIds: ["step4"],
   range: { from: "2026-09-01T00:00:00Z", to: "2026-09-08T00:00:00Z" },
-  segments: {
-    funnels: [{ id: "main-v1", label: "Main funnel", sessions: 100 }],
-    versions: [{ id: "v1", label: "Version 1", note: "First cut", sessions: 100 }],
-    locales: [{ id: "en", label: "English", sessions: 100 }],
-    selected: { funnel: null, version: "v1", locale: null },
-  },
   generatedAt: "2026-09-11T09:00:00Z",
 };
 
@@ -318,15 +309,30 @@ describe("assembleFunnelResponse — rows the dashboard must still see", () => {
 });
 
 describe("assembleFunnelResponse — envelope", () => {
-  it("carries the contract version, capabilities and segments through", () => {
+  it("carries the quiz metadata the screens interpret counts against", () => {
     const out = assembleFunnelResponse(baseRows(), OPTIONS);
-    expect(out.contract).toBe(1);
-    expect(out.app.capabilities).toEqual(["overview", "dropoff"]);
-    expect(out.segments.versions).toEqual([
-      { id: "v1", label: "Version 1", note: "First cut", sessions: 100 },
-    ]);
     expect(out.quiz).toMatchObject({ quizVariant: "v1", totalSteps: 4 });
+    expect(out.range).toEqual(OPTIONS.range);
+    expect(out.generatedAt).toBe(OPTIONS.generatedAt);
     expect(out.armCount).toBe(1);
+  });
+
+  it("returns nothing a caller has to invent a value for", () => {
+    // The payload envelope of the deleted cross-product API — an app key, a
+    // label, a capability list, a contract version and the filter options —
+    // outlived it by three waves. Every page had to pass values for fields
+    // nothing read, and each was a place to pass the wrong one.
+    const out = assembleFunnelResponse(baseRows(), OPTIONS);
+    expect(Object.keys(out).sort()).toEqual([
+      "armCount",
+      "biggestLoss",
+      "generatedAt",
+      "quiz",
+      "range",
+      "steps",
+      "totals",
+      "warnings",
+    ]);
   });
 
   it("converts seconds to milliseconds for the detail cells", () => {

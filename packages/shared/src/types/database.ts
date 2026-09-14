@@ -5,9 +5,12 @@
 // CHECK NULLABILITY AFTER REGENERATING. supabase CLI 2.117.0 types a function
 // argument without a DEFAULT as non-nullable (`p_step_number: number`), but a
 // Postgres argument is always nullable and several callers pass null on
-// purpose. The arguments below are hand-verified against 00001_baseline.sql; a
-// regeneration that turns `T | null` into `T` has lost information, not gained
-// precision, and apps/funnel's funnel-events route stops compiling.
+// purpose. A regeneration that turns `T | null` into `T` has lost information,
+// not gained precision, and apps/funnel stops compiling.
+//
+// database-types-nullability.test.ts pins the arguments this matters for and
+// says what to do when it fails. Do not change the call sites to stop passing
+// null — the SQL accepts it.
 
 export type Json =
   | string

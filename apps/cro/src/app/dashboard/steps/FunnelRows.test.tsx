@@ -48,21 +48,12 @@ function row(over: Partial<CroStepFunnelRow> & { step_id: string }): CroStepFunn
 
 function assemble(rows: CroStepFunnelRow[]) {
   return assembleFunnelResponse(rows, {
-    appKey: 'acme',
-    appLabel: 'Acme',
-    capabilities: [],
     quizVariant: 'boilerplate-v1',
     configHash: 'a'.repeat(64),
     firstStepId: 'step1',
     totalSteps: 3,
     terminalStepIds: ['step3'],
     range: { from: '2026-09-01T00:00:00Z', to: '2026-09-08T00:00:00Z' },
-    segments: {
-      funnels: [],
-      versions: [],
-      locales: [],
-      selected: { funnel: null, version: 'boilerplate-v1', locale: null },
-    },
     generatedAt: '2026-09-14T00:00:00Z',
   });
 }

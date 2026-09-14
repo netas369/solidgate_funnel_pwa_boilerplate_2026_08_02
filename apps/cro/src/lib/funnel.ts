@@ -1,9 +1,4 @@
-import {
-  assembleFunnelResponse,
-  type SegmentOption,
-} from '@repo/shared/cro/funnel-response';
-import { segmentLabel } from '@repo/shared/cro/segment-labels';
-import { BOILERPLATE_BRAND } from '@repo/shared/boilerplate-brand';
+import { assembleFunnelResponse } from '@repo/shared/cro/funnel-response';
 import { requiredQuizVersion, type DashboardFilters } from './filters';
 import {
   funnelSegments,
@@ -47,13 +42,7 @@ export async function loadFunnelView(filters: DashboardFilters): Promise<{
     view: assembleFunnelResponse(rows, {
       ...catalogEnvelope(catalog, quizVariant),
       range,
-      segments: pickerSegments(segments, filters),
       generatedAt: new Date().toISOString(),
-      // The catalog's own app_key is authoritative — it was stamped at publish
-      // time, so a window spanning a rename still reports what published it.
-      appKey: catalog[0]?.app_key ?? BOILERPLATE_BRAND.shortName,
-      appLabel: BOILERPLATE_BRAND.name,
-      capabilities: [],
     }),
     segments,
     quizVariant,
@@ -76,35 +65,5 @@ function catalogEnvelope(catalog: CatalogRow[], quizVariant: string) {
     firstStepId: head?.first_step_id ?? null,
     totalSteps: head?.total_steps ?? null,
     terminalStepIds: catalog.filter((row) => row.is_terminal).map((row) => row.step_id),
-  };
-}
-
-/**
- * The segment lists the assembler carries through to the response.
- *
- * `selected` uses null rather than undefined for "not filtered", matching the
- * assembler's own shape.
- */
-function pickerSegments(rows: SegmentOptionRow[], filters: DashboardFilters) {
-  const of = (kind: 'funnel' | 'version' | 'locale'): SegmentOption[] =>
-    rows
-      .filter((row) => row.kind === kind)
-      .map((row) => ({
-        id: row.id,
-        ...segmentLabel(kind, row.id),
-        sessions: row.sessions,
-        firstSeen: row.first_seen,
-        lastSeen: row.last_seen,
-      }));
-
-  return {
-    funnels: of('funnel'),
-    versions: of('version'),
-    locales: of('locale'),
-    selected: {
-      funnel: filters.funnelVariant ?? null,
-      version: requiredQuizVersion(filters),
-      locale: filters.locale ?? null,
-    },
   };
 }

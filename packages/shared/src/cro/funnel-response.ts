@@ -45,17 +45,6 @@ export interface CroStepFunnelRow {
   p90_seconds_to_answer: number | null;
 }
 
-export interface SegmentOption {
-  id: string;
-  /** Human name for the picker button. Falls back to `id` when unregistered. */
-  label: string;
-  /** Versions only: what changed. "v2 vs v3" means nothing on its own. */
-  note?: string;
-  sessions: number;
-  firstSeen?: string | null;
-  lastSeen?: string | null;
-}
-
 export type DropSeverity = "heavy" | "notable" | "normal";
 
 export interface AssembledStep {
@@ -188,22 +177,26 @@ function armTag(row: CroStepFunnelRow): string {
   return row.is_unconditional ? "Everyone sees this" : "Only some visitors";
 }
 
+/**
+ * What the counts have to be interpreted against.
+ *
+ * Every field here is READ: `configHash` decides whether the
+ * CATALOG_NOT_PUBLISHED warning fires, `totalSteps` gives each position its
+ * percentage, and `terminalStepIds` is how "reached the end" is counted.
+ *
+ * An earlier design also carried an app key, a label, a capability list, a
+ * contract version and the filter options, because this function once served a
+ * cross-product HTTP payload. That was removed in 1b41423; the fields outlived
+ * it by three waves, and every page had to invent values for them that nothing
+ * ever read.
+ */
 export interface AssembleOptions {
-  appKey: string;
-  appLabel: string;
-  capabilities: string[];
   quizVariant: string;
   configHash: string | null;
   firstStepId: string | null;
   totalSteps: number | null;
   terminalStepIds: string[];
   range: { from: string; to: string };
-  segments: {
-    funnels: SegmentOption[];
-    versions: SegmentOption[];
-    locales: SegmentOption[];
-    selected: { funnel: string | null; version: string | null; locale: string | null };
-  };
   generatedAt: string;
 }
 
@@ -447,14 +440,7 @@ export function assembleFunnelResponse(
   }
 
   return {
-    contract: 1 as const,
-    app: {
-      key: options.appKey,
-      label: options.appLabel,
-      generatedAt: options.generatedAt,
-      capabilities: options.capabilities,
-    },
-    segments: options.segments,
+    generatedAt: options.generatedAt,
     range: options.range,
     quiz: {
       quizVariant: options.quizVariant,
