@@ -66,10 +66,13 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // One source of truth: public.cro_analysts, checked per request. Revoking
-  // someone therefore takes effect on their next page load rather than whenever
-  // their session happens to expire — or, as with the env allowlist this
-  // replaced, whenever somebody next deploys.
+  // public.cro_analysts, checked per request rather than trusted from the
+  // session. That still matters under the shared-identity model, but it bounds
+  // less than it used to: the row being checked is the shared PMC Hub identity,
+  // so removing it locks out EVERYONE on the next page load. Revoking one
+  // PERSON is a PMC Hub role change, and it stops them minting a new session
+  // while leaving any tab they already have open valid until Supabase expires
+  // it — immediate at the door, delayed for anyone already inside.
   if (!user || !(await isCroAnalyst(supabase))) {
     // Redirect to /login rather than 403. A 403 confirms the path exists and
     // that the visitor simply lacks access; a redirect tells them nothing.

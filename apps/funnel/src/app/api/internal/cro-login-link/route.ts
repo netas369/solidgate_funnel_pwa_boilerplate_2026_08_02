@@ -15,25 +15,42 @@ export const dynamic = 'force-dynamic';
  * string appears in that app. So the board cannot mint its own entry; something
  * that already holds elevated credentials has to, and the funnel already does.
  *
- * WHAT THE CALLER CAN AND CANNOT DO.
+ * WHERE ACCESS IS ACTUALLY DECIDED — READ THIS BEFORE CHANGING THE GATE.
  *
- * PMC Hub holds INTERNAL_API_SECRET for this product. That secret lets it open
- * the board as SOMEONE ALREADY ON THE ANALYST LIST — nothing more. It cannot
- * grant access: an address that is not in cro_analysts is refused here, before
- * any link exists. Granting is still an INSERT performed by a person.
+ * Not here, and not in cro_analysts. That table holds ONE seeded row, the
+ * shared PMC Hub identity (00001_baseline.sql), and PMC Hub mints as that
+ * address for everyone. WHICH PEOPLE may open a board is a PMC Hub role,
+ * decided in a different repo.
  *
- * That is the difference between this and handing PMC Hub a service-role key,
- * which would make one internal app a full-database credential for every
- * product built from this template.
+ * The gate below is therefore not the thing keeping strangers out — PMC Hub's
+ * own authentication is. What the gate still does is bound what this secret is
+ * worth: a caller holding INTERNAL_API_SECRET can open the board as an address
+ * already on the list, and cannot mint for an arbitrary one. That is still the
+ * difference between this and handing PMC Hub a service-role key, which would
+ * make one internal app a full-database credential for every product built from
+ * this template.
  *
- * FIRST-TIME ANALYSTS DEPEND ON SIGNUPS BEING ENABLED. Granting access is an
- * INSERT into cro_analysts, which creates no auth user, so the first link for a
- * new analyst is minted for an address GoTrue has never seen. generateLink
- * creates the user on the way past — but only while Authentication → Providers
- * → Email → "Allow new users to sign up" is on. Turning it off as a hardening
- * step breaks every new analyst's first click and nothing else, which is a very
- * confusing failure. The same assumption is what makes cro-otp.ts pass
- * shouldCreateUser: true; see the note there.
+ * So: do not remove, relax or add a flag to the membership check below. The
+ * shared-identity design works precisely BECAUSE none of the security code
+ * changed — the address simply is on the list. If a change here looks
+ * necessary, the requirement has been misread.
+ *
+ * TWO CONSEQUENCES OF THE SHARED IDENTITY, both accepted deliberately:
+ *
+ *   - The board cannot attribute a visit to a person. Every session arrives as
+ *     the shared address. Fine while the boards are read-only aggregate counts;
+ *     revisit it if one ever grows a write action.
+ *   - Revocation is immediate at the door and delayed for anyone already
+ *     inside. Removing someone in PMC Hub stops them minting a NEW session; a
+ *     tab they already have open stays valid until Supabase expires it.
+ *
+ * SIGNUPS MUST STAY ENABLED. The shared address has no GoTrue user until the
+ * first mint creates one, because seeding cro_analysts creates no auth user.
+ * generateLink makes it on the way past — but only while Authentication →
+ * Providers → Email → "Allow new users to sign up" is on. Turning it off as a
+ * hardening step breaks the very first click on a freshly deployed product and
+ * nothing else, which is a confusing failure to diagnose. The same assumption
+ * is what makes cro-otp.ts pass shouldCreateUser: true; see the note there.
  *
  * THE LINK IS MINTED PER CLICK, NOT PER PAGE RENDER. The token is Supabase's
  * own single-use OTP hash and expires with the project's OTP lifetime; a hub
@@ -92,8 +109,10 @@ export async function POST(request: Request) {
 
   const admin = getSupabaseAdminClient();
 
-  // THE GATE. Checked before a link exists, so a caller holding the secret can
-  // never mint entry for an address a person has not already granted.
+  // THE GATE. Unchanged by the move to PMC Hub roles, and deliberately so: it
+  // is what stops a caller holding the secret from minting entry for an
+  // arbitrary address. In practice the only address that passes is the shared
+  // identity seeded in the baseline.
   const { data: analyst, error: analystError } = await admin
     .from('cro_analysts')
     .select('email')

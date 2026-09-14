@@ -175,29 +175,47 @@ version arrives, or its drop-off is recorded under step ids the board cannot lab
 `apps/cro` (:3207) ships working — five tabs over this product's own data. What a new
 product has to do:
 
+**Who may read it is not decided here.** `cro_analysts` is seeded by the baseline
+with one row — the shared PMC Hub identity — and PMC Hub opens every board as that
+address. Which PEOPLE may do so is a PMC Hub role. There is no per-product list to
+maintain, and no INSERT to remember.
+
 - [ ] Its own Vercel project, root `apps/cro`, on a subdomain nobody links to publicly
-- [ ] `NEXT_PUBLIC_CRO_URL` set, so a pasted link unfurls with the right name
-- [ ] The first analyst added — **this is the entire access model**:
-
-```sql
-INSERT INTO cro_analysts (email, note) VALUES ('you@example.com', 'CRO');
-```
-
-- [ ] Supabase Auth email template checked. The board signs in with a **6-digit code**,
-  and a stock `confirmation` template mails a magic LINK instead — the login then dies
-  with no error at all. The template must contain `{{ .Token }}`.
+- [ ] `NEXT_PUBLIC_CRO_URL` set on **both** the CRO app and the funnel —
+  `/api/internal/cro-login-link` reads it to build the hand-through link
+- [ ] PMC Hub given this product's `INTERNAL_API_SECRET`. That secret opens the board
+  as an address already on the list; it cannot mint for an arbitrary one, and it
+  cannot grant access.
+- [ ] Leave email signups **enabled** in Supabase Auth. Seeding `cro_analysts`
+  creates no auth user, so the first hand-through is what creates it. Disabling
+  signups breaks the very first click on a freshly deployed product and nothing
+  else, which reads as a broken link rather than a setting.
+- [ ] Supabase Auth email template checked — only if anyone will sign in **directly**
+  rather than through the hub. The board uses a **6-digit code**, and a stock
+  `confirmation` template mails a magic LINK instead, so the login dies with no error
+  at all. The template must contain `{{ .Token }}`.
 
 The board never holds a service-role key; a test fails the build if one is referenced.
 Everything it reads goes through `cro_*` functions gated on that table.
 
-- [ ] For a PMC Hub link that skips the sign-in, set `NEXT_PUBLIC_CRO_URL` on the
-  **funnel** too — `/api/internal/cro-login-link` reads it — and give PMC Hub this
-  product's `INTERNAL_API_SECRET`. That secret can only open the board for someone
-  already in `cro_analysts`; it cannot grant access.
-- [ ] Leave email signups **enabled** in Supabase Auth. Adding an analyst is an
-  INSERT, which creates no auth user, so their first sign-in — by code or by hub
-  link — is what creates it. Disabling signups breaks only that first click, per
-  person, which reads as a broken link rather than a setting.
+**Two trade-offs this buys, both accepted deliberately:**
+
+- **No attribution.** Every visit arrives as the shared identity, so the board cannot
+  say who looked. Fine while boards are read-only aggregate counts — revisit if one
+  ever grows a write action.
+- **Revocation is immediate at the door, delayed inside.** Removing someone in PMC
+  Hub stops them minting a NEW session; a tab they already have open stays valid
+  until Supabase expires it.
+
+**And one thing to keep in mind:** the shared address is a real mailbox, and anyone
+who can read it can sign in to every product's board directly with an emailed code,
+without PMC Hub and without any secret. Guard it accordingly.
+
+Granting someone direct access, outside the hub, is still a second row:
+
+```sql
+INSERT INTO cro_analysts (email, note) VALUES ('you@example.com', 'direct access');
+```
 
 Full tour: [`docs/cro-dropoff.md`](cro-dropoff.md).
 
@@ -300,5 +318,7 @@ npx supabase gen types typescript --linked > packages/shared/src/types/database.
 - [ ] Consent approach decided
 - [ ] A real end-to-end purchase completed in sandbox, including a 3DS card
 - [ ] `supabase/config.toml` → `project_id` changed away from `project-template`
-- [ ] Quiz definition published (`publish-quiz-definition.ts --apply`) and at least one
-  row in `cro_analysts`, or the CRO board is an empty screen for everybody
+- [ ] Quiz definition published (`publish-quiz-definition.ts --apply`), or the CRO
+  board renders raw step ids instead of questions
+- [ ] `cro_analysts` holds the shared PMC Hub row — the baseline seeds it, so this is
+  a check that the migration ran, not a step to perform

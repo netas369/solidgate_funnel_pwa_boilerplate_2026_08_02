@@ -60,27 +60,49 @@ npm run dev:cro     # http://localhost:3207
 ```
 
 **It holds no god-mode key.** The board signs in with an email code and then carries
-only the public anon key, exactly like the funnel does. What makes it work is a short
-list of analysts:
+only the public anon key, exactly like the funnel does. The anon key on its own can
+read nothing at all, and a test fails the build if a service-role key is ever
+referenced from this app.
+
+### Who can open it
+
+**PMC Hub decides.** Anyone with a PMC Hub account and the right role can open any
+product's board. There is no per-product list to maintain — every product's
+`cro_analysts` is seeded by the migration with one shared identity,
+`cro@pmcbaltic.com`, and PMC Hub opens every board as that address.
+
+This replaced a per-person list in each product. That was correct and did not scale:
+every employee had to be whitelisted separately in every product before they could be
+handed through. The boards are read-only aggregate counts — no answers, no emails, no
+personal data — so the per-person list was buying less than it cost.
+
+**Three things to know about it:**
+
+- **The board cannot say who looked.** Every visit arrives as the shared identity.
+  Fine while the boards only read; it would need revisiting if one ever grew a write
+  action.
+- **Revocation is immediate at the door and delayed inside.** Removing someone in PMC
+  Hub stops them opening anything new; a tab they already have open stays valid until
+  Supabase expires it.
+- **The shared address is a real mailbox, and it is a master key.** Anyone who can
+  read it can sign in to every product's board directly with an emailed code — no PMC
+  Hub, no secret. Guard it like one.
+
+To give someone direct access without going through the hub, add a second row:
 
 ```sql
-INSERT INTO cro_analysts (email, note) VALUES ('you@example.com', 'CRO');
+INSERT INTO cro_analysts (email, note) VALUES ('you@example.com', 'direct access');
 ```
 
-Adding a colleague is that one line — no redeploy, no key to hand over. Anyone not on
-the list gets a "your account is not on the analyst list" message rather than an empty
-board, and the anon key on its own can read nothing at all. A test fails the build if a
-service-role key is ever referenced from this app.
+### How the hand-through works
 
-### Opening it from PMC Hub
-
-A plain link works — the analyst signs in with a code like anywhere else. To skip
-that, PMC Hub can ask the product's funnel for a one-time link:
+A plain link always works — you just sign in with a code. To skip that, PMC Hub asks
+the product's funnel for a one-time link:
 
 ```
 POST https://<funnel>/api/internal/cro-login-link
 x-internal-secret: <that product's INTERNAL_API_SECRET>
-{ "email": "analyst@example.com" }
+{ "email": "cro@pmcbaltic.com" }
 
 → { "url": "https://cro.<product>/sso?token=..." }
 ```
@@ -89,14 +111,13 @@ Redirect the browser there and the board opens signed in.
 
 **Call it when the link is clicked, not when the page renders.** The token is
 single-use and short-lived; a hub page that embeds a freshly minted link in every
-row puts a live credential in the HTML for every analyst it lists.
+row puts a live credential in the HTML.
 
-**The secret cannot grant access.** An address that is not already in
-`cro_analysts` is refused before a link exists, so the worst a leaked secret does
-is open a board for someone who could already open it. That is the reason this
-endpoint lives on the funnel rather than PMC Hub holding each product's
-service-role key — which would make one internal app a full-database credential
-for every product.
+**The secret cannot grant access.** An address that is not in `cro_analysts` is
+refused before a link exists — so a leaked secret opens a board that the shared
+identity could already open, and nothing more. That is why this endpoint lives on
+the funnel rather than PMC Hub holding each product's service-role key, which would
+make one internal app a full-database credential for every product.
 
 Any failure — stale link, reused link, access revoked since it was minted — lands
 on the normal sign-in page with a line saying why.
@@ -167,8 +188,10 @@ than hidden, so a screen nobody reaches is visible instead of silently missing.
 sample and ranks problems by how many people were lost rather than by percentage. A
 confident 33% off three sessions is worse than no number.
 
-**"Your account is not on the CRO analyst list."** The sign-in worked; the address just
-isn't in `cro_analysts`. Add it with the INSERT above.
+**"Your account is not on the CRO analyst list."** The sign-in worked, but you signed
+in directly with your own address rather than coming through PMC Hub — and only the
+shared identity is on the list. Open the board from PMC Hub, or add yourself with the
+INSERT above.
 
 **An answer shows as `o1` rather than words.** That version was published before option
 wording was carried, or the option has since been removed — a removed one says so on the

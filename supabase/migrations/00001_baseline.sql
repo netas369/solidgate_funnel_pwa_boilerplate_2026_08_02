@@ -1401,7 +1401,13 @@ $$;
 
 -- ── cro_analysts ────────────────────────────────────────────────────────────
 -- Who may read the dashboard. A table rather than an env allowlist because
--- adding a colleague should be an INSERT, not a production deploy.
+-- membership should be data, not a production deploy.
+--
+-- In practice this holds ONE row: the shared PMC Hub identity seeded below.
+-- Individual access is governed by PMC Hub roles, not here. The table and every
+-- check against it remain exactly as they were — that is the point of the
+-- design, not an oversight. Adding a second row is still supported and is how
+-- you would grant someone direct access without going through the hub.
 CREATE TABLE IF NOT EXISTS public.cro_analysts (
   -- Lowercased, matching how is_cro_analyst() compares. The second CHECK is not
   -- decoration: is_cro_analyst() compares against
@@ -1423,6 +1429,23 @@ GRANT ALL ON public.cro_analysts TO service_role;
 
 COMMENT ON TABLE public.cro_analysts IS
   'Allowlist for the CRO dashboard. Read only by is_cro_analyst(); never exposed to authenticated.';
+
+-- THE ONLY SEEDED ROW IN THIS BASELINE, and it is here rather than in
+-- supabase/seed.sql or the new-product checklist on purpose. seed.sql does not
+-- run on a hosted `db push`, and a checklist step gets missed — either way the
+-- board is an empty screen for everybody, with nothing on it to say why. The
+-- schema is the only place that always runs.
+--
+-- This address is the shared identity PMC Hub mints as. It is not a mailbox
+-- anyone reads day to day, but it IS a real one, and anyone who can read it can
+-- sign in to this board directly with an emailed code. Treat access to that
+-- mailbox as equivalent to access to every product's CRO board.
+--
+-- ON CONFLICT DO NOTHING so re-running the baseline is safe, and so a product
+-- that has edited the note or added its own analysts is never trampled.
+INSERT INTO public.cro_analysts (email, note)
+VALUES ('cro@pmcbaltic.com', 'PMC Hub shared analyst — see docs/cro-dropoff.md')
+ON CONFLICT (email) DO NOTHING;
 
 
 CREATE OR REPLACE FUNCTION public.is_cro_analyst()

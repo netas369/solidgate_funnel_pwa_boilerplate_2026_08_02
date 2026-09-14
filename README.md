@@ -67,8 +67,10 @@ npm run dev:pwa        # PWA only     -> http://localhost:3206
 npm run dev:cro        # CRO board    -> http://localhost:3207
 ```
 
-The CRO board signs in by email code and shows nothing until your address is in
-`cro_analysts` — see [docs/cro-dropoff.md](docs/cro-dropoff.md).
+The CRO board is opened from PMC Hub, which holds the access roles; the migration
+seeds the one shared identity it signs in as. Signing in directly with your own
+address needs a row in `cro_analysts` —
+see [docs/cro-dropoff.md](docs/cro-dropoff.md).
 
 `.env.example` at the repo root is the master reference: every variable, which app reads
 it, and whether it is required.
