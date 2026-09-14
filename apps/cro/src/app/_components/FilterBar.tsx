@@ -32,6 +32,7 @@ export function FilterBar({
   basePath,
   segments,
   allowBlend = false,
+  showPeriod = true,
 }: {
   filters: DashboardFilters;
   basePath: string;
@@ -42,6 +43,12 @@ export function FilterBar({
    * Drop-off.
    */
   allowBlend?: boolean;
+  /**
+   * Offer a date range. False on the live tab, which always reports the last
+   * fifteen minutes — a period control there is a visible lie about what the
+   * numbers cover.
+   */
+  showPeriod?: boolean;
 }) {
   const funnels = segments.filter((s) => s.kind === 'funnel');
   const versions = segments.filter((s) => s.kind === 'version');
@@ -120,6 +127,7 @@ export function FilterBar({
           </Row>
         )}
 
+        {showPeriod && (
         <Row label="Period">
           {[7, 30, 90].map((days) => (
             <Chip
@@ -134,6 +142,7 @@ export function FilterBar({
           </span>
           <CustomRange filters={filters} basePath={basePath} />
         </Row>
+        )}
       </div>
     </div>
   );

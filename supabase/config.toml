@@ -239,6 +239,21 @@ otp_expiry = 3600
 subject = "Your sign-in code"
 content_path = "./supabase/templates/otp-email.html"
 
+# The SAME template for `confirmation`, and this one is not optional.
+#
+# GoTrue picks the template by whether the address already has an auth user:
+# a returning address gets `magic_link`, a FIRST-TIME one gets `confirmation`.
+# The CRO dashboard calls signInWithOtp with shouldCreateUser: true (an analyst
+# is granted by an INSERT into cro_analysts, which creates no auth user), so
+# every analyst's FIRST login takes this path.
+#
+# Left stock it mails a confirmation LINK rather than the 6-digit code, and the
+# login dies with no error at all — the form waits for a code that was never
+# sent. See apps/cro/src/lib/cro-otp.ts.
+[auth.email.template.confirmation]
+subject = "Your sign-in code"
+content_path = "./supabase/templates/otp-email.html"
+
 # Use a production-ready SMTP server
 # [auth.email.smtp]
 # enabled = true

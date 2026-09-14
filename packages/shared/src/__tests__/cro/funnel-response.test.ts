@@ -109,6 +109,81 @@ describe("assembleFunnelResponse — positions and arms", () => {
   });
 });
 
+describe("assembleFunnelResponse — how much traffic a POSITION saw", () => {
+  /**
+   * step2 forks into two arms that BOTH sit at position 2, and neither is on
+   * the spine. Regression: `reached` used to be the lead arm's views alone, so
+   * the slot under-reported by everyone who took the other arm and the funnel
+   * line CLIMBED at position 3. A funnel that goes up is the one shape it
+   * cannot have, and no test caught it — it was found by rendering the board.
+   */
+  function pureBranch(): CroStepFunnelRow[] {
+    return [
+      row({ step_id: "step1", step_position: 1, sort_index: 1, viewed: 1000, answered: 900, dropped: 100 }),
+      row({
+        step_id: "step2a", step_position: 2, sort_index: 2, is_unconditional: false,
+        viewed: 600, answered: 560, dropped: 40,
+      }),
+      row({
+        step_id: "step2b", step_position: 2, sort_index: 3, is_unconditional: false,
+        viewed: 300, answered: 280, dropped: 20,
+      }),
+      row({
+        step_id: "step3", step_position: 3, sort_index: 4, is_terminal: true,
+        viewed: 840, answered: 0,
+      }),
+    ];
+  }
+
+  it("sums the arms when every screen at the position is conditional", () => {
+    const view = assembleFunnelResponse(pureBranch(), OPTIONS);
+    expect(view.steps[1]!.reached).toBe(900);
+  });
+
+  it("never lets the funnel climb", () => {
+    const view = assembleFunnelResponse(pureBranch(), OPTIONS);
+    const reached = view.steps.filter((s) => !s.retired).map((s) => s.reached);
+    for (let i = 1; i < reached.length; i += 1) {
+      expect(reached[i]).toBeLessThanOrEqual(reached[i - 1]!);
+    }
+  });
+
+  it("reports the SLOT's losses beside the slot's traffic", () => {
+    // The two have to be measured the same way or the row divides one
+    // position's reach by another screen's drop: "461 reached, 33 left (11%)"
+    // invites reading 11% of 461, which would be 51 people.
+    const view = assembleFunnelResponse(pureBranch(), OPTIONS);
+    const branchPosition = view.steps[1]!;
+    expect(branchPosition.reached).toBe(900);
+    expect(branchPosition.dropped).toBe(60);
+    expect(branchPosition.dropPct).toBe(6.7);
+    // The arms keep their OWN denominators — an arm's drop is measured against
+    // its own views, never the slot's. (The first arm is the row's lead; the
+    // rest are branches.)
+    expect(branchPosition.lead.dropPct).toBe(6.7);
+    expect(branchPosition.branches.map((b) => b.dropPct)).toEqual([6.7]);
+  });
+
+  it("does NOT add the arms when a screen everyone sees is present", () => {
+    // Adding a conditional arm on top of an unconditional screen would count
+    // the same visitor twice: they saw both.
+    const view = assembleFunnelResponse(baseRows(), OPTIONS);
+    const position3 = view.steps.find((s) => s.position === 3)!;
+    expect(position3.reached).toBe(600);
+  });
+
+  it("is independent of the order the screens were declared in", () => {
+    // Declaration order is a config detail. A slot that reports less traffic
+    // than the screen it opens with, because an arm was listed first, is a
+    // reporting bug rather than a quiz change.
+    const shuffled = baseRows().map((r) =>
+      r.step_id === "step3" ? { ...r, sort_index: 9 } : r,
+    );
+    const view = assembleFunnelResponse(shuffled, OPTIONS);
+    expect(view.steps.find((s) => s.position === 3)!.reached).toBe(600);
+  });
+});
+
 describe("assembleFunnelResponse — totals", () => {
   it("counts entry from the first live position and finish from terminal VIEWS", () => {
     const out = assembleFunnelResponse(baseRows(), OPTIONS);

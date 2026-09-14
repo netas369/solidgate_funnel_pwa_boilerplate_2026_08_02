@@ -93,6 +93,14 @@ export interface AssembledPosition {
   retired: boolean;
   hasTraffic: boolean;
   reached: number;
+  /**
+   * People the SLOT lost, not the lead screen. The two differ only on a pure
+   * branch, where `reached` sums the arms and so must this — a row that reports
+   * the position's traffic beside one arm's losses reads as a percentage of the
+   * wrong denominator.
+   */
+  dropped: number;
+  dropPct: number;
   changeFromPrev: number;
   barPct: number;
   dropBarPct: number;
@@ -258,6 +266,8 @@ export function assembleFunnelResponse(
     retired: boolean;
     sorted: CroStepFunnelRow[];
     reached: number;
+    /** True when a screen everyone passes through defines this slot. */
+    entrySpine: boolean;
   }
   const drafts: Draft[] = ordered.map(([position, group]) => {
     const retired = position === RETIRED_POSITION;
@@ -267,11 +277,37 @@ export function assembleFunnelResponse(
       .slice()
       .sort((a, b) => (a.sort_index ?? 0) - (b.sort_index ?? 0) || a.step_id.localeCompare(b.step_id));
     const lead = sorted[0];
-    // Deliberately NOT the sum across the group (double-counts companions) and
-    // NOT the max (would mask a data problem). An upper bound, not an identity:
-    // someone who went back and came forward again can appear twice.
-    const reached = retired ? 0 : lead.viewed + (lead.entry_skippable ? lead.skipped : 0);
-    return { position, retired, sorted, reached };
+    // How many people this SLOT saw, which is not the same as how many the lead
+    // screen saw.
+    //
+    // A position whose screens are ALL conditional is a pure branch: the arms
+    // are mutually exclusive, so everyone who reached the slot is on exactly one
+    // of them and the slot's traffic is their SUM. Counting only the lead here
+    // undercounts the slot by every visitor who took another arm — which draws a
+    // funnel that DIPS at the branch and climbs back at the next question. A
+    // line chart that goes up is the one thing a funnel cannot do, and it was
+    // invisible until the board was rendered against branching traffic.
+    //
+    // When any screen at the position IS unconditional, everybody passes
+    // through it, so the slot's traffic is that screen's — adding the
+    // conditional arms on top would count those visitors twice.
+    //
+    // The BUSIEST unconditional screen, not the first: visitors move through a
+    // slot's screens in order and lose people on the way, so the busiest is the
+    // one nearest the entry. Picking by declaration order instead would report
+    // a slot as smaller than the screen it opens with, the moment an arm
+    // happens to be declared ahead of the screen everyone sees.
+    const spine = sorted.filter((row) => row.is_unconditional);
+    const entry = spine.reduce<CroStepFunnelRow | null>(
+      (best, row) => (best === null || row.viewed > best.viewed ? row : best),
+      null,
+    );
+    const reached = retired
+      ? 0
+      : entry
+        ? entry.viewed + (entry.entry_skippable ? entry.skipped : 0)
+        : sorted.reduce((total, row) => total + row.viewed, 0);
+    return { position, retired, sorted, reached, entrySpine: entry !== null };
   });
 
   const live = drafts.filter((d) => !d.retired);
@@ -291,7 +327,7 @@ export function assembleFunnelResponse(
 
   const steps: AssembledPosition[] = drafts.map((draft) => {
     const [leadRow, ...rest] = draft.sorted;
-    const reached = draft.reached;
+    const { reached, entrySpine } = draft;
 
     const lead = buildStep(leadRow, { tag: null, shareOfSlotPct: null, smallSample });
 
@@ -314,11 +350,24 @@ export function assembleFunnelResponse(
       .filter((a) => a.viewed >= ARM_ALERT_FLOOR)
       .reduce((worst, a) => Math.max(worst, a.dropPct), 0);
 
+    // How many people the SLOT lost, measured the same way `reached` measures
+    // how many it saw — so a row cannot report one number about the position
+    // and the next about one screen on it. On a pure branch that means summing
+    // the arms, which is sound because they are mutually exclusive; anywhere
+    // else it is the screen everyone passes through.
+    const dropped = draft.retired
+      ? 0
+      : entrySpine
+        ? lead.dropped
+        : draft.sorted.reduce((total, row) => total + Math.max(0, row.dropped), 0);
+    const dropPct = reached > 0 ? round1((dropped / reached) * 100) : 0;
+    const positionSeverity = dropSeverity(dropPct);
+
     if (!draft.retired) displayIndex += 1;
     const changeFromPrev = draft.retired || previousReached === null ? 0 : reached - previousReached;
     if (!draft.retired) previousReached = reached;
 
-    const severity = draft.retired ? "normal" : lead.severity;
+    const severity = draft.retired ? "normal" : positionSeverity;
 
     return {
       position: draft.retired ? null : draft.position,
@@ -330,11 +379,13 @@ export function assembleFunnelResponse(
       retired: draft.retired,
       hasTraffic: draft.sorted.some((r) => r.has_traffic),
       reached,
+      dropped,
+      dropPct,
       changeFromPrev,
       barPct: entered > 0 ? round1((reached / entered) * 100) : 0,
-      dropBarPct: reached > 0 ? round1((lead.dropped / reached) * 100) : 0,
+      dropBarPct: reached > 0 ? round1((dropped / reached) * 100) : 0,
       severity,
-      severityLabel: draft.retired ? null : lead.severityLabel,
+      severityLabel: draft.retired ? null : severityLabel(positionSeverity),
       lead,
       companions,
       branches,

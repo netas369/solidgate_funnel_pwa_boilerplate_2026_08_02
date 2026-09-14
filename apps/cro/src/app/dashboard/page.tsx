@@ -92,6 +92,27 @@ export default async function OverviewPage({
   const { totals } = view;
   const activeNow = live.reduce((sum, r) => sum + r.active_sessions, 0);
 
+  // Merged by step, unlike the live tab. cro_live_sessions reports one row per
+  // (step, basis), so a step holding both people who saved their way there and
+  // people who have only just arrived comes back twice — which on a five-row
+  // summary panel renders as the same question listed twice with no
+  // explanation of why. The live tab keeps them apart and says which is which.
+  const liveByStep = [
+    ...live
+      .reduce((acc, r) => {
+        const found = acc.get(r.step_id);
+        if (found) {
+          found.active_sessions += r.active_sessions;
+          found.p50_dwell_seconds = Math.max(
+            found.p50_dwell_seconds ?? 0,
+            r.p50_dwell_seconds ?? 0,
+          );
+        } else acc.set(r.step_id, { ...r });
+        return acc;
+      }, new Map<string, LiveRow>())
+      .values(),
+  ].sort((a, b) => b.active_sessions - a.active_sessions);
+
   // cro_session_totals returns one row per funnel variant, so an app running an
   // A/B gets several. Summing is right for the same reason the assembler merges
   // funnel arms: one question set, several presentations.
@@ -232,12 +253,12 @@ export default async function OverviewPage({
               linkLabel="Open live"
               minBody={PANEL_BODY_MIN}
             >
-              {live.length === 0 ? (
+              {liveByStep.length === 0 ? (
                 <PanelEmpty>Nobody is taking the quiz right now.</PanelEmpty>
               ) : (
                 <BarList
-                  max={Math.max(...live.map((r) => r.active_sessions))}
-                  items={live.slice(0, TOP_N).map((r) => ({
+                  max={Math.max(...liveByStep.map((r) => r.active_sessions))}
+                  items={liveByStep.slice(0, TOP_N).map((r) => ({
                     label: r.label ?? r.step_id,
                     title: r.step_id,
                     value: r.active_sessions,

@@ -33,7 +33,9 @@ export function ViewToggles({
             ...(showDetail ? { detail: '1' } : {}),
           })}
         >
-          {showArms ? 'Hide branch screens' : `Show ${armCount} branch screens`}
+          {showArms
+            ? 'Hide branch screens'
+            : `Show ${armCount} branch screen${armCount === 1 ? '' : 's'}`}
         </Toggle>
       ) : null}
       <Toggle

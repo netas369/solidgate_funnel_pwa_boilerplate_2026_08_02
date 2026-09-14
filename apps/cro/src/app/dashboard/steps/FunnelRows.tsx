@@ -48,11 +48,16 @@ export function PositionRow({
           <div className="flex flex-wrap items-baseline gap-2">
             {/* The step id lives in the tooltip: an engineer occasionally needs
                 it, nobody else should have to read past it. */}
-            <span className="truncate text-sm text-ink" title={lead.stepId}>
+            {/* Wraps on a phone, truncates from sm up: at 390px the fixed
+                numbers column leaves ~110px here, and a truncated question is
+                the one thing on the row nobody can do without. */}
+            <span className="min-w-0 text-sm text-ink sm:truncate" title={lead.stepId}>
               {lead.label}
             </span>
-            {lead.severityLabel && lead.showBadge ? (
-              <Badge severity={lead.severity}>{lead.severityLabel}</Badge>
+            {/* The POSITION's severity, matching the numbers on the right.
+                On a pure branch the lead is only one arm. */}
+            {group.severityLabel && lead.showBadge ? (
+              <Badge severity={group.severity}>{group.severityLabel}</Badge>
             ) : null}
             {/* BRANCHES only. Companions are on screen either way, so
                 advertising them as hidden follow-ups would be a lie. */}
@@ -86,11 +91,11 @@ export function PositionRow({
           <div
             className="text-xs tabular-nums"
             style={{
-              color: lead.severity === 'normal' ? 'var(--ink-soft)' : 'var(--danger)',
-              fontWeight: lead.severity === 'heavy' ? 600 : 400,
+              color: group.severity === 'normal' ? 'var(--ink-soft)' : 'var(--danger)',
+              fontWeight: group.severity === 'heavy' ? 600 : 400,
             }}
           >
-            {formatPeople(lead.dropped)} left here ({formatPct(lead.dropPct)})
+            {formatPeople(group.dropped)} left here ({formatPct(group.dropPct)})
           </div>
           {formatChange(group.changeFromPrev) ? (
             <div className="text-[10px] tabular-nums text-ink-faint">

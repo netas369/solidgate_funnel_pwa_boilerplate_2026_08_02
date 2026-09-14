@@ -74,11 +74,14 @@ export default async function LivePage({
         </p>
       </header>
 
+      {/* No period row: this tab always reports the last WINDOW_MINUTES, so a
+          date range would be a control that visibly does nothing. */}
       <FilterBar
         filters={filters}
         basePath="/dashboard/live"
         segments={segmentOptions}
         allowBlend
+        showPeriod={false}
       />
 
       {rows.length === 0 ? (
@@ -92,7 +95,11 @@ export default async function LivePage({
               const stuck = (row.p50_dwell_seconds ?? 0) >= STUCK_SECONDS;
               return (
                 <li
-                  key={row.step_id}
+                  // NOT step_id alone: cro_live_sessions reports one row per
+                  // (step, basis), so a step carrying both people who saved
+                  // their way there and people who just arrived comes back
+                  // twice. React warns and may drop one of them.
+                  key={`${row.step_id}:${row.step_basis}`}
                   className="flex items-center gap-4 border-b border-hairline px-4 py-3 last:border-0"
                 >
                   <span className="w-6 shrink-0 text-right text-xs tabular-nums text-ink-soft">
@@ -100,7 +107,7 @@ export default async function LivePage({
                   </span>
 
                   <div className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-ink" title={row.step_id}>
+                    <span className="block text-sm text-ink sm:truncate" title={row.step_id}>
                       {row.label ?? row.step_id}
                     </span>
                     {/* Only the weakest basis earns a note. "They have opened

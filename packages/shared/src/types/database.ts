@@ -1,6 +1,13 @@
 // Generated from the local 00001_baseline.sql schema (public).
 // Regenerate after migrations with: supabase gen types --local --schema public
 // Supabase extension objects belong in the extensions schema.
+//
+// CHECK NULLABILITY AFTER REGENERATING. supabase CLI 2.117.0 types a function
+// argument without a DEFAULT as non-nullable (`p_step_number: number`), but a
+// Postgres argument is always nullable and several callers pass null on
+// purpose. The arguments below are hand-verified against 00001_baseline.sql; a
+// regeneration that turns `T | null` into `T` has lost information, not gained
+// precision, and apps/funnel's funnel-events route stops compiling.
 
 export type Json =
   | string

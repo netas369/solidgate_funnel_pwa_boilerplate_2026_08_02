@@ -18,7 +18,7 @@
 //
 // What remains is what actually applies: send a code, verify a code, and keep
 // the brute-force guard. Rate limiting runs through SECURITY DEFINER functions
-// (see 20260814130000_cro_otp_rate_limit.sql) so it needs no elevated key.
+// (see 00001_baseline.sql) so it needs no elevated key.
 
 import { createClient } from '@repo/shared/supabase/server';
 import { isCroAnalyst } from './cro-auth';

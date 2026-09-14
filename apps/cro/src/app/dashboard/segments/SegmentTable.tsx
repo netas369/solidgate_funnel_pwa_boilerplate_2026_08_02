@@ -15,6 +15,21 @@ import type { SegmentRow } from '@/lib/queries';
  * dimensions would be meaningless: "mobile" and "English" are not competing for
  * the same visitors.
  */
+/**
+ * The typical question a group reached, worded so it names a real question.
+ *
+ * cro_segment_breakdown uses percentile_cont on purpose: a group split between
+ * positions 3 and 4 has a true median of 3.5, and rounding it in SQL would
+ * throw away an eighth of a seven-step funnel. But "question 3.5" is a question
+ * that does not exist, so the interval is what gets rendered — the precision
+ * stays in the data and the screen stays honest.
+ */
+function medianQuestion(value: number | null): string {
+  if (value === null) return '—';
+  if (Number.isInteger(value)) return `question ${value}`;
+  return `question ${Math.floor(value)}\u2013${Math.ceil(value)}`;
+}
+
 export function SegmentTable({
   title,
   hint,
@@ -89,7 +104,7 @@ export function SegmentTable({
               className="w-32 text-right text-sm tabular-nums text-ink-soft"
               title="The question the typical person in this group reached before stopping."
             >
-              {row.median_max_position === null ? '—' : `question ${row.median_max_position}`}
+              {medianQuestion(row.median_max_position)}
               {deepest > 0 && row.median_max_position !== null ? (
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full funnel-bar--track">
                   <div
