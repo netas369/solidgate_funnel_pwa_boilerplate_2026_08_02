@@ -1361,6 +1361,132 @@ $$;
 -- EVERY column reference below is alias-qualified and GROUP BY / ORDER BY use
 -- ordinals: in a RETURNS TABLE function the output column names are parameters,
 -- and a bare `quiz_variant` in the body is ambiguous (42702).
+-- ═════════════════════════════════════════════════════════════════════════════
+-- CRO DASHBOARD READ API
+--
+-- apps/cro holds ONLY the anon key. It never sees SUPABASE_SERVICE_ROLE_KEY,
+-- and apps/cro/src/lib/no-service-role.test.ts fails the build if it ever does.
+-- So every read it performs goes through a SECURITY DEFINER function below,
+-- granted to `authenticated` and gated on is_cro_analyst().
+--
+-- WHY THE CHECK IS INSIDE THE FUNCTION rather than left to the GRANT: the role
+-- `authenticated` is every signed-in PWA member, not the analyst team. The
+-- member area and this dashboard share one Supabase auth directory.
+--
+-- WHY NOT RLS: RLS is a row filter; what is needed here is an AGGREGATION
+-- boundary. A policy on public.sessions would hand an analyst whole rows —
+-- email, quiz_answers, client_context.ip_address — and RLS cannot express
+-- "you may see COUNT(*) but not the rows". The catalog tables are revoked at
+-- the GRANT level anyway, so an RLS approach would first have to open them to
+-- every logged-in customer.
+-- ═════════════════════════════════════════════════════════════════════════════
+
+-- ── cro_analysts ────────────────────────────────────────────────────────────
+-- Who may read the dashboard. A table rather than an env allowlist because
+-- adding a colleague should be an INSERT, not a production deploy.
+CREATE TABLE IF NOT EXISTS public.cro_analysts (
+  -- Lowercased, matching how is_cro_analyst() compares. The second CHECK is not
+  -- decoration: is_cro_analyst() compares against
+  -- lower(COALESCE(auth.jwt() ->> 'email', '')), so a single empty-string row
+  -- would grant the whole dashboard to every JWT carrying no email claim.
+  email      TEXT PRIMARY KEY
+    CHECK (email = lower(email) AND email LIKE '_%@_%'),
+  -- Free text: who this is, who approved them, when to review the access.
+  note       TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.cro_analysts ENABLE ROW LEVEL SECURITY;
+-- RLS on with zero policies denies everything to non-BYPASSRLS roles, and
+-- is_cro_analyst() reads it as the definer. An analyst must not be able to
+-- enumerate colleagues.
+REVOKE ALL ON public.cro_analysts FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.cro_analysts TO service_role;
+
+COMMENT ON TABLE public.cro_analysts IS
+  'Allowlist for the CRO dashboard. Read only by is_cro_analyst(); never exposed to authenticated.';
+
+
+CREATE OR REPLACE FUNCTION public.is_cro_analyst()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.cro_analysts a
+    WHERE a.email = lower(COALESCE(auth.jwt() ->> 'email', ''))
+  );
+$$;
+
+-- Deliberately NOT PARALLEL SAFE: auth.jwt() is not declared parallel-safe, and
+-- neither is anything that calls this.
+REVOKE ALL ON FUNCTION public.is_cro_analyst() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_cro_analyst() TO authenticated, service_role;
+
+
+-- ── anon-side OTP rate limit ────────────────────────────────────────────────
+-- packages/shared/src/auth/otp-rate-limit.ts uses the admin client, so apps/cro
+-- cannot use it. These two wrap the existing otp_attempts ledger for a caller
+-- holding only the anon key.
+--
+-- Both short-circuit on a non-analyst address. Without that, the endpoint is a
+-- team-roster oracle (ask about an address, watch whether it rate-limits) and
+-- anyone could burn a colleague's attempts to lock them out.
+CREATE OR REPLACE FUNCTION public.cro_check_otp_rate_limit(p_email TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_email TEXT := lower(COALESCE(p_email, ''));
+  v_recent INTEGER;
+BEGIN
+  -- Unknown address: report "allowed" and let the caller proceed to a sign-in
+  -- that quietly does nothing. Reporting "blocked" would confirm the address.
+  IF NOT EXISTS (SELECT 1 FROM public.cro_analysts a WHERE a.email = v_email) THEN
+    RETURN true;
+  END IF;
+
+  SELECT count(*) INTO v_recent
+  FROM public.otp_attempts o
+  WHERE o.email = v_email
+    AND o.attempted_at > now() - INTERVAL '15 minutes'
+    AND NOT o.success;
+
+  RETURN v_recent < 5;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.cro_record_otp_attempt(
+  p_email   TEXT,
+  p_success BOOLEAN,
+  p_ip      TEXT DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_email TEXT := lower(COALESCE(p_email, ''));
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.cro_analysts a WHERE a.email = v_email) THEN
+    RETURN;
+  END IF;
+
+  INSERT INTO public.otp_attempts (email, ip_address, success)
+  VALUES (v_email, left(COALESCE(p_ip, ''), 100), COALESCE(p_success, false));
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.cro_check_otp_rate_limit(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.cro_record_otp_attempt(TEXT, BOOLEAN, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.cro_check_otp_rate_limit(TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cro_record_otp_attempt(TEXT, BOOLEAN, TEXT) TO anon, authenticated, service_role;
 -- Which funnels, quiz versions and locales saw traffic in the window.
 --
 -- Drives the dashboard's pickers. The rule the dashboard applies is simply
@@ -1382,19 +1508,33 @@ RETURNS TABLE (
   first_seen TIMESTAMPTZ,
   last_seen  TIMESTAMPTZ
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
-PARALLEL SAFE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 SET statement_timeout = '30s'
 AS $$
-WITH bounds AS (
+BEGIN
+  -- The gate. `authenticated` is every signed-in PWA member, so EXECUTE alone
+  -- is not the boundary; this is. 42501 rather than an empty result, because
+  -- apps/cro branches on the SQLSTATE to render "ask for access" instead of a
+  -- board that merely looks like a quiet day.
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN QUERY
+  WITH bounds AS (
   SELECT COALESCE(p_from, now() - INTERVAL '30 days') AS lo,
          COALESCE(p_to,   now())                      AS hi
 ),
 scoped AS (
-  SELECT s.funnel_variant, s.quiz_variant, s.locale, s.created_at
+  -- client_context is projected by NAMED KEY only, never whole: it also carries
+  -- ip_address, user_agent and city, and this function is the boundary that
+  -- keeps those away from an analyst holding a valid JWT.
+  SELECT s.funnel_variant, s.quiz_variant, s.locale, s.source, s.created_at,
+         COALESCE(NULLIF(s.client_context ->> 'device_type', ''), 'unknown') AS device,
+         COALESCE(NULLIF(s.client_context ->> 'country', ''), 'unknown')     AS country
   FROM public.sessions s
   CROSS JOIN bounds b
   WHERE s.created_at >= b.lo AND s.created_at < b.hi
@@ -1407,7 +1547,17 @@ FROM scoped sc GROUP BY 2
 UNION ALL
 SELECT 'locale'::TEXT, sc.locale, count(*), min(sc.created_at), max(sc.created_at)
 FROM scoped sc GROUP BY 2
+UNION ALL
+SELECT 'device'::TEXT, sc.device, count(*), min(sc.created_at), max(sc.created_at)
+FROM scoped sc GROUP BY 2
+UNION ALL
+SELECT 'country'::TEXT, sc.country, count(*), min(sc.created_at), max(sc.created_at)
+FROM scoped sc GROUP BY 2
+UNION ALL
+SELECT 'source'::TEXT, sc.source, count(*), min(sc.created_at), max(sc.created_at)
+FROM scoped sc GROUP BY 2
 ORDER BY 1, 3 DESC, 2;
+END;
 $$;
 
 
@@ -1457,14 +1607,23 @@ RETURNS TABLE (
   p50_seconds_to_answer DOUBLE PRECISION,
   p90_seconds_to_answer DOUBLE PRECISION
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
-PARALLEL SAFE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 SET statement_timeout = '60s'
 AS $$
-WITH bounds AS (
+BEGIN
+  -- The gate. `authenticated` is every signed-in PWA member, so EXECUTE alone
+  -- is not the boundary; this is. 42501 rather than an empty result, because
+  -- apps/cro branches on the SQLSTATE to render "ask for access" instead of a
+  -- board that merely looks like a quiet day.
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN QUERY
+  WITH bounds AS (
   SELECT COALESCE(p_from, now() - INTERVAL '30 days')  AS lo,
          COALESCE(p_to,   now())                       AS hi,
          now() - COALESCE(p_settled_after, INTERVAL '0') AS settled_before
@@ -1532,8 +1691,10 @@ agg AS (
              AND ac.status <> 'completed'
              AND ac.updated_at >= (SELECT b.settled_before FROM bounds b)
          )                                                  AS g_unsettled,
-         COALESCE(sum(ac.view_count), 0)                    AS g_total_views,
-         COALESCE(sum(GREATEST(ac.view_count - 1, 0)), 0)   AS g_revisits,
+         -- sum(bigint) returns NUMERIC, and RETURN QUERY is strict about the
+         -- declared BIGINT where LANGUAGE sql used to coerce silently.
+         COALESCE(sum(ac.view_count), 0)::BIGINT            AS g_total_views,
+         COALESCE(sum(GREATEST(ac.view_count - 1, 0)), 0)::BIGINT AS g_revisits,
          -- percentile_cont ignores NULL inputs, so unanswered steps fall out on
          -- their own. The cast is required: EXTRACT returns numeric on PG14+.
          percentile_cont(0.5) WITHIN GROUP (
@@ -1586,7 +1747,7 @@ cohort AS (
   SELECT j.k_quiz_variant   AS c_quiz_variant,
          j.k_funnel_variant AS c_funnel_variant,
          j.position         AS c_position,
-         COALESCE(sum(j.g_viewed), 0) AS c_cohort
+         COALESCE(sum(j.g_viewed), 0)::BIGINT AS c_cohort
   FROM joined j
   WHERE j.position IS NOT NULL
   GROUP BY 1, 2, 3
@@ -1625,6 +1786,7 @@ LEFT JOIN cohort c
   AND c.c_funnel_variant = j.k_funnel_variant
   AND c.c_position       IS NOT DISTINCT FROM j.position
 ORDER BY 4 NULLS LAST, 5 NULLS LAST, 3;
+END;
 $$;
 REVOKE ALL ON FUNCTION public.create_quiz_session(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, JSONB, UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.save_quiz_session_progress(UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, BOOLEAN, UUID, TEXT, INTEGER, JSONB, JSONB) FROM PUBLIC;
@@ -1647,14 +1809,583 @@ GRANT EXECUTE ON FUNCTION public.link_quiz_session_user(UUID, UUID) TO service_r
 REVOKE ALL ON FUNCTION public.quiz_merge_step_activity(JSONB, JSONB, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.guard_quiz_definition_immutable() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.publish_quiz_definition(TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, JSONB) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.cro_step_funnel(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL, TEXT) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.cro_funnel_segments(TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
+-- REWRITTEN, not appended. CREATE OR REPLACE PRESERVES a function's ACL, so
+-- leaving the old "REVOKE ... FROM authenticated" in place would silently strip
+-- the grant below on every `supabase db reset`.
+--
+-- `authenticated` may now EXECUTE these, but that is not the boundary — the
+-- is_cro_analyst() guard inside each function is. apps/cro holds only the anon
+-- key, so a SECURITY DEFINER function is the ONLY way it reads anything.
+REVOKE ALL ON FUNCTION public.cro_step_funnel(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cro_funnel_segments(TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC, anon;
 
 GRANT EXECUTE ON FUNCTION public.publish_quiz_definition(TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, JSONB) TO service_role;
-GRANT EXECUTE ON FUNCTION public.cro_step_funnel(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL, TEXT) TO service_role;
-GRANT EXECUTE ON FUNCTION public.cro_funnel_segments(TIMESTAMPTZ, TIMESTAMPTZ) TO service_role;
+GRANT EXECUTE ON FUNCTION public.cro_step_funnel(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL, TEXT) TO service_role, authenticated;
+GRANT EXECUTE ON FUNCTION public.cro_funnel_segments(TIMESTAMPTZ, TIMESTAMPTZ) TO service_role, authenticated;
 
 
+-- ── cro_quiz_catalog ────────────────────────────────────────────────────────
+-- The published quiz structure, flattened. apps/cro cannot read
+-- quiz_definition_steps directly (revoked from authenticated), yet
+-- assembleFunnelResponse needs config_hash / first_step_id / total_steps /
+-- terminal ids, and the Answers tab needs store_as + answer_keys + option_values
+-- to build its question picker.
+--
+-- Safe to expose whole: it describes the QUIZ, not any visitor. ~18 rows for an
+-- eight-step quiz, and it does not grow with traffic.
+--
+-- Keyed on quiz_variant alone. funnel_variant is the orthogonal presentation
+-- axis and one definition serves many of them.
+CREATE OR REPLACE FUNCTION public.cro_quiz_catalog(
+  p_quiz_variant TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+  quiz_variant     TEXT,
+  app_key          TEXT,
+  funnel_key       TEXT,
+  first_step_id    TEXT,
+  total_steps      INTEGER,
+  config_hash      TEXT,
+  published_at     TIMESTAMPTZ,
+  step_id          TEXT,
+  step_position    INTEGER,
+  sort_index       INTEGER,
+  step_type        TEXT,
+  phase_key        TEXT,
+  store_as         TEXT,
+  label            TEXT,
+  is_question      BOOLEAN,
+  is_terminal      BOOLEAN,
+  is_unconditional BOOLEAN,
+  entry_skippable  BOOLEAN,
+  answer_keys      JSONB,
+  option_values    JSONB
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '15s'
+AS $$
+BEGIN
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN QUERY
+  SELECT d.quiz_variant, d.app_key, d.funnel_key, d.first_step_id,
+         d.total_steps, d.config_hash, d.published_at,
+         st.step_id, st.position, st.sort_index, st.step_type, st.phase_key,
+         st.store_as, st.label, st.is_question, st.is_terminal,
+         st.is_unconditional, st.entry_skippable, st.answer_keys, st.option_values
+  FROM public.quiz_definitions d
+  JOIN public.quiz_definition_steps st ON st.quiz_variant = d.quiz_variant
+  WHERE (p_quiz_variant IS NULL OR d.quiz_variant = p_quiz_variant)
+  ORDER BY d.quiz_variant, st.sort_index;
+END;
+$$;
+
+
+-- ── cro_session_totals ──────────────────────────────────────────────────────
+-- Top-line counts for the Overview tab. Parameter order mirrors
+-- cro_step_funnel exactly so the app passes one filter object to both.
+--
+-- NO JSONB EXPANSION AT ALL. `no_activity` is an equality on the whole
+-- document, not a walk of it.
+--
+-- It exists because cro_step_funnel cannot answer one Overview question: its
+-- activity CTE skips `step_activity = '{}'`, so a session that bounced before
+-- the first save, or whose quiz_variant was never published, contributes
+-- nothing. `totals.entered` therefore UNDERCOUNTS starts, and without this
+-- nothing says by how much. A high no_activity ratio is also the "the publisher
+-- never ran for this variant" alarm.
+CREATE OR REPLACE FUNCTION public.cro_session_totals(
+  p_from            TIMESTAMPTZ,
+  p_to              TIMESTAMPTZ,
+  p_quiz_variant    TEXT     DEFAULT NULL,
+  p_funnel_variant  TEXT     DEFAULT NULL,
+  p_source          TEXT     DEFAULT NULL,
+  p_settled_after   INTERVAL DEFAULT INTERVAL '2 hours',
+  p_locale          TEXT     DEFAULT NULL
+)
+RETURNS TABLE (
+  quiz_variant            TEXT,
+  funnel_variant          TEXT,
+  sessions                BIGINT,
+  with_activity           BIGINT,
+  no_activity             BIGINT,
+  completed               BIGINT,
+  abandoned_settled       BIGINT,
+  unsettled               BIGINT,
+  lead_captured           BIGINT,
+  p50_seconds_to_complete DOUBLE PRECISION,
+  p90_seconds_to_complete DOUBLE PRECISION
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '30s'
+AS $$
+BEGIN
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN QUERY
+  WITH bounds AS (
+    SELECT COALESCE(p_from, now() - INTERVAL '30 days')  AS lo,
+           COALESCE(p_to,   now())                       AS hi,
+           now() - COALESCE(p_settled_after, INTERVAL '0') AS settled_before
+  ),
+  scoped AS (
+    SELECT s.quiz_variant, s.funnel_variant, s.status, s.email,
+           s.step_activity, s.created_at, s.completed_at, s.updated_at
+    FROM public.sessions s
+    CROSS JOIN bounds b
+    WHERE s.created_at >= b.lo
+      AND s.created_at <  b.hi
+      AND (p_quiz_variant   IS NULL OR s.quiz_variant   = p_quiz_variant)
+      AND (p_funnel_variant IS NULL OR s.funnel_variant = p_funnel_variant)
+      AND (p_source         IS NULL OR s.source         = p_source)
+      AND (p_locale         IS NULL OR s.locale         = p_locale)
+  )
+  SELECT sc.quiz_variant,
+         sc.funnel_variant,
+         count(*)::BIGINT,
+         count(*) FILTER (WHERE sc.step_activity <> '{}'::JSONB)::BIGINT,
+         count(*) FILTER (WHERE sc.step_activity =  '{}'::JSONB)::BIGINT,
+         count(*) FILTER (WHERE sc.status = 'completed')::BIGINT,
+         count(*) FILTER (
+           WHERE sc.status <> 'completed'
+             AND sc.updated_at < (SELECT b.settled_before FROM bounds b)
+         )::BIGINT,
+         count(*) FILTER (
+           WHERE sc.status <> 'completed'
+             AND sc.updated_at >= (SELECT b.settled_before FROM bounds b)
+         )::BIGINT,
+         -- A COUNT of sessions that captured an address. Never the addresses.
+         count(*) FILTER (WHERE sc.email IS NOT NULL)::BIGINT,
+         -- sessions_completion_check guarantees completed_at is non-null exactly
+         -- when status = 'completed', so percentile_cont's NULL-skipping is the
+         -- filter; no FILTER clause needed.
+         percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (sc.completed_at - sc.created_at))::DOUBLE PRECISION
+         ),
+         percentile_cont(0.9) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (sc.completed_at - sc.created_at))::DOUBLE PRECISION
+         )
+  FROM scoped sc
+  GROUP BY 1, 2
+  ORDER BY 1, 2;
+END;
+$$;
+
+
+-- ── cro_live_sessions ───────────────────────────────────────────────────────
+-- Who is mid-quiz right now, and on which screen.
+--
+-- THE STEP IS RESOLVED THROUGH THREE LEVELS, and the fallback is the whole
+-- design. create_quiz_session does NOT set current_step_id — only
+-- save_quiz_session_progress does — so keying on it alone silently drops every
+-- visitor who landed and never saved. That is the largest bucket and the one
+-- with the worst drop-off. step_basis says which level answered, so the tab can
+-- be honest rather than quietly wrong.
+--
+-- WHAT DWELL MEANS HERE. save_quiz_session_progress sets current_step_id and
+-- updated_at in the SAME update, and the client sends the step it is moving
+-- INTO. So now() - updated_at is genuinely time-on-this-screen — sharper than
+-- carnivore-app's "time since any event", which needs a DISTINCT ON to break
+-- ties within a batch.
+--
+-- WHAT IT CANNOT SEE, and the tab must say so:
+--   * Back-navigation. goBack() does not save, so someone who backed up two
+--     screens still shows on the one they last moved FORWARD into, with a dwell
+--     that keeps climbing. This is the one real regression against carnivore.
+--   * A closed tab. There is no heartbeat and no beforeunload write, so a
+--     12-minute dwell means "no forward move in 12 minutes", not "still here".
+--     Do not label this "people online".
+--   * status never becomes 'abandoned' on its own — nothing writes it. Filtering
+--     status = 'active' means "not completed", not "still present".
+CREATE OR REPLACE FUNCTION public.cro_live_sessions(
+  p_window_minutes INTEGER DEFAULT 15,
+  p_quiz_variant   TEXT DEFAULT NULL,
+  p_funnel_variant TEXT DEFAULT NULL,
+  p_locale         TEXT DEFAULT NULL,
+  p_source         TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+  quiz_variant      TEXT,
+  funnel_variant    TEXT,
+  step_id           TEXT,
+  step_position     INTEGER,
+  sort_index        INTEGER,
+  label             TEXT,
+  is_question       BOOLEAN,
+  in_catalog        BOOLEAN,
+  step_basis        TEXT,
+  active_sessions   BIGINT,
+  p50_dwell_seconds DOUBLE PRECISION,
+  p90_dwell_seconds DOUBLE PRECISION,
+  max_dwell_seconds DOUBLE PRECISION
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '15s'
+AS $$
+BEGIN
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  -- Bounded so "live" can never become a full scan behind an auto-refresh.
+  IF p_window_minutes IS NULL OR p_window_minutes < 1 OR p_window_minutes > 240 THEN
+    RAISE EXCEPTION 'p_window_minutes must be between 1 and 240'
+      USING ERRCODE = '22023';
+  END IF;
+
+  RETURN QUERY
+  WITH live AS (
+    SELECT s.id, s.quiz_variant, s.funnel_variant, s.updated_at,
+           COALESCE(s.current_step_id, lv.step_id, d.first_step_id) AS step_id,
+           CASE
+             WHEN s.current_step_id IS NOT NULL THEN 'current_step_id'
+             WHEN lv.step_id        IS NOT NULL THEN 'last_viewed'
+             ELSE 'landing'
+           END AS step_basis
+    FROM public.sessions s
+    LEFT JOIN public.quiz_definitions d ON d.quiz_variant = s.quiz_variant
+    -- The jsonb expansion is kept off the common path: it runs only for the
+    -- minority whose current_step_id is still null.
+    LEFT JOIN LATERAL (
+      SELECT a.key AS step_id
+      FROM jsonb_each(s.step_activity) AS a(key, value)
+      ORDER BY (a.value ->> 'viewed_at')::TIMESTAMPTZ DESC NULLS LAST
+      LIMIT 1
+    ) lv ON s.current_step_id IS NULL
+    WHERE s.status = 'active'
+      AND s.updated_at >= now() - make_interval(mins => p_window_minutes)
+      AND (p_quiz_variant   IS NULL OR s.quiz_variant   = p_quiz_variant)
+      AND (p_funnel_variant IS NULL OR s.funnel_variant = p_funnel_variant)
+      AND (p_locale         IS NULL OR s.locale         = p_locale)
+      AND (p_source         IS NULL OR s.source         = p_source)
+  )
+  SELECT l.quiz_variant,
+         l.funnel_variant,
+         l.step_id,
+         st.position,
+         st.sort_index,
+         st.label,
+         COALESCE(st.is_question, false),
+         (st.step_id IS NOT NULL),
+         l.step_basis,
+         count(*)::BIGINT,
+         percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (now() - l.updated_at))::DOUBLE PRECISION
+         ),
+         percentile_cont(0.9) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (now() - l.updated_at))::DOUBLE PRECISION
+         ),
+         max(EXTRACT(EPOCH FROM (now() - l.updated_at)))::DOUBLE PRECISION
+  FROM live l
+  LEFT JOIN public.quiz_definition_steps st
+    ON st.quiz_variant = l.quiz_variant AND st.step_id = l.step_id
+  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+  ORDER BY 4 NULLS LAST, 5 NULLS LAST, 3;
+END;
+$$;
+
+
+-- ── cro_answer_distribution ─────────────────────────────────────────────────
+-- What people actually answered, per question.
+--
+-- ═══ THE PII BOUNDARY IS AN ALLOWLIST, AND IT HAS TO BE ════════════════════
+-- `email` and `fullName` are DECLARED answer keys — step6.storeAs = 'email',
+-- step5.fields[0].storeAs = 'fullName'. A naive per-value distribution would
+-- publish every buyer's address and full name through the very function built
+-- to keep them in. So values are emitted only for step types whose answers are
+-- a closed vocabulary of codes; everything else returns ONE row with a count
+-- and a NULL value, which still gives the tab a completion rate for the email
+-- gate without a single address.
+--
+-- An allowlist rather than a denylist of ('email','fullName') because this is a
+-- template: a denylist breaks silently the first time a product adds `phone`.
+--
+-- DRIVEN FROM THE CATALOG, never from jsonb_object_keys(quiz_answers).
+-- Expanding the session document would walk every key a visitor ever wrote —
+-- including free text and keys belonging to other steps — and would surface
+-- answers the catalog never declared. Driving from answer_keys makes an
+-- undeclared key invisible rather than wrong, and `undeclared_keys` counts them
+-- so drift is still visible.
+CREATE OR REPLACE FUNCTION public.cro_answer_distribution(
+  p_from           TIMESTAMPTZ,
+  p_to             TIMESTAMPTZ,
+  p_quiz_variant   TEXT,
+  p_step_id        TEXT    DEFAULT NULL,
+  p_funnel_variant TEXT    DEFAULT NULL,
+  p_source         TEXT    DEFAULT NULL,
+  p_locale         TEXT    DEFAULT NULL,
+  p_min_sessions   INTEGER DEFAULT 1
+)
+RETURNS TABLE (
+  step_id           TEXT,
+  step_position     INTEGER,
+  sort_index        INTEGER,
+  label             TEXT,
+  step_type         TEXT,
+  answer_key        TEXT,
+  value_kind        TEXT,
+  answer_value      TEXT,
+  in_option_set     BOOLEAN,
+  sessions          BIGINT,
+  answered_sessions BIGINT
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '60s'
+AS $$
+BEGIN
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  -- REQUIRED, not defaulted. answer_keys and the option vocabulary are
+  -- per-variant, so blending two versions blends two vocabularies under one key
+  -- name. cro_step_funnel can default this because it RETURNS quiz_variant and
+  -- the assembler merges only within one; a distribution has no such escape.
+  IF p_quiz_variant IS NULL THEN
+    RAISE EXCEPTION 'p_quiz_variant is required: blending quiz versions blends answer vocabularies'
+      USING ERRCODE = '22023';
+  END IF;
+
+  RETURN QUERY
+  WITH bounds AS (
+    SELECT COALESCE(p_from, now() - INTERVAL '30 days') AS lo,
+           COALESCE(p_to,   now())                      AS hi
+  ),
+  scoped AS (
+    SELECT s.id, s.quiz_answers
+    FROM public.sessions s
+    CROSS JOIN bounds b
+    WHERE s.created_at >= b.lo
+      AND s.created_at <  b.hi
+      AND s.quiz_variant = p_quiz_variant
+      AND (p_funnel_variant IS NULL OR s.funnel_variant = p_funnel_variant)
+      AND (p_source         IS NULL OR s.source         = p_source)
+      AND (p_locale         IS NULL OR s.locale         = p_locale)
+      AND s.quiz_answers <> '{}'::JSONB
+  ),
+  keys AS (
+    SELECT st.step_id, st.position, st.sort_index, st.label, st.step_type,
+           st.option_values,
+           -- The allowlist. Closed-vocabulary types only.
+           (st.step_type IN ('radio','picture_select','text_select','chip_select',
+                             'multi_select','likert','slider','trial_price')) AS emits_values,
+           k.value AS answer_key
+    FROM public.quiz_definition_steps st
+    CROSS JOIN LATERAL jsonb_array_elements_text(
+      CASE WHEN jsonb_array_length(st.answer_keys) > 0 THEN st.answer_keys
+           WHEN st.store_as IS NOT NULL THEN jsonb_build_array(st.store_as)
+           ELSE '[]'::JSONB END
+    ) AS k(value)
+    WHERE st.quiz_variant = p_quiz_variant
+      AND st.is_question
+      AND (p_step_id IS NULL OR st.step_id = p_step_id)
+  ),
+  raw AS (
+    SELECT k.step_id, k.position, k.sort_index, k.label, k.step_type,
+           k.answer_key, k.emits_values, k.option_values,
+           sc.id, sc.quiz_answers -> k.answer_key AS v
+    FROM keys k
+    JOIN scoped sc ON sc.quiz_answers ? k.answer_key
+  ),
+  exploded AS (
+    -- multi_select and friends: one row per chosen code.
+    SELECT r.step_id, r.position, r.sort_index, r.label, r.step_type, r.answer_key,
+           r.option_values, r.id, 'array_member'::TEXT AS value_kind, e.value AS answer_value
+    FROM raw r
+    CROSS JOIN LATERAL jsonb_array_elements_text(r.v) AS e(value)
+    WHERE r.emits_values AND jsonb_typeof(r.v) = 'array'
+    UNION ALL
+    -- #>> '{}' unwraps a JSON scalar to text. ::text would keep the quotes and
+    -- every label in the chart would render as "female" rather than female.
+    SELECT r.step_id, r.position, r.sort_index, r.label, r.step_type, r.answer_key,
+           r.option_values, r.id, 'scalar'::TEXT, r.v #>> '{}'
+    FROM raw r
+    WHERE r.emits_values AND jsonb_typeof(r.v) IN ('string','number','boolean')
+    UNION ALL
+    -- The PII path: counted, never read.
+    SELECT r.step_id, r.position, r.sort_index, r.label, r.step_type, r.answer_key,
+           r.option_values, r.id, 'freeform'::TEXT, NULL
+    FROM raw r
+    WHERE NOT r.emits_values
+  ),
+  per_key AS (
+    SELECT e.step_id, e.answer_key, count(DISTINCT e.id) AS answered_sessions
+    FROM exploded e GROUP BY 1, 2
+  )
+  SELECT x.step_id, x.position, x.sort_index, x.label, x.step_type, x.answer_key,
+         x.value_kind,
+         x.answer_value,
+         CASE WHEN x.answer_value IS NULL THEN NULL
+              ELSE x.option_values ? x.answer_value END,
+         count(DISTINCT x.id)::BIGINT,
+         -- Per KEY, not per value: choosing three options is three value rows
+         -- but one answered session. Getting this denominator wrong is the
+         -- easiest way to publish percentages over 100.
+         max(pk.answered_sessions)::BIGINT
+  FROM exploded x
+  JOIN per_key pk ON pk.step_id = x.step_id AND pk.answer_key = x.answer_key
+  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+  HAVING count(DISTINCT x.id) >= GREATEST(COALESCE(p_min_sessions, 1), 1)
+  ORDER BY 3, 6, 10 DESC, 8;
+END;
+$$;
+
+
+-- ── cro_segment_breakdown ───────────────────────────────────────────────────
+-- How far each market / device / country gets through the quiz.
+--
+-- ONE DIMENSION PER CALL, not a wide cross product. 15 locales x 4 devices x 40
+-- countries is thousands of one-session cells — each a quasi-identifier, none a
+-- readable chart. The tab makes a few cheap calls instead.
+--
+-- locale and client_context are NOT the same quality of data, and the tab
+-- should not imply they are. sessions.locale is last-write-wins
+-- (`locale = COALESCE(p_locale, locale)` on every save), so it means "the
+-- language the session ENDED in". client_context is written once at create and
+-- never updated, so device / country / browser are exact.
+CREATE OR REPLACE FUNCTION public.cro_segment_breakdown(
+  p_from           TIMESTAMPTZ,
+  p_to             TIMESTAMPTZ,
+  p_quiz_variant   TEXT    DEFAULT NULL,
+  p_funnel_variant TEXT    DEFAULT NULL,
+  p_source         TEXT    DEFAULT NULL,
+  p_dimension      TEXT    DEFAULT 'locale',
+  p_min_sessions   INTEGER DEFAULT 1
+)
+RETURNS TABLE (
+  dimension           TEXT,
+  bucket              TEXT,
+  sessions            BIGINT,
+  with_activity       BIGINT,
+  completed           BIGINT,
+  completion_pct      DOUBLE PRECISION,
+  median_max_position DOUBLE PRECISION,
+  p90_max_position    DOUBLE PRECISION,
+  max_position_reached INTEGER
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '45s'
+AS $$
+BEGIN
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  IF COALESCE(p_dimension, '') NOT IN ('locale','device','country','browser','platform','source') THEN
+    RAISE EXCEPTION 'p_dimension must be one of locale, device, country, browser, platform, source'
+      USING ERRCODE = '22023';
+  END IF;
+
+  RETURN QUERY
+  WITH bounds AS (
+    SELECT COALESCE(p_from, now() - INTERVAL '30 days') AS lo,
+           COALESCE(p_to,   now())                      AS hi
+  ),
+  scoped AS (
+    -- client_context is read by NAMED KEY only. The document also holds
+    -- ip_address, user_agent and city, and this function is the boundary that
+    -- keeps them from an analyst with a valid JWT.
+    --
+    -- COALESCE(NULLIF(...)) buckets a missing value as 'unknown' rather than
+    -- dropping the row: country is null on any deployment not behind Vercel or
+    -- Cloudflare, and losing those sessions would read as "that market has no
+    -- data" instead of "we cannot geolocate".
+    SELECT s.id, s.status, s.quiz_variant, s.step_activity,
+           CASE p_dimension
+             WHEN 'locale'   THEN COALESCE(NULLIF(s.locale, ''), 'unknown')
+             WHEN 'source'   THEN COALESCE(NULLIF(s.source, ''), 'unknown')
+             WHEN 'device'   THEN COALESCE(NULLIF(s.client_context ->> 'device_type', ''), 'unknown')
+             WHEN 'country'  THEN COALESCE(NULLIF(s.client_context ->> 'country', ''), 'unknown')
+             WHEN 'browser'  THEN COALESCE(NULLIF(s.client_context ->> 'browser', ''), 'unknown')
+             WHEN 'platform' THEN COALESCE(NULLIF(s.client_context ->> 'platform', ''), 'unknown')
+           END AS bucket
+    FROM public.sessions s
+    CROSS JOIN bounds b
+    WHERE s.created_at >= b.lo
+      AND s.created_at <  b.hi
+      AND (p_quiz_variant   IS NULL OR s.quiz_variant   = p_quiz_variant)
+      AND (p_funnel_variant IS NULL OR s.funnel_variant = p_funnel_variant)
+      AND (p_source         IS NULL OR s.source         = p_source)
+  ),
+  depth AS (
+    -- jsonb_object_keys, not jsonb_each: depth needs the keys only, and
+    -- jsonb_each would materialise every value document for nothing.
+    --
+    -- LEFT JOIN LATERAL ... ON true, not CROSS JOIN: a session with
+    -- step_activity = '{}' survives with max_position 0 instead of vanishing.
+    -- That is the difference between "37% of Safari users never got past the
+    -- landing" and "Safari has no data".
+    SELECT sc.id, sc.bucket, sc.status, sc.step_activity,
+           COALESCE(max(st.position), 0) AS max_position
+    FROM scoped sc
+    LEFT JOIN LATERAL jsonb_object_keys(sc.step_activity) AS a(step_id) ON true
+    LEFT JOIN public.quiz_definition_steps st
+      ON st.quiz_variant = sc.quiz_variant AND st.step_id = a.step_id
+    GROUP BY 1, 2, 3, 4
+  )
+  SELECT p_dimension,
+         d.bucket,
+         count(*)::BIGINT,
+         count(*) FILTER (WHERE d.step_activity <> '{}'::JSONB)::BIGINT,
+         count(*) FILTER (WHERE d.status = 'completed')::BIGINT,
+         CASE WHEN count(*) > 0
+              THEN round((count(*) FILTER (WHERE d.status = 'completed')::NUMERIC
+                          / count(*)::NUMERIC) * 100, 1)::DOUBLE PRECISION
+              ELSE 0 END,
+         -- DOUBLE PRECISION, not ::INTEGER. percentile_cont interpolates, so a
+         -- group stopping at positions 3 and 4 has a true median of 3.5 —
+         -- carnivore-app casts to INTEGER and silently reports 3, which across
+         -- seven positions is 14% of the funnel.
+         percentile_cont(0.5) WITHIN GROUP (ORDER BY d.max_position::DOUBLE PRECISION),
+         percentile_cont(0.9) WITHIN GROUP (ORDER BY d.max_position::DOUBLE PRECISION),
+         max(d.max_position)::INTEGER
+  FROM depth d
+  GROUP BY 1, 2
+  HAVING count(*) >= GREATEST(COALESCE(p_min_sessions, 1), 1)
+  ORDER BY 3 DESC, 2;
+END;
+$$;
+
+
+-- The live tab polls; idx_sessions_quiz_reporting leads on created_at and is no
+-- help. Without this an auto-refreshing board seq-scans sessions every few
+-- seconds, which is the single largest cost in the dashboard.
+CREATE INDEX IF NOT EXISTS idx_sessions_cro_live
+  ON public.sessions (updated_at DESC) WHERE status = 'active';
+
+
+-- Grants for the five. Same shape as the two above: EXECUTE to authenticated is
+-- not the boundary, the is_cro_analyst() guard inside each one is.
+REVOKE ALL ON FUNCTION public.cro_quiz_catalog(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cro_session_totals(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cro_live_sessions(INTEGER, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cro_answer_distribution(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cro_segment_breakdown(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, TEXT, INTEGER) FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.cro_quiz_catalog(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cro_session_totals(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL, TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cro_live_sessions(INTEGER, TEXT, TEXT, TEXT, TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cro_answer_distribution(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cro_segment_breakdown(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated, service_role;
 -- ── otp_attempts ────────────────────────────────────────────────────────────
 -- Brute-force rate-limit ledger for verify-otp. service_role only.
 CREATE TABLE IF NOT EXISTS public.otp_attempts (

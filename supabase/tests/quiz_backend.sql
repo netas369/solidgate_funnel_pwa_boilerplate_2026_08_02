@@ -614,6 +614,37 @@ BEGIN
 END;
 $$;
 
+-- ── The CRO read API is analyst-gated ───────────────────────────────────────
+-- cro_step_funnel raises 42501 unless is_cro_analyst() passes, so the
+-- assertions below have to run as a real caller would. Proving the guard fires
+-- comes first: a test that silently ran as an unguarded superuser would keep
+-- passing the day someone removed the gate.
+DO $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', '{"email":"stranger@example.com"}', true);
+  BEGIN
+    PERFORM * FROM public.cro_step_funnel(
+      now() - INTERVAL '1 hour', now() + INTERVAL '1 hour', 'catalog-test-v1'
+    );
+    RAISE EXCEPTION 'cro_step_funnel answered a non-analyst';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;  -- 42501, which is what apps/cro branches on
+  END;
+END;
+$$;
+
+-- A fixture address, not a plausible real one, and ON CONFLICT so the script
+-- still runs against a database that already has analysts in it. Rolled back
+-- with everything else at the end.
+INSERT INTO public.cro_analysts (email, note)
+VALUES ('quiz-backend-fixture@example.test', 'quiz_backend fixture')
+ON CONFLICT (email) DO NOTHING;
+
+-- Mixed case on the claim, lowercase in the table: is_cro_analyst() lowers both
+-- sides, and a mismatch here would lock out every analyst whose mail client
+-- capitalises their address.
+SELECT set_config('request.jwt.claims', '{"email":"Quiz-Backend-Fixture@Example.TEST"}', true);
+
 -- cro_step_funnel: a branch arm the visitor did not take is NOT a drop.
 DO $$
 DECLARE

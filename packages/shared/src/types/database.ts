@@ -13,6 +13,24 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cro_analysts: {
+        Row: {
+          created_at: string
+          email: string
+          note: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          note?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
       cron_runs: {
         Row: {
           cached: number
@@ -1486,6 +1504,10 @@ export type Database = {
         }
         Returns: Json
       }
+      is_cro_analyst: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       link_quiz_session_user: {
         Args: { p_session_id: string; p_user_id: string }
         Returns: Json
@@ -1532,6 +1554,37 @@ export type Database = {
         }
         Returns: Json
       }
+      cro_answer_distribution: {
+        Args: {
+          p_from: string
+          p_funnel_variant?: string | null
+          p_locale?: string | null
+          p_min_sessions?: number
+          p_quiz_variant: string
+          p_source?: string | null
+          p_step_id?: string | null
+          p_to: string
+        }
+        Returns: {
+          answer_key: string
+          answer_value: string
+          answered_sessions: number
+          in_option_set: boolean
+          label: string
+          sessions: number
+          sort_index: number
+          step_id: string
+          step_position: number
+          step_type: string
+          value_kind: string
+        }[]
+      }
+      cro_check_otp_rate_limit: {
+        Args: {
+          p_email: string
+        }
+        Returns: boolean
+      }
       cro_funnel_segments: {
         Args: {
           p_from: string
@@ -1543,6 +1596,111 @@ export type Database = {
           kind: string
           last_seen: string
           sessions: number
+        }[]
+      }
+      cro_live_sessions: {
+        Args: {
+          p_funnel_variant?: string | null
+          p_locale?: string | null
+          p_quiz_variant?: string | null
+          p_source?: string | null
+          p_window_minutes?: number
+        }
+        Returns: {
+          active_sessions: number
+          funnel_variant: string
+          in_catalog: boolean
+          is_question: boolean
+          label: string
+          max_dwell_seconds: number
+          p50_dwell_seconds: number
+          p90_dwell_seconds: number
+          quiz_variant: string
+          sort_index: number
+          step_basis: string
+          step_id: string
+          step_position: number
+        }[]
+      }
+      cro_quiz_catalog: {
+        Args: {
+          p_quiz_variant?: string | null
+        }
+        Returns: {
+          answer_keys: Json
+          app_key: string
+          config_hash: string
+          entry_skippable: boolean
+          first_step_id: string
+          funnel_key: string
+          is_question: boolean
+          is_terminal: boolean
+          is_unconditional: boolean
+          label: string
+          option_values: Json
+          phase_key: string
+          published_at: string
+          quiz_variant: string
+          sort_index: number
+          step_id: string
+          step_position: number
+          step_type: string
+          store_as: string
+          total_steps: number
+        }[]
+      }
+      cro_record_otp_attempt: {
+        Args: {
+          p_email: string
+          p_ip?: string | null
+          p_success: boolean
+        }
+        Returns: undefined
+      }
+      cro_segment_breakdown: {
+        Args: {
+          p_dimension?: string
+          p_from: string
+          p_funnel_variant?: string | null
+          p_min_sessions?: number
+          p_quiz_variant?: string | null
+          p_source?: string | null
+          p_to: string
+        }
+        Returns: {
+          bucket: string
+          completed: number
+          completion_pct: number
+          dimension: string
+          max_position_reached: number
+          median_max_position: number
+          p90_max_position: number
+          sessions: number
+          with_activity: number
+        }[]
+      }
+      cro_session_totals: {
+        Args: {
+          p_from: string
+          p_funnel_variant?: string | null
+          p_locale?: string | null
+          p_quiz_variant?: string | null
+          p_settled_after?: unknown
+          p_source?: string | null
+          p_to: string
+        }
+        Returns: {
+          abandoned_settled: number
+          completed: number
+          funnel_variant: string
+          lead_captured: number
+          no_activity: number
+          p50_seconds_to_complete: number
+          p90_seconds_to_complete: number
+          quiz_variant: string
+          sessions: number
+          unsettled: number
+          with_activity: number
         }[]
       }
       cro_step_funnel: {
