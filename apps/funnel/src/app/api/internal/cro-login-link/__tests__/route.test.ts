@@ -37,7 +37,7 @@ function post(body: unknown, secret?: string) {
 }
 
 beforeEach(() => {
-  process.env.INTERNAL_API_SECRET = SECRET;
+  process.env.CRO_LOGIN_LINK_SECRET = SECRET;
   process.env.NEXT_PUBLIC_CRO_URL = 'https://cro.example.com';
   lookedUp.mockReset();
   maybeSingle.mockReset().mockResolvedValue({ data: { email: 'a@b.test' }, error: null });
@@ -46,6 +46,9 @@ beforeEach(() => {
     .mockResolvedValue({ data: { properties: { hashed_token: 'HASH' } }, error: null });
 });
 afterEach(() => {
+  delete process.env.CRO_LOGIN_LINK_SECRET;
+  // Also cleared: the separation tests below set it, and a value leaking into a
+  // later test is exactly how a fallback would sneak past the suite.
   delete process.env.INTERNAL_API_SECRET;
   delete process.env.NEXT_PUBLIC_CRO_URL;
 });
@@ -53,9 +56,10 @@ afterEach(() => {
 /**
  * The one endpoint that can open a CRO board for someone who did not sign in.
  *
- * The property worth protecting: holding INTERNAL_API_SECRET lets PMC Hub open
- * the board as SOMEONE ALREADY ON THE ANALYST LIST, and nothing more. It must
- * never be able to grant access — that stays an INSERT a person performs.
+ * The property worth protecting: holding CRO_LOGIN_LINK_SECRET lets PMC Hub open
+ * the board as an address ALREADY ON THE ANALYST LIST. It must never be able to
+ * grant access, and — the reason it is a separate variable — it must never be a
+ * credential that also works on the payment path.
  */
 describe('POST /api/internal/cro-login-link', () => {
   it('mints a link for an analyst', async () => {
@@ -93,9 +97,31 @@ describe('POST /api/internal/cro-login-link', () => {
   it('fails closed when the secret is not configured at all', async () => {
     // Otherwise an unset variable would compare equal to a missing header and
     // the endpoint would be open.
-    delete process.env.INTERNAL_API_SECRET;
+    delete process.env.CRO_LOGIN_LINK_SECRET;
     expect((await post({ email: 'a@b.test' }, SECRET)).status).toBe(401);
     expect((await post({ email: 'a@b.test' }, undefined)).status).toBe(401);
+  });
+
+  it('refuses INTERNAL_API_SECRET even when both are set', async () => {
+    // INTERNAL_API_SECRET guards payment fulfilment and member provisioning.
+    // PMC Hub stores whatever this route accepts, for every product, so this
+    // route must not accept a credential that works anywhere else.
+    process.env.INTERNAL_API_SECRET = 'the-payment-path-secret';
+    process.env.CRO_LOGIN_LINK_SECRET = SECRET;
+    expect((await post({ email: 'a@b.test' }, 'the-payment-path-secret')).status).toBe(401);
+    expect(maybeSingle).not.toHaveBeenCalled();
+  });
+
+  it('does NOT fall back to INTERNAL_API_SECRET when its own secret is unset', async () => {
+    // The test that catches anyone "helpfully" adding a fallback. It is the
+    // one a fallback would sail past, because every other test sets
+    // CRO_LOGIN_LINK_SECRET and so never exercises the missing case with the
+    // other variable present.
+    delete process.env.CRO_LOGIN_LINK_SECRET;
+    process.env.INTERNAL_API_SECRET = 'the-payment-path-secret';
+    expect((await post({ email: 'a@b.test' }, 'the-payment-path-secret')).status).toBe(401);
+    expect(maybeSingle).not.toHaveBeenCalled();
+    expect(generateLink).not.toHaveBeenCalled();
   });
 
   it('lowercases and trims, because cro_analysts stores and CHECKs lowercase', async () => {

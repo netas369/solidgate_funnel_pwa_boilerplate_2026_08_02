@@ -23,12 +23,38 @@ export const dynamic = 'force-dynamic';
  * decided in a different repo.
  *
  * The gate below is therefore not the thing keeping strangers out — PMC Hub's
- * own authentication is. What the gate still does is bound what this secret is
- * worth: a caller holding INTERNAL_API_SECRET can open the board as an address
- * already on the list, and cannot mint for an arbitrary one. That is still the
- * difference between this and handing PMC Hub a service-role key, which would
- * make one internal app a full-database credential for every product built from
- * this template.
+ * own authentication is. What the gate still does is stop a caller holding the
+ * secret from minting for an arbitrary address: it can open the board only as
+ * an address already on the list. That is the difference between this and
+ * handing PMC Hub a service-role key, which would make one internal app a
+ * full-database credential for every product built from this template.
+ *
+ * WHY THIS ROUTE HAS ITS OWN SECRET — CRO_LOGIN_LINK_SECRET, NOT
+ * INTERNAL_API_SECRET.
+ *
+ * INTERNAL_API_SECRET guards the payment path: it drains the Solidgate
+ * fulfilment outbox (api/internal/solidgate-fulfillment) and it guards member
+ * provisioning in apps/pwa, whose TODO tells every product to put real
+ * paid-content grants there. PMC Hub has to STORE whatever this route accepts,
+ * for every product in the fleet. If this route accepted INTERNAL_API_SECRET,
+ * PMC Hub would be holding a payment-path credential for the whole fleet rather
+ * than an "open a read-only board" one — and whatever PMC Hub holds is one bug
+ * away from exposure. That is not hypothetical: PMC Hub has already had a bug
+ * that let anyone able to edit a directory row send that row's stored secret to
+ * a server of their choosing.
+ *
+ * So this route accepts a credential that works nowhere else. A leak of it can
+ * open a read-only board and nothing on the payment path.
+ *
+ * THE TWO MUST BE DIFFERENT VALUES. Setting CRO_LOGIN_LINK_SECRET equal to
+ * INTERNAL_API_SECRET compiles, deploys and passes every check, and quietly
+ * undoes the whole separation. Generate it independently.
+ *
+ * AND THERE IS NO FALLBACK. If CRO_LOGIN_LINK_SECRET is unset this route
+ * refuses everything with 401 — it does not reach for INTERNAL_API_SECRET. A
+ * fallback would silently reintroduce exactly the problem this solves, and would
+ * pass every test that happens to set both variables. A test pins the absence
+ * of one; if you are adding it back, stop.
  *
  * So: do not remove, relax or add a flag to the membership check below. The
  * shared-identity design works precisely BECAUSE none of the security code
@@ -59,9 +85,11 @@ export const dynamic = 'force-dynamic';
  * scrollback and browser history. Call this when the link is clicked and 302.
  */
 function authorized(request: Request): boolean {
-  const secret = process.env.INTERNAL_API_SECRET;
+  // CRO_LOGIN_LINK_SECRET only. Never INTERNAL_API_SECRET, not even as a
+  // fallback — see the header.
+  const secret = process.env.CRO_LOGIN_LINK_SECRET;
   if (!secret) {
-    console.error('[cro-login-link] INTERNAL_API_SECRET is not set');
+    console.error('[cro-login-link] CRO_LOGIN_LINK_SECRET is not set');
     return false;
   }
   const presented = request.headers.get('x-internal-secret');

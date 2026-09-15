@@ -101,7 +101,7 @@ the product's funnel for a one-time link:
 
 ```
 POST https://<funnel>/api/internal/cro-login-link
-x-internal-secret: <that product's INTERNAL_API_SECRET>
+x-internal-secret: <that product's CRO_LOGIN_LINK_SECRET>
 { "email": "cro@pmcbaltic.com" }
 
 → { "url": "https://cro.<product>/sso?token=..." }
@@ -113,11 +113,22 @@ Redirect the browser there and the board opens signed in.
 single-use and short-lived; a hub page that embeds a freshly minted link in every
 row puts a live credential in the HTML.
 
-**The secret cannot grant access.** An address that is not in `cro_analysts` is
-refused before a link exists — so a leaked secret opens a board that the shared
-identity could already open, and nothing more. That is why this endpoint lives on
-the funnel rather than PMC Hub holding each product's service-role key, which would
-make one internal app a full-database credential for every product.
+**The secret is the handoff's own, and works nowhere else.** It is
+`CRO_LOGIN_LINK_SECRET`, generated separately from the funnel's
+`INTERNAL_API_SECRET` — which guards payment fulfilment and member provisioning.
+PMC Hub stores whatever this endpoint accepts, for every product, so if it accepted
+the internal secret PMC Hub would be holding a payment credential for the whole
+fleet. With its own secret, a leak can open a read-only board and nothing on the
+payment path. **Keep the two values different**; setting them equal works and
+silently undoes all of this.
+
+**It cannot grant access either.** An address that is not in `cro_analysts` is
+refused before a link exists. That is why this endpoint lives on the funnel rather
+than PMC Hub holding each product's service-role key, which would make one internal
+app a full-database credential for every product.
+
+If `CRO_LOGIN_LINK_SECRET` is unset, the endpoint refuses everything — it does not
+fall back to the internal secret.
 
 Any failure — stale link, reused link, access revoked since it was minted — lands
 on the normal sign-in page with a line saying why.

@@ -183,9 +183,13 @@ maintain, and no INSERT to remember.
 - [ ] Its own Vercel project, root `apps/cro`, on a subdomain nobody links to publicly
 - [ ] `NEXT_PUBLIC_CRO_URL` set on **both** the CRO app and the funnel —
   `/api/internal/cro-login-link` reads it to build the hand-through link
-- [ ] PMC Hub given this product's `INTERNAL_API_SECRET`. That secret opens the board
-  as an address already on the list; it cannot mint for an arbitrary one, and it
-  cannot grant access.
+- [ ] `CRO_LOGIN_LINK_SECRET` generated on the funnel, **independently** of
+  `INTERNAL_API_SECRET`, and that value pasted into this product's PMC Hub row. It is
+  the handoff's own credential: it opens the board as an address already on the list,
+  cannot mint for an arbitrary one, and works nowhere else. Never give PMC Hub
+  `INTERNAL_API_SECRET` — that one guards payment fulfilment and member provisioning,
+  and PMC Hub stores whatever it is given for the whole fleet. Setting the two equal
+  works perfectly and quietly undoes the separation.
 - [ ] Leave email signups **enabled** in Supabase Auth. Seeding `cro_analysts`
   creates no auth user, so the first hand-through is what creates it. Disabling
   signups breaks the very first click on a freshly deployed product and nothing
@@ -308,8 +312,9 @@ npx supabase gen types typescript --linked > packages/shared/src/types/database.
 
 - [ ] `ADMIN_EMAILS` set — the admin dashboard is unreachable until it is
 - [ ] `RESEND_FROM_ADDRESS` set to a sender verified in Resend
-- [ ] `QUIZ_SESSION_COOKIE_SECRET`, `PAYMENT_COOKIE_SECRET`, and
-  `INTERNAL_API_SECRET` are fresh, independent random values
+- [ ] `QUIZ_SESSION_COOKIE_SECRET`, `PAYMENT_COOKIE_SECRET`, `INTERNAL_API_SECRET`
+  and `CRO_LOGIN_LINK_SECRET` are fresh, independent random values — the last two
+  especially must differ
 - [ ] `SOLIDGATE_ENVIRONMENT=production` **only** in the Vercel Production scope
 - [ ] Solidgate catalog seeded against the **live** channel and `--verify` clean
 - [ ] Apple Pay domain association files in place for your domains
