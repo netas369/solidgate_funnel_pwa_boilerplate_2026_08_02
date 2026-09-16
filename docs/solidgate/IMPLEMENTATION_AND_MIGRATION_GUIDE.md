@@ -2,7 +2,7 @@
 
 Status: code-verified implementation guide
 
-Implementation baseline: repository through webhook hardening commit `eb8bbccc`, inspected 2026-07-24
+Implementation baseline: repository through webhook hardening commit `eb8bbccc`, inspected 2026-07-24. Descriptor policy updated 2026-09-15: static channel/connector descriptor for every product and payment flow.
 
 Audience: engineers moving another product from Stripe to Solidgate, or building a new Solidgate payment system
 
@@ -133,7 +133,7 @@ These are the authoritative implementation files:
 | Payment Form encryption | `packages/shared/src/solidgate/form.ts` |
 | API client and environment guard | `packages/shared/src/solidgate/client.ts` |
 | Merchant order grammar | `packages/shared/src/solidgate/order-id.ts` |
-| Descriptor suffixes | `packages/shared/src/solidgate/descriptor.ts` |
+| Static statement descriptor policy | Solidgate channel/connector settings; `packages/shared/src/solidgate/form.ts` |
 | Token-origin policy | `packages/shared/src/solidgate/payment-method.ts` |
 | Saved-token charge interpreter | `packages/shared/src/solidgate/oto.ts` |
 | Session and account vaults | `packages/shared/src/solidgate/session-vault.ts`, `packages/shared/src/solidgate/account-vault.ts` |
@@ -417,47 +417,28 @@ One-time member-area purchases use `locale` instead of `price_id`. The optional 
 
 Do not treat metadata as the only authorization boundary. The implementation checks metadata **and** first-class provider fields against the local immutable snapshot. Do not assume initial metadata automatically propagates to provider-generated renewal orders; bind renewals through subscription, invoice, and provider order identities.
 
-## 8. Descriptors
+## 8. Static statement descriptor
 
-The channel or connector owns the base statement descriptor. The code sends a product-specific `dynamic_descriptor.suffix` only on cardholder-present Payment Form intents.
+Every product uses the static statement descriptor configured on its Solidgate channel/connector. This policy applies to main subscriptions and trials, the OTO2 subscription, all one-time OTOs, member-area purchases, card replacement, and provider-generated renewals. There are no product-specific statement suffixes.
 
-Current suffixes include:
+Newly built application requests must omit `dynamic_descriptor` entirely, including hosted Payment Form intents and saved-token `/recurring` requests. Do not send the static descriptor as `dynamic_descriptor.suffix`; it is provider configuration, not a per-payment field. Do not maintain a product-to-suffix map or derive descriptor text from locale, product, offer, UTM, or the customer.
 
-| Offering | Suffix |
+Keep these fields separate:
+
+| Field | Purpose |
 |---|---|
-| Main subscription | `THEASTRO` |
-| Lifetime | `LIFETIME` |
-| Advisory | `ADVISORS` |
-| Ultimate pack | `ULTRA PACK` |
-| Soul report | `SOULREPORT` |
-| Love report | `LOVEREPORT` |
-| Energy guide | `ENERGY` |
-| Palmistry | `PALMISTRY` |
-| Tarot | `TAROT` |
-| Numerology | `NUMEROLOGY` |
-| Dream academy | `DREAMS` |
+| Static `Descriptor` | Recognizable merchant wording configured on the channel/connector for every product. |
+| `order_description` | Full purchase product code with the locale captured from the website route. |
+| `order_metadata.product_code` | Product identity for internal reconciliation and reporting. |
+| Product name / `Public description` | Customer-facing product information; it does not configure the statement descriptor. |
 
-In the present product flow, the main/advisory hosted-form suffixes can be used, but most listed OTO suffixes are not sent because those purchases use `/recurring`. The map expresses desired cardholder labels, not proof that every label reaches a statement.
+**In-flight checkout compatibility:** an already-started checkout can have encrypted `merchant_data` cached in the database by an earlier release. Retries reuse that exact payload and order identity, so the old payload can retain its former suffix until the checkout completes or expires. Do not clear the cached payload or create another payable order just to change a label. The new builder does not add a suffix.
 
-Important implementation limits:
+The checked-in official OpenAPI schema may still describe dynamic descriptor support. That is an upstream provider capability, not permission to enable it in this application.
 
-- `/recurring` does not receive `dynamic_descriptor`; this was rejected by the sandbox request schema;
-- provider-generated rebills also do not receive a new per-charge suffix from this application;
-- therefore saved-token upsells and renewals may display the base descriptor or provider-specific inherited behavior;
-- the final visible value can also include connector, card-brand, or PayFac prefixes and can be truncated.
+Before launch, confirm the approved static value on every active connector route and the same policy for initial payments, saved-token charges, and renewals. For existing subscriptions, verify whether provider configuration retains any historical initial-payment suffix; removing the field from new requests alone does not prove how an old subscription's next rebill appears. Do not recreate subscriptions or rewrite payment history to change a statement label. Any provider-side configuration change belongs to the authorized channel setup.
 
-The code conservatively restricts suffixes to 10 printable ASCII characters and rejects `^`. Solidgate’s current public descriptor page now documents a suffix length of up to 18. Treat this as a provider-version/channel discrepancy: revalidate the checked-in OpenAPI schema and live connector contract before changing the code.
-
-Before launch, obtain written confirmation of:
-
-- the exact base descriptor;
-- whether each connector route is static or dynamic;
-- how `/recurring` and provider renewals appear;
-- brand/PayFac prefixes and the effective total length;
-- truncation behavior;
-- whether spaces and punctuation used by the chosen suffixes are supported.
-
-Then make the checkout disclosure, receipt, support scripts, and chargeback monitoring use the same recognizable brand wording.
+Use the approved static wording in checkout disclosures, receipts, and support instructions. Verify the actual statement rendering for the intended connectors, including any bank/card-brand prefixes or truncation. Any real payment used for this check requires explicit approval and a monetary limit before charging.
 
 ## 9. Hosted Payment Form checkout
 
@@ -469,7 +450,6 @@ A representative first-payment intent is:
 {
   order_id,
   order_description,
-  dynamic_descriptor: { suffix: "THEASTRO" },
   amount,                         // minor units
   currency: currency.toUpperCase(),
   apple_pay_merchant_name: "<Your Product>",
@@ -1177,7 +1157,7 @@ Implement and test:
 - verify the live catalog and committed IDs;
 - require every Stripe feature in the disposition matrix to have implementation/UAT evidence or an active run-off owner;
 - configure exact production origins and Apple Pay domains;
-- verify descriptor behavior with a real low-value payment;
+- verify that newly built request payloads omit `dynamic_descriptor` and account for pre-release cached checkout intents; confirm the configured static descriptor on every connector and on renewals; run any real statement check only with prior payment approval and a monetary limit;
 - pause checkout and webhook delivery for incompatible schema boundaries;
 - apply migrations and deploy app plus final webhook contract together;
 - probe unsigned webhooks for the expected rejection and release version;
@@ -1203,7 +1183,7 @@ Keep provider columns and immutable ledger rows when they are part of financial 
 
 For a new application:
 
-1. Define product promises, currencies, dunning policy, cancellation behavior, descriptor text, and entitlement rules.
+1. Define product promises, currencies, dunning policy, cancellation behavior, one static channel/connector descriptor for all products, and entitlement rules.
 2. Confirm Billing 1.0 versus 2.0 with Solidgate before designing the catalog or webhook schema.
 3. Obtain sandbox API/webhook keys, wallet enablement, connector/descriptor details, and rate-limit information.
 4. Implement signature, client, form encryption, and strict environment isolation.
@@ -1343,7 +1323,7 @@ These are channel-, contract-, or version-specific and must not be copied as uni
 2. Billing 1.0 versus Billing 2.0 and the corresponding products, prices, subscription creation, and webhook contracts.
 3. Whether Apple Pay/Google Pay-derived tokens may be used as `rebill` for the intended post-purchase flow, and the required customer mandate.
 4. Whether the safer customer-present wallet re-presentation flow is required.
-5. Descriptor base, connector type, supported suffix length, prefixes, truncation, and `/recurring`/renewal appearance.
+5. Approved static descriptor on every connector, prefixes/truncation, and consistent first-payment, `/recurring`, and existing-subscription renewal appearance. Dynamic suffixes stay disabled.
 6. Product catalog scope across sandbox/live channels for the merchant account.
 7. Current API rate limits and webhook retry/timeout policy.
 8. Apple Pay certificates, exact verified domains, iframe/top-level requirements, and supported browser behavior.

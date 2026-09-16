@@ -103,6 +103,8 @@ vi.mock("@repo/shared/solidgate/account-vault", () => ({
 }));
 
 import { POST } from "./route";
+import { PWA_PRODUCT_IDS } from "@/lib/pwa-products";
+import { PRODUCT_ID_TO_CODE, SOLIDGATE_PRODUCT_CODES } from "@repo/shared/solidgate/catalog";
 
 const ORIGINAL_VERCEL_ENV = process.env.VERCEL_ENV;
 const ORIGINAL_PWA_URL = process.env.NEXT_PUBLIC_PWA_URL;
@@ -277,6 +279,23 @@ describe("Solidgate PWA purchase authority and idempotency", () => {
     else process.env.VERCEL_ENV = ORIGINAL_VERCEL_ENV;
     if (ORIGINAL_PWA_URL === undefined) delete process.env.NEXT_PUBLIC_PWA_URL;
     else process.env.NEXT_PUBLIC_PWA_URL = ORIGINAL_PWA_URL;
+  });
+
+  it.each(PWA_PRODUCT_IDS)("uses the static descriptor for hosted purchase %s", async (slug) => {
+    const response = await POST(request(
+      { slug, forceForm: true },
+      { "x-forwarded-for": "203.0.113.10" },
+    ));
+
+    expect(response.status).toBe(200);
+    expect(mocks.buildFormMerchantData).toHaveBeenCalledTimes(1);
+    const intent = mocks.buildFormMerchantData.mock.calls[0][2] as Record<string, unknown>;
+    expect(intent).not.toHaveProperty("dynamic_descriptor");
+    expect(intent.order_description).toBe(
+      `LT_${PRODUCT_ID_TO_CODE[slug]} o:LT_${SOLIDGATE_PRODUCT_CODES.main}`,
+    );
+    expect(intent.language).toBe("lt");
+    expect(intent.order_metadata).toMatchObject({ product_slug: slug });
   });
 
   it("prices from the stored profile locale, not the request body", async () => {

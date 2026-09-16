@@ -36,7 +36,6 @@
     "./email/send-welcome-email": "./src/email/send-welcome-email.ts",
     "./solidgate/catalog": "./src/solidgate/catalog.ts",
     "./solidgate/decline-reason": "./src/solidgate/decline-reason.ts",
-    "./solidgate/descriptor": "./src/solidgate/descriptor.ts",
     "./solidgate/order-id": "./src/solidgate/order-id.ts",
     "./solidgate/catalog-ids.json": "./src/solidgate/catalog-ids.json",
     "./solidgate/session-vault": "./src/solidgate/session-vault.ts",

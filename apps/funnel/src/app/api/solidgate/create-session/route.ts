@@ -13,7 +13,6 @@ import {
   type IntroOfferClaimResult,
 } from '@repo/shared/solidgate';
 import { PRODUCT_ID_TO_CODE, SOLIDGATE_PRODUCT_CODES } from '@repo/shared/solidgate/catalog';
-import { solidgateDynamicDescriptor } from '@repo/shared/solidgate/descriptor';
 import { solidgateOrderDescription } from '@repo/shared/locale-prefixes';
 import { BOILERPLATE_BRAND } from '@repo/shared/boilerplate-brand';
 import { localePathSegment } from '@repo/i18n/routing';
@@ -650,9 +649,8 @@ export async function POST(request: Request) {
       order_id: orderId,
       // Data-team grammar ({PREFIX}_{code}); locale also rides in metadata.
       order_description: solidgateOrderDescription(effectiveLocale, productCode),
-      // Statement shows base descriptor + this suffix (e.g. APP/:*ACME).
-      // undefined drops out at JSON.stringify time inside the encryptor.
-      dynamic_descriptor: solidgateDynamicDescriptor(productCode),
+      // Every product uses the static statement descriptor configured on the
+      // Solidgate channel / connector; payment requests never override it.
       // The intro price is what the customer pays now; the product's own
       // product_price is what rebills after its trial period.
       amount: amountCents,

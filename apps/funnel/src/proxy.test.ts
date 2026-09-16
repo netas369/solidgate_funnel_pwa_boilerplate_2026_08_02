@@ -539,6 +539,52 @@ describe('proxy paid-route guard', () => {
   });
 });
 
+describe('proxy public documentation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpdateSession.mockResolvedValue(new Response(null, { status: 200 }));
+  });
+
+  it.each([
+    '/documentation',
+    '/documentation/',
+    '/documentation/payments',
+    '/documentation/payments/renewals?view=diagram',
+  ])('serves %s without locale, auth, or payment lookups', async (path) => {
+    const { proxy } = await import('./proxy');
+    const response = await proxy(new NextRequest(`https://example.com${path}`, {
+      headers: {
+        'x-vercel-ip-country': 'LT',
+        'accept-language': 'lt-LT,lt;q=0.9',
+        cookie: 'NEXT_LOCALE=lt; payment_access=irrelevant-cookie',
+      },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.headers.get('location')).toBeNull();
+    expect(mockIntlInstance).not.toHaveBeenCalled();
+    expect(mockUpdateSession).not.toHaveBeenCalled();
+    expect(createServerClient).not.toHaveBeenCalled();
+    expect(mockAdminFrom).not.toHaveBeenCalled();
+    expect(verifyPaymentCookie).not.toHaveBeenCalled();
+    expect(verifySolidgateMainAcceptedCookie).not.toHaveBeenCalled();
+  });
+
+  it.each(['/documentation-ish', '/documentation2', '/documentation-private/overview'])(
+    'keeps normal routing for the neighboring path %s',
+    async (path) => {
+      const { proxy } = await import('./proxy');
+
+      const response = await proxy(new NextRequest(`https://example.com${path}`));
+
+      expect(response.status).toBe(200);
+      expect(mockIntlInstance).toHaveBeenCalledOnce();
+      expect(mockUpdateSession).toHaveBeenCalledOnce();
+    },
+  );
+});
+
 describe('proxy /admin branch', () => {
   beforeEach(() => {
     vi.clearAllMocks();

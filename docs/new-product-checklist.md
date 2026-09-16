@@ -61,7 +61,7 @@ never carries its own numbers, and a test pins the two together so they cannot d
    `SolidgateProductDef` needs:
    - `key` — stable catalog key, used for idempotent matching (`metadata.catalog_key`)
    - `productCode` — the offering code written to `orders.product_slug`
-   - `displayName` — **shown on bank statements and email receipts**, keep it legible
+   - `displayName` — customer-facing product wording; keep it legible. It does not set the bank statement descriptor
    - `billingPeriod: { unit, value }`
    - optional `trial: { period, paymentAction, amounts }`
    - `rebillAmounts` keyed by every currency in `CATALOG_CURRENCIES`
@@ -108,8 +108,12 @@ archived products are never matched, and prices are upserted by `(product, curre
   (`payment_action: auth_0_amount`), not a zero trial price.
 - `settle_interval: 0` is **required** on every `auth_settle` action, even though the
   OpenAPI spec does not list it as required.
-- The dynamic descriptor suffix is capped at 10 ASCII characters and `POST /recurring`
-  rejects it outright — see `packages/shared/src/solidgate/descriptor.ts`.
+- Every product uses the **static descriptor configured on the Solidgate channel/connector**.
+  Omit `dynamic_descriptor` from all requests, including Payment Form and `/recurring`.
+  Do not create per-product suffixes or pass the full static value as a suffix.
+  Product codes and locale-based `order_description` still identify each purchase.
+  Verify the same static configuration on every connector route and existing subscription renewals;
+  changing application code does not change provider settings or old transactions.
 
 ---
 
@@ -120,7 +124,7 @@ archived products are never matched, and prices are upserted by `(product, curre
 | Entitlement slugs that grant app access | `packages/shared/src/entitlements.ts` → `APP_ACCESS_PRODUCT_SLUGS` |
 | Add-ons excluded from the grace window | `packages/shared/src/grace-period.ts` → `GRACE_EXCLUDED_*` |
 | Product label vocabulary | `packages/shared/src/oto-product-label.ts` |
-| Statement descriptors | `packages/shared/src/solidgate/descriptor.ts` |
+| Static statement descriptor for all products | Solidgate channel/connector settings; `packages/shared/src/solidgate/form.ts` |
 | Webhook handling | `supabase/functions/solidgate-webhooks/` |
 
 **CSP note:** `next.config.ts` sets `frame-src` for the Solidgate 3DS iframe. Add **both**

@@ -1,0 +1,1856 @@
+[
+  {
+    "slug": "audit-fixes",
+    "title": "Audito pataisos ir pinigų žurnalas",
+    "description": "Kas pataisyta po pilno audito, kur saugomi finansiniai faktai ir kaip tikrinti pinigų bei prenumeratų istoriją.",
+    "group": "getting-started",
+    "source": "docs/solidgate/FIXES_2026-09-14.lt.md",
+    "updatedAt": "2026-09-14",
+    "status": "current",
+    "headings": [
+      {
+        "id": "prisijungimo-spraga-paprastai",
+        "text": "Prisijungimo spraga paprastai",
+        "level": 2
+      },
+      {
+        "id": "kas-pakeista-pagal-auditą",
+        "text": "Kas pakeista pagal auditą",
+        "level": 2
+      },
+      {
+        "id": "kur-dabar-ieškoti-pinigų-ir-laikotarpių",
+        "text": "Kur dabar ieškoti pinigų ir laikotarpių",
+        "level": 2
+      },
+      {
+        "id": "db-užklausos-operatoriui",
+        "text": "DB užklausos operatoriui",
+        "level": 2
+      },
+      {
+        "id": "diegimo-seka-ir-tikros-ribos",
+        "text": "Diegimo seka ir tikros ribos",
+        "level": 2
+      },
+      {
+        "id": "patikra",
+        "text": "Patikra",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "overview",
+    "title": "Apžvalga ir sistemos žemėlapis",
+    "description": "Pagrindinės sąvokos, mokėjimo kelias, sistemos komponentai ir ryšys su naujausiomis pataisomis.",
+    "group": "getting-started",
+    "source": "docs/solidgate/payments/00-apzvalga.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "kas-tai-yra",
+        "text": "Kas tai yra",
+        "level": 2
+      },
+      {
+        "id": "pagrindinis-srautas-viename-paveiksle",
+        "text": "Pagrindinis srautas viename paveiksle",
+        "level": 2
+      },
+      {
+        "id": "sąvokos-be-kurių-likusi-dokumentacija-neskaitoma",
+        "text": "Sąvokos, be kurių likusi dokumentacija neskaitoma",
+        "level": 2
+      },
+      {
+        "id": "lentelių-inventorius",
+        "text": "Lentelių inventorius",
+        "level": 2
+      },
+      {
+        "id": "pirkimai-ir-prieiga--02",
+        "text": "Pirkimai ir prieiga → 02",
+        "level": 3
+      },
+      {
+        "id": "prenumeratų-sąskaitos-intro-atribucija--03",
+        "text": "Prenumeratų sąskaitos, intro, atribucija → 03",
+        "level": 3
+      },
+      {
+        "id": "checkout-būsenos-kortelės-tokenai--04",
+        "text": "Checkout būsenos, kortelės, tokenai → 04",
+        "level": 3
+      },
+      {
+        "id": "webhook-inbox-ir-eilės--05",
+        "text": "Webhook inbox ir eilės → 05",
+        "level": 3
+      },
+      {
+        "id": "sesijos-ir-platforma--06",
+        "text": "Sesijos ir platforma → 06",
+        "level": 3
+      },
+      {
+        "id": "kur-kas-gyvena-kode",
+        "text": "Kur kas gyvena kode",
+        "level": 2
+      },
+      {
+        "id": "ko-šis-blokas-nedaro",
+        "text": "Ko šis blokas nedaro",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "auth-rollout",
+    "title": "Prisijungimas ir billing atkūrimas",
+    "description": "Pašto patvirtinimas, kortelės nuosavybė, prieigos ribos ir pataisų išleidimo seka.",
+    "group": "getting-started",
+    "source": "docs/solidgate/AUTH_BILLING_ROLLOUT.md",
+    "updatedAt": "2026-09-14",
+    "status": "current",
+    "headings": []
+  },
+  {
+    "slug": "payment-flows",
+    "title": "Srautai žingsnis po žingsnio",
+    "description": "Funnel checkout, OTO, PWA pirkimai, 3DS, kortelės keitimas ir foninis apdorojimas.",
+    "group": "payment-flows",
+    "source": "docs/solidgate/payments/01-srautai.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "aktualus-descriptor-pakeitimas--2026-09-15",
+        "text": "Aktualus Descriptor pakeitimas · 2026-09-15",
+        "level": 2
+      },
+      {
+        "id": "žemėlapis",
+        "text": "Žemėlapis",
+        "level": 2
+      },
+      {
+        "id": "funnel-api-routeai",
+        "text": "Funnel: API route'ai",
+        "level": 3
+      },
+      {
+        "id": "funnel-lib-proxy-komponentai",
+        "text": "Funnel: lib, proxy, komponentai",
+        "level": 3
+      },
+      {
+        "id": "pwa",
+        "text": "PWA",
+        "level": 3
+      },
+      {
+        "id": "packagesshared",
+        "text": "packages/shared",
+        "level": 3
+      },
+      {
+        "id": "webhook-supabase-edge-function-ir-db",
+        "text": "Webhook (Supabase Edge Function) ir DB",
+        "level": 3
+      },
+      {
+        "id": "skriptai",
+        "text": "Skriptai",
+        "level": 3
+      },
+      {
+        "id": "diagrama-pagrindinis-kelias",
+        "text": "Diagrama: pagrindinis kelias",
+        "level": 2
+      },
+      {
+        "id": "1-pagrindinis-checkout-funnelyje",
+        "text": "1. Pagrindinis checkout funnel'yje",
+        "level": 2
+      },
+      {
+        "id": "2-oto--upsell-grandinė",
+        "text": "2. OTO / upsell grandinė",
+        "level": 2
+      },
+      {
+        "id": "3-prieiga-po-pirkimo",
+        "text": "3. Prieiga po pirkimo",
+        "level": 2
+      },
+      {
+        "id": "funnel-pusė",
+        "text": "Funnel pusė",
+        "level": 3
+      },
+      {
+        "id": "pwa-pusė",
+        "text": "PWA pusė",
+        "level": 3
+      },
+      {
+        "id": "4-paskyra-ir-prisijungimas",
+        "text": "4. Paskyra ir prisijungimas",
+        "level": 2
+      },
+      {
+        "id": "5-pwa-narių-zonos-pirkimas",
+        "text": "5. PWA narių zonos pirkimas",
+        "level": 2
+      },
+      {
+        "id": "6-kortelės-atnaujinimas-dunning-recovery",
+        "text": "6. Kortelės atnaujinimas (dunning recovery)",
+        "level": 2
+      },
+      {
+        "id": "7-webhook",
+        "text": "7. Webhook",
+        "level": 2
+      },
+      {
+        "id": "8-foninis-darbas",
+        "text": "8. Foninis darbas",
+        "level": 2
+      },
+      {
+        "id": "9-aplinkos-ir-raktai",
+        "text": "9. Aplinkos ir raktai",
+        "level": 2
+      },
+      {
+        "id": "10-operatoriaus-įrankiai",
+        "text": "10. Operatoriaus įrankiai",
+        "level": 2
+      },
+      {
+        "id": "nepatikrinta-ir-pastabos",
+        "text": "Nepatikrinta ir pastabos",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "product-catalog",
+    "title": "Produktų katalogas ir kodai",
+    "description": "Kaip produkto kodas ir kaina keliauja nuo konfigūracijos iki Solidgate, užsakymo ir prieigos.",
+    "group": "payment-flows",
+    "source": "docs/solidgate/payments/08-produktu-katalogas-ir-kodai.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "produktų-kodo-gramatika",
+        "text": "Produktų kodo gramatika",
+        "level": 2
+      },
+      {
+        "id": "vidiniai-slugai-vs-kodai",
+        "text": "Vidiniai slug'ai vs kodai",
+        "level": 3
+      },
+      {
+        "id": "kur-kodas-ir-kaina-keliauja-grandinė",
+        "text": "Kur kodas ir kaina keliauja: grandinė",
+        "level": 2
+      },
+      {
+        "id": "keturios-iš-tikrųjų-daugiau-vietos-kurios-turi-keistis-kartu",
+        "text": "Keturios (iš tikrųjų daugiau) vietos, kurios turi keistis kartu",
+        "level": 2
+      },
+      {
+        "id": "kaip-tai-padaryta-theastrologist-projekte-palyginimui",
+        "text": "Kaip tai padaryta theastrologist projekte (palyginimui)",
+        "level": 2
+      },
+      {
+        "id": "solidgate-paskyros-pusė",
+        "text": "Solidgate paskyros pusė",
+        "level": 2
+      },
+      {
+        "id": "ką-reiškia-vienas-kodas-keli-produktai",
+        "text": "Ką reiškia „vienas kodas, keli produktai“",
+        "level": 2
+      },
+      {
+        "id": "susiję-dokumentai",
+        "text": "Susiję dokumentai",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "orders-entitlements",
+    "title": "Orders ir prieigos teisės",
+    "description": "Užsakymo tapatybė, sumos, būsenos, entitlement ribos ir kiekvieno lauko paskirtis.",
+    "group": "data-model",
+    "source": "docs/solidgate/payments/02-lenteles-orders-entitlements.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "lentelė-publicorders",
+        "text": "Lentelė public.orders",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "nekintamas-checkout-tapatybės-snapshotas-grupė",
+        "text": "Nekintamas checkout tapatybės snapshot'as (grupė)",
+        "level": 4
+      },
+      {
+        "id": "sumų-stulpeliai-grupė",
+        "text": "Sumų stulpeliai (grupė)",
+        "level": 4
+      },
+      {
+        "id": "lentelė-publicentitlements",
+        "text": "Lentelė public.entitlements",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-1",
+        "text": "Stulpeliai",
+        "level": 3
+      }
+    ]
+  },
+  {
+    "slug": "renewals-invoices",
+    "title": "Pratęsimai, sąskaitos ir intro",
+    "description": "Renewal įrašai, prenumeratos sąskaitos, intro ribojimas ir mokėjimų atribucija.",
+    "group": "data-model",
+    "source": "docs/solidgate/payments/03-lenteles-prenumeratos-saskaitos.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "lentelė-publicrenewal_events",
+        "text": "Lentelė public.renewal_events",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicsolidgate_invoice_orders",
+        "text": "Lentelė public.solidgate_invoice_orders",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-1",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicsolidgate_intro_claims",
+        "text": "Lentelė public.solidgate_intro_claims",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-2",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "vaizdas-publicsolidgate_intro_claims_needing_refund",
+        "text": "Vaizdas public.solidgate_intro_claims_needing_refund",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicuser_acquisition_attribution",
+        "text": "Lentelė public.user_acquisition_attribution",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-3",
+        "text": "Stulpeliai",
+        "level": 3
+      }
+    ]
+  },
+  {
+    "slug": "checkout-cards",
+    "title": "Checkout, kortelės ir tokenai",
+    "description": "Išsaugota checkout būsena, kortelių saugyklos, atnaujinimo bandymai ir tokenų sinchronizacija.",
+    "group": "data-model",
+    "source": "docs/solidgate/payments/04-lenteles-checkout-korteles-tokenai.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "seka-publicsolidgate_card_source_sequence-ir-bendros-sąvokos",
+        "text": "Seka public.solidgate_card_source_sequence ir bendros sąvokos",
+        "level": 2
+      },
+      {
+        "id": "lentelė-publicsolidgate_main_checkout_states",
+        "text": "Lentelė public.solidgate_main_checkout_states",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicsolidgate_pwa_purchase_states",
+        "text": "Lentelė public.solidgate_pwa_purchase_states",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-1",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicsolidgate_session_vault",
+        "text": "Lentelė public.solidgate_session_vault",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-2",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicsolidgate_account_vault",
+        "text": "Lentelė public.solidgate_account_vault",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-3",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicsolidgate_card_update_attempts",
+        "text": "Lentelė public.solidgate_card_update_attempts",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-4",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicsolidgate_subscription_token_sync_jobs",
+        "text": "Lentelė public.solidgate_subscription_token_sync_jobs",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-5",
+        "text": "Stulpeliai",
+        "level": 3
+      }
+    ]
+  },
+  {
+    "slug": "platform-sessions",
+    "title": "Sesijos ir platforma",
+    "description": "Funnel sesijos, paskyros, operatoriaus pagalbiniai duomenys ir jų apsaugos.",
+    "group": "data-model",
+    "source": "docs/solidgate/payments/06-lenteles-platforma.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "lentelė-publicsessions",
+        "text": "Lentelė public.sessions",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicfunnel_events",
+        "text": "Lentelė public.funnel_events",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-1",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicotp_attempts",
+        "text": "Lentelė public.otp_attempts",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-2",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicuser_prefs",
+        "text": "Lentelė public.user_prefs",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-3",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicdeletion_requests",
+        "text": "Lentelė public.deletion_requests",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-4",
+        "text": "Stulpeliai",
+        "level": 3
+      }
+    ]
+  },
+  {
+    "slug": "database-functions",
+    "title": "DB funkcijos, RPC ir triggeriai",
+    "description": "Atominės operacijos, konkurencijos kontrolė, būsenų taisyklės ir duomenų bazės view.",
+    "group": "data-model",
+    "source": "docs/solidgate/payments/07-funkcijos-rpc-triggeriai.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "kaip-funkcijos-pasiekiamos",
+        "text": "Kaip funkcijos pasiekiamos",
+        "level": 2
+      },
+      {
+        "id": "produktų-katalogo-resolveriai-2-skyrius",
+        "text": "Produktų katalogo resolveriai (2 skyrius)",
+        "level": 2
+      },
+      {
+        "id": "solidgate_oto_step_from_product_slugp_product_slug-text-returns-integer",
+        "text": "solidgate_oto_step_from_product_slug(p_product_slug TEXT) RETURNS INTEGER",
+        "level": 3
+      },
+      {
+        "id": "solidgate_oto_step_from_internal_slugp_internal_slug-text-returns-integer",
+        "text": "solidgate_oto_step_from_internal_slug(p_internal_slug TEXT) RETURNS INTEGER",
+        "level": 3
+      },
+      {
+        "id": "solidgate_persisted_oto_stepp_last_oto_step-text-returns-integer",
+        "text": "solidgate_persisted_oto_step(p_last_oto_step TEXT) RETURNS INTEGER",
+        "level": 3
+      },
+      {
+        "id": "solidgate_pwa_product_codep_offer_slug-text-returns-text",
+        "text": "solidgate_pwa_product_code(p_offer_slug TEXT) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "solidgate_main_checkout_amountp_offer_slug-text-p_currency-text-returns-integer",
+        "text": "solidgate_main_checkout_amount(p_offer_slug TEXT, p_currency TEXT) RETURNS INTEGER",
+        "level": 3
+      },
+      {
+        "id": "trigger-funkcijos-6-skyrius-ir-triggeriai-8-skyrius",
+        "text": "Trigger funkcijos (6 skyrius) ir trigger'iai (8 skyrius)",
+        "level": 2
+      },
+      {
+        "id": "lentelė-triggeris--funkcija",
+        "text": "Lentelė: trigger'is → funkcija",
+        "level": 3
+      },
+      {
+        "id": "bump_orders_updated_at-returns-trigger",
+        "text": "bump_orders_updated_at() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "guard_solidgate_checkout_identity-returns-trigger",
+        "text": "guard_solidgate_checkout_identity() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "guard_solidgate_main_payable_order-returns-trigger",
+        "text": "guard_solidgate_main_payable_order() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "guard_solidgate_oto_payable_order-returns-trigger",
+        "text": "guard_solidgate_oto_payable_order() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "guard_solidgate_pwa_payable_order-returns-trigger",
+        "text": "guard_solidgate_pwa_payable_order() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "guard_solidgate_session_vault_card_source-returns-trigger",
+        "text": "guard_solidgate_session_vault_card_source() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "guard_solidgate_session_vault_payment_method-returns-trigger",
+        "text": "guard_solidgate_session_vault_payment_method() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "guard_solidgate_account_vault_card_source-returns-trigger",
+        "text": "guard_solidgate_account_vault_card_source() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "guard_solidgate_account_vault_payment_method-returns-trigger",
+        "text": "guard_solidgate_account_vault_payment_method() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "prevent_solidgate_entitlement_replay-returns-trigger",
+        "text": "prevent_solidgate_entitlement_replay() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "enqueue_solidgate_subscription_token_sync_from_entitlement-returns-trigger",
+        "text": "enqueue_solidgate_subscription_token_sync_from_entitlement() RETURNS TRIGGER",
+        "level": 3
+      },
+      {
+        "id": "webhook-inbox-ir-entity-tvarka",
+        "text": "Webhook inbox ir entity tvarka",
+        "level": 2
+      },
+      {
+        "id": "claim_solidgate_webhook_eventp_event_id-text-p_type-text-p_event_created_at-timestamptz-p_environment-text-p_payload-jsonb-p_lease_seconds-integer-default-300-returns-boolean",
+        "text": "claim_solidgate_webhook_event(p_event_id TEXT, p_type TEXT, p_event_created_at TIMESTAMPTZ, p_environment TEXT, p_payload JSONB, p_lease_seconds INTEGER DEFAULT 300) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "claim_solidgate_webhook_event_v2p_event_id-text-p_type-text-p_event_created_at-timestamptz-p_environment-text-p_payload-jsonb-p_lease_seconds-integer-default-300-returns-table-claim_state-text-claim_token-uuid-claim_generation-bigint",
+        "text": "claim_solidgate_webhook_event_v2(p_event_id TEXT, p_type TEXT, p_event_created_at TIMESTAMPTZ, p_environment TEXT, p_payload JSONB, p_lease_seconds INTEGER DEFAULT 300) RETURNS TABLE (claim_state TEXT, claim_token UUID, claim_generation BIGINT)",
+        "level": 3
+      },
+      {
+        "id": "complete_solidgate_webhook_event_v2p_environment-text-p_event_id-text-p_claim_token-uuid-p_claim_generation-bigint-returns-boolean",
+        "text": "complete_solidgate_webhook_event_v2(p_environment TEXT, p_event_id TEXT, p_claim_token UUID, p_claim_generation BIGINT) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "fail_solidgate_webhook_event_v2p_environment-text-p_event_id-text-p_claim_token-uuid-p_claim_generation-bigint-p_last_error-text-returns-boolean",
+        "text": "fail_solidgate_webhook_event_v2(p_environment TEXT, p_event_id TEXT, p_claim_token UUID, p_claim_generation BIGINT, p_last_error TEXT) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "claim_solidgate_entity_eventp_entity_type-text-p_entity_id-text-p_event_created_at-timestamptz-p_event_id-text-p_lease_seconds-integer-default-300-returns-text",
+        "text": "claim_solidgate_entity_event(p_entity_type TEXT, p_entity_id TEXT, p_event_created_at TIMESTAMPTZ, p_event_id TEXT, p_lease_seconds INTEGER DEFAULT 300) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "complete_solidgate_entity_eventp_entity_type-text-p_entity_id-text-p_event_created_at-timestamptz-p_event_id-text-returns-void",
+        "text": "complete_solidgate_entity_event(p_entity_type TEXT, p_entity_id TEXT, p_event_created_at TIMESTAMPTZ, p_event_id TEXT) RETURNS VOID",
+        "level": 3
+      },
+      {
+        "id": "release_solidgate_entity_eventp_entity_type-text-p_entity_id-text-p_event_id-text-returns-void",
+        "text": "release_solidgate_entity_event(p_entity_type TEXT, p_entity_id TEXT, p_event_id TEXT) RETURNS VOID",
+        "level": 3
+      },
+      {
+        "id": "eilės-outbox-claim",
+        "text": "Eilės (outbox claim)",
+        "level": 2
+      },
+      {
+        "id": "claim_solidgate_analytics_outboxp_environment-text-p_limit-integer-default-25-p_lease_seconds-integer-default-300-returns-setof-publicsolidgate_analytics_outbox",
+        "text": "claim_solidgate_analytics_outbox(p_environment TEXT, p_limit INTEGER DEFAULT 25, p_lease_seconds INTEGER DEFAULT 300) RETURNS SETOF public.solidgate_analytics_outbox",
+        "level": 3
+      },
+      {
+        "id": "claim_solidgate_fulfillment_outboxp_environment-text-p_limit-integer-default-10-p_lease_seconds-integer-default-120-returns-setof-publicsolidgate_fulfillment_outbox",
+        "text": "claim_solidgate_fulfillment_outbox(p_environment TEXT, p_limit INTEGER DEFAULT 10, p_lease_seconds INTEGER DEFAULT 120) RETURNS SETOF public.solidgate_fulfillment_outbox",
+        "level": 3
+      },
+      {
+        "id": "claim_meta_capi_eventp_environment-text-p_event_name-text-p_event_id-text-p_ip_hash-text-p_session_id-uuid-p_window_seconds-integer-default-600-p_max_events-integer-default-40-returns-boolean",
+        "text": "claim_meta_capi_event(p_environment TEXT, p_event_name TEXT, p_event_id TEXT, p_ip_hash TEXT, p_session_id UUID, p_window_seconds INTEGER DEFAULT 600, p_max_events INTEGER DEFAULT 40) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "pagrindinis-checkout-funnel-brand_000000_sub",
+        "text": "Pagrindinis checkout (funnel, BRAND_000000_SUB)",
+        "level": 2
+      },
+      {
+        "id": "solidgate_checkout_core_is_canonicalp_order-publicorders-returns-boolean",
+        "text": "solidgate_checkout_core_is_canonical(p_order public.orders) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "get_solidgate_main_checkout_identityp_payment_environment-text-p_session_id-uuid-p_product_slug-text-returns-table-order_db_id-uuid-offer_slug-text-customer_email-text-checkout_locale-text-solidgate_product_id-text-solidgate_payment_action-text-amount_cents-integer-currency-text-tracking_metadata-jsonb-user_id-uuid",
+        "text": "get_solidgate_main_checkout_identity(p_payment_environment TEXT, p_session_id UUID, p_product_slug TEXT) RETURNS TABLE (order_db_id UUID, offer_slug TEXT, customer_email TEXT, checkout_locale TEXT, solidgate_product_id TEXT, solidgate_payment_action TEXT, amount_cents INTEGER, currency TEXT, tracking_metadata JSONB, user_id UUID)",
+        "level": 3
+      },
+      {
+        "id": "open_solidgate_main_checkoutp_payment_environment-text-p_session_id-uuid-p_offer_slug-text-p_product_slug-text-p_amount_cents-integer-p_currency-text-p_product_name-text-p_tracking_metadata-jsonb-p_builder_token-uuid-p_user_id-uuid-default-null-returns-table-order_db_id-solidgate_order_id-bound_session_id-bound_payment_environment-bound_product_slug-bound_product_name-bound_offer_slug-bound_amount_cents-bound_currency-bound_order_status-bound_payment_status-bound_tracking_metadata-is_new-should_build-merchant_data",
+        "text": "open_solidgate_main_checkout(p_payment_environment TEXT, p_session_id UUID, p_offer_slug TEXT, p_product_slug TEXT, p_amount_cents INTEGER, p_currency TEXT, p_product_name TEXT, p_tracking_metadata JSONB, p_builder_token UUID, p_user_id UUID DEFAULT NULL) RETURNS TABLE (order_db_id, solidgate_order_id, bound_session_id, bound_payment_environment, bound_product_slug, bound_product_name, bound_offer_slug, bound_amount_cents, bound_currency, bound_order_status, bound_payment_status, bound_tracking_metadata, is_new, should_build, merchant_data)",
+        "level": 3
+      },
+      {
+        "id": "open_solidgate_main_checkout_v2-p_builder_token-uuid-p_customer_email-text-p_checkout_locale-text-p_solidgate_product_id-text-p_solidgate_payment_action-text-p_user_id-uuid-default-null-returns-table---bound_customer_email-bound_checkout_locale-bound_solidgate_product_id-bound_solidgate_payment_action-",
+        "text": "open_solidgate_main_checkout_v2(..., p_builder_token UUID, p_customer_email TEXT, p_checkout_locale TEXT, p_solidgate_product_id TEXT, p_solidgate_payment_action TEXT, p_user_id UUID DEFAULT NULL) RETURNS TABLE (... + bound_customer_email, bound_checkout_locale, bound_solidgate_product_id, bound_solidgate_payment_action ...)",
+        "level": 3
+      },
+      {
+        "id": "finalize_solidgate_main_checkoutp_payment_environment-text-p_session_id-uuid-p_offer_slug-text-p_product_slug-text-p_order_db_id-uuid-p_solidgate_order_id-text-p_amount_cents-integer-p_currency-text-p_builder_token-uuid-p_merchant_data-jsonb-returns-jsonb",
+        "text": "finalize_solidgate_main_checkout(p_payment_environment TEXT, p_session_id UUID, p_offer_slug TEXT, p_product_slug TEXT, p_order_db_id UUID, p_solidgate_order_id TEXT, p_amount_cents INTEGER, p_currency TEXT, p_builder_token UUID, p_merchant_data JSONB) RETURNS JSONB",
+        "level": 3
+      },
+      {
+        "id": "finalize_solidgate_main_checkout_v2-p_merchant_data-jsonb-p_customer_email-text-p_checkout_locale-text-returns-jsonb",
+        "text": "finalize_solidgate_main_checkout_v2(..., p_merchant_data JSONB, p_customer_email TEXT, p_checkout_locale TEXT) RETURNS JSONB",
+        "level": 3
+      },
+      {
+        "id": "reconcile_solidgate_legacy_order_identityp_payment_environment-text-p_solidgate_order_id-text-p_customer_email-text-p_customer_account_id-text-p_order_description-text-p_solidgate_product_id-text-p_original_amount_cents-integer-p_currency-text-p_order_metadata-jsonb-p_card_token-text-p_card_brand-text-p_card_last4-text-returns-boolean",
+        "text": "reconcile_solidgate_legacy_order_identity(p_payment_environment TEXT, p_solidgate_order_id TEXT, p_customer_email TEXT, p_customer_account_id TEXT, p_order_description TEXT, p_solidgate_product_id TEXT, p_original_amount_cents INTEGER, p_currency TEXT, p_order_metadata JSONB, p_card_token TEXT, p_card_brand TEXT, p_card_last4 TEXT) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "oto-funnel-upsell-žingsniai-18",
+        "text": "OTO (funnel upsell, žingsniai 1–8)",
+        "level": 2
+      },
+      {
+        "id": "open_solidgate_oto_order_v2p_payment_environment-text-p_session_id-uuid-p_product_slug-text-p_order_prefix-text-p_amount_cents-integer-p_currency-text-p_product_name-text-p_tracking_metadata-jsonb-p_customer_email-text-p_checkout_locale-text-p_builder_token-uuid-p_user_id-uuid-default-null-p_solidgate_product_id-text-default-null-p_solidgate_payment_action-text-default-auth_settle-returns-table-order_db_id-uuid-solidgate_order_id-text-order_status-text-solidgate_payment_status-text-is_new-boolean-should_submit-boolean-needs_reconcile-boolean-claim_token-uuid-bound_original_amount_cents-integer-bound_currency-text-bound_tracking_metadata-jsonb-bound_customer_email-text-bound_checkout_locale-text-bound_solidgate_product_id-text-bound_solidgate_payment_action-text",
+        "text": "open_solidgate_oto_order_v2(p_payment_environment TEXT, p_session_id UUID, p_product_slug TEXT, p_order_prefix TEXT, p_amount_cents INTEGER, p_currency TEXT, p_product_name TEXT, p_tracking_metadata JSONB, p_customer_email TEXT, p_checkout_locale TEXT, p_builder_token UUID, p_user_id UUID DEFAULT NULL, p_solidgate_product_id TEXT DEFAULT NULL, p_solidgate_payment_action TEXT DEFAULT 'auth_settle') RETURNS TABLE (order_db_id UUID, solidgate_order_id TEXT, order_status TEXT, solidgate_payment_status TEXT, is_new BOOLEAN, should_submit BOOLEAN, needs_reconcile BOOLEAN, claim_token UUID, bound_original_amount_cents INTEGER, bound_currency TEXT, bound_tracking_metadata JSONB, bound_customer_email TEXT, bound_checkout_locale TEXT, bound_solidgate_product_id TEXT, bound_solidgate_payment_action TEXT)",
+        "level": 3
+      },
+      {
+        "id": "resume_solidgate_oto_order_after_absent_reconcilep_payment_environment-text-p_session_id-uuid-p_product_slug-text-p_order_db_id-uuid-p_solidgate_order_id-text-p_builder_token-uuid-returns-boolean",
+        "text": "resume_solidgate_oto_order_after_absent_reconcile(p_payment_environment TEXT, p_session_id UUID, p_product_slug TEXT, p_order_db_id UUID, p_solidgate_order_id TEXT, p_builder_token UUID) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "advance_solidgate_oto_progressp_payment_environment-text-p_session_id-uuid-p_current_step-integer-p_allow_catch_up-boolean-default-false-returns-table-persisted_step-integer-advanced-boolean-conflict-boolean",
+        "text": "advance_solidgate_oto_progress(p_payment_environment TEXT, p_session_id UUID, p_current_step INTEGER, p_allow_catch_up BOOLEAN DEFAULT FALSE) RETURNS TABLE (persisted_step INTEGER, advanced BOOLEAN, conflict BOOLEAN)",
+        "level": 3
+      },
+      {
+        "id": "pwa-pirkimai-member-area",
+        "text": "PWA pirkimai (member area)",
+        "level": 2
+      },
+      {
+        "id": "get_solidgate_pwa_checkout_identityp_payment_environment-text-p_user_id-uuid-p_product_slug-text-returns-table-order_db_id-uuid-offer_slug-text-customer_email-text-checkout_locale-text-solidgate_product_id-text-solidgate_payment_action-text-amount_cents-integer-currency-text-tracking_metadata-jsonb-purchase_mode-text",
+        "text": "get_solidgate_pwa_checkout_identity(p_payment_environment TEXT, p_user_id UUID, p_product_slug TEXT) RETURNS TABLE (order_db_id UUID, offer_slug TEXT, customer_email TEXT, checkout_locale TEXT, solidgate_product_id TEXT, solidgate_payment_action TEXT, amount_cents INTEGER, currency TEXT, tracking_metadata JSONB, purchase_mode TEXT)",
+        "level": 3
+      },
+      {
+        "id": "open_solidgate_pwa_purchasep_payment_environment-text-p_user_id-uuid-p_offer_slug-text-p_product_slug-text-p_amount_cents-integer-p_currency-text-p_tracking_metadata-jsonb-p_requested_mode-text-p_claim_token-uuid-returns-table-order_db_id-solidgate_order_id-bound_payment_environment-bound_user_id-bound_offer_slug-bound_product_slug-bound_product_name-bound_amount_cents-bound_currency-bound_order_status-bound_payment_status-bound_tracking_metadata-purchase_mode-solidgate_subscription_id-verify_url-last_result_kind-last_result_net_amount_cents-is_new-should_build-should_submit-needs_reconcile-claim_token-merchant_data",
+        "text": "open_solidgate_pwa_purchase(p_payment_environment TEXT, p_user_id UUID, p_offer_slug TEXT, p_product_slug TEXT, p_amount_cents INTEGER, p_currency TEXT, p_tracking_metadata JSONB, p_requested_mode TEXT, p_claim_token UUID) RETURNS TABLE (order_db_id, solidgate_order_id, bound_payment_environment, bound_user_id, bound_offer_slug, bound_product_slug, bound_product_name, bound_amount_cents, bound_currency, bound_order_status, bound_payment_status, bound_tracking_metadata, purchase_mode, solidgate_subscription_id, verify_url, last_result_kind, last_result_net_amount_cents, is_new, should_build, should_submit, needs_reconcile, claim_token, merchant_data)",
+        "level": 3
+      },
+      {
+        "id": "open_solidgate_pwa_purchase_v2-p_claim_token-uuid-p_customer_email-text-p_checkout_locale-text-p_solidgate_product_id-text-p_solidgate_payment_action-text-returns-table---bound_customer_email-bound_checkout_locale-bound_solidgate_product_id-bound_solidgate_payment_action-",
+        "text": "open_solidgate_pwa_purchase_v2(..., p_claim_token UUID, p_customer_email TEXT, p_checkout_locale TEXT, p_solidgate_product_id TEXT, p_solidgate_payment_action TEXT) RETURNS TABLE (... + bound_customer_email, bound_checkout_locale, bound_solidgate_product_id, bound_solidgate_payment_action ...)",
+        "level": 3
+      },
+      {
+        "id": "finalize_solidgate_pwa_formp_payment_environment-text-p_user_id-uuid-p_offer_slug-text-p_product_slug-text-p_order_db_id-uuid-p_solidgate_order_id-text-p_amount_cents-integer-p_currency-text-p_claim_token-uuid-p_merchant_data-jsonb-returns-jsonb",
+        "text": "finalize_solidgate_pwa_form(p_payment_environment TEXT, p_user_id UUID, p_offer_slug TEXT, p_product_slug TEXT, p_order_db_id UUID, p_solidgate_order_id TEXT, p_amount_cents INTEGER, p_currency TEXT, p_claim_token UUID, p_merchant_data JSONB) RETURNS JSONB",
+        "level": 3
+      },
+      {
+        "id": "finalize_solidgate_pwa_form_v2-p_merchant_data-jsonb-p_customer_email-text-p_checkout_locale-text-returns-jsonb",
+        "text": "finalize_solidgate_pwa_form_v2(..., p_merchant_data JSONB, p_customer_email TEXT, p_checkout_locale TEXT) RETURNS JSONB",
+        "level": 3
+      },
+      {
+        "id": "record_solidgate_pwa_submission_resultp_payment_environment-text-p_user_id-uuid-p_offer_slug-text-p_product_slug-text-p_order_db_id-uuid-p_solidgate_order_id-text-p_amount_cents-integer-p_currency-text-p_claim_token-uuid-p_result_kind-text-p_provider_status-text-p_net_amount_cents-integer-p_subscription_id-text-p_verify_url-text-returns-boolean",
+        "text": "record_solidgate_pwa_submission_result(p_payment_environment TEXT, p_user_id UUID, p_offer_slug TEXT, p_product_slug TEXT, p_order_db_id UUID, p_solidgate_order_id TEXT, p_amount_cents INTEGER, p_currency TEXT, p_claim_token UUID, p_result_kind TEXT, p_provider_status TEXT, p_net_amount_cents INTEGER, p_subscription_id TEXT, p_verify_url TEXT) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "resume_solidgate_pwa_submission_after_absent_reconcilep_payment_environment-text-p_user_id-uuid-p_offer_slug-text-p_product_slug-text-p_order_db_id-uuid-p_solidgate_order_id-text-p_amount_cents-integer-p_currency-text-p_claim_token-uuid-returns-boolean",
+        "text": "resume_solidgate_pwa_submission_after_absent_reconcile(p_payment_environment TEXT, p_user_id UUID, p_offer_slug TEXT, p_product_slug TEXT, p_order_db_id UUID, p_solidgate_order_id TEXT, p_amount_cents INTEGER, p_currency TEXT, p_claim_token UUID) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "record_solidgate_pwa_confirmed_capturep_payment_environment-text-p_user_id-uuid-p_offer_slug-text-p_product_slug-text-p_order_db_id-uuid-p_solidgate_order_id-text-p_amount_cents-integer-p_currency-text-p_provider_status-text-p_subscription_id-text-returns-text",
+        "text": "record_solidgate_pwa_confirmed_capture(p_payment_environment TEXT, p_user_id UUID, p_offer_slug TEXT, p_product_slug TEXT, p_order_db_id UUID, p_solidgate_order_id TEXT, p_amount_cents INTEGER, p_currency TEXT, p_provider_status TEXT, p_subscription_id TEXT) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "teisės-entitlements",
+        "text": "Teisės (entitlements)",
+        "level": 2
+      },
+      {
+        "id": "solidgate_special_free_card_readyp_order_id-uuid-returns-boolean",
+        "text": "solidgate_special_free_card_ready(p_order_id UUID) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "grant_solidgate_main_entitlementp_payment_environment-text-p_order_id-uuid-p_user_id-uuid-p_product_slug-text-p_subscription_id-text-p_amount_cents-integer-p_fallback_expires_at-timestamptz-returns-boolean",
+        "text": "grant_solidgate_main_entitlement(p_payment_environment TEXT, p_order_id UUID, p_user_id UUID, p_product_slug TEXT, p_subscription_id TEXT, p_amount_cents INTEGER, p_fallback_expires_at TIMESTAMPTZ) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "grant_solidgate_oto_entitlementp_payment_environment-text-p_order_db_id-uuid-p_user_id-uuid-p_product_slug-text-p_access_level-text-p_expires_at-timestamptz-p_solidgate_subscription_id-text-p_source-text-returns-boolean",
+        "text": "grant_solidgate_oto_entitlement(p_payment_environment TEXT, p_order_db_id UUID, p_user_id UUID, p_product_slug TEXT, p_access_level TEXT, p_expires_at TIMESTAMPTZ, p_solidgate_subscription_id TEXT, p_source TEXT) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "grant_solidgate_pwa_entitlementp_payment_environment-text-p_order_db_id-uuid-p_user_id-uuid-p_product_slug-text-p_access_level-text-p_expires_at-timestamptz-p_solidgate_subscription_id-text-p_source-text-returns-boolean",
+        "text": "grant_solidgate_pwa_entitlement(p_payment_environment TEXT, p_order_db_id UUID, p_user_id UUID, p_product_slug TEXT, p_access_level TEXT, p_expires_at TIMESTAMPTZ, p_solidgate_subscription_id TEXT, p_source TEXT) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "apply_solidgate_subscription_entitlement_lifecyclep_payment_environment-text-p_order_db_id-uuid-p_user_id-uuid-p_product_slug-text-p_solidgate_subscription_id-text-p_access_level-text-p_status-text-p_expires_at-timestamptz-p_source-text-returns-text",
+        "text": "apply_solidgate_subscription_entitlement_lifecycle(p_payment_environment TEXT, p_order_db_id UUID, p_user_id UUID, p_product_slug TEXT, p_solidgate_subscription_id TEXT, p_access_level TEXT, p_status TEXT, p_expires_at TIMESTAMPTZ, p_source TEXT) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "kortelių-saugyklos-session-vault--account-vault",
+        "text": "Kortelių saugyklos (session vault / account vault)",
+        "level": 2
+      },
+      {
+        "id": "write_solidgate_session_vault_monotonicp_payment_environment-text-p_session_id-uuid-p_source_order_id-uuid-p_customer_account_id-text-p_card_token-text-p_card_brand-text-p_card_last4-text-returns-text",
+        "text": "write_solidgate_session_vault_monotonic(p_payment_environment TEXT, p_session_id UUID, p_source_order_id UUID, p_customer_account_id TEXT, p_card_token TEXT, p_card_brand TEXT, p_card_last4 TEXT) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "write_solidgate_account_vault_monotonicp_payment_environment-text-p_user_id-uuid-p_source_kind-text-p_source_id-uuid-p_source_claim_token-uuid-p_card_token-text-p_card_brand-text-p_card_last4-text-returns-text",
+        "text": "write_solidgate_account_vault_monotonic(p_payment_environment TEXT, p_user_id UUID, p_source_kind TEXT, p_source_id UUID, p_source_claim_token UUID, p_card_token TEXT, p_card_brand TEXT, p_card_last4 TEXT) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "promote_solidgate_session_vault_monotonicp_payment_environment-text-p_user_id-uuid-p_session_id-uuid-returns-text",
+        "text": "promote_solidgate_session_vault_monotonic(p_payment_environment TEXT, p_user_id UUID, p_session_id UUID) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "write_solidgate_session_vault_with_method-p_card_last4-text-p_original_payment_method-text-returns-text",
+        "text": "write_solidgate_session_vault_with_method(..., p_card_last4 TEXT, p_original_payment_method TEXT) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "write_solidgate_account_vault_with_method-p_card_last4-text-p_original_payment_method-text-returns-text",
+        "text": "write_solidgate_account_vault_with_method(..., p_card_last4 TEXT, p_original_payment_method TEXT) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "promote_solidgate_session_vault_with_methodp_payment_environment-text-p_user_id-uuid-p_session_id-uuid-returns-text",
+        "text": "promote_solidgate_session_vault_with_method(p_payment_environment TEXT, p_user_id UUID, p_session_id UUID) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "clear_solidgate_legacy_session_vaultp_payment_environment-text-p_session_id-uuid-returns-boolean",
+        "text": "clear_solidgate_legacy_session_vault(p_payment_environment TEXT, p_session_id UUID) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "kortelės-atnaujinimas-solidgate_card_update_attempts",
+        "text": "Kortelės atnaujinimas (solidgate_card_update_attempts)",
+        "level": 2
+      },
+      {
+        "id": "open_solidgate_card_update_attemptp_payment_environment-text-p_user_id-uuid-p_candidate_order_id-text-p_customer_email-text-p_checkout_locale-text-p_builder_token-uuid-returns-table-attempt_id-uuid-solidgate_order_id-text-bound_customer_email-text-bound_checkout_locale-text-attempt_state-text-merchant_data-jsonb-is_new-boolean-should_build-boolean",
+        "text": "open_solidgate_card_update_attempt(p_payment_environment TEXT, p_user_id UUID, p_candidate_order_id TEXT, p_customer_email TEXT, p_checkout_locale TEXT, p_builder_token UUID) RETURNS TABLE (attempt_id UUID, solidgate_order_id TEXT, bound_customer_email TEXT, bound_checkout_locale TEXT, attempt_state TEXT, merchant_data JSONB, is_new BOOLEAN, should_build BOOLEAN)",
+        "level": 3
+      },
+      {
+        "id": "finalize_solidgate_card_update_attemptp_payment_environment-text-p_user_id-uuid-p_attempt_id-uuid-p_solidgate_order_id-text-p_builder_token-uuid-p_merchant_data-jsonb-returns-boolean",
+        "text": "finalize_solidgate_card_update_attempt(p_payment_environment TEXT, p_user_id UUID, p_attempt_id UUID, p_solidgate_order_id TEXT, p_builder_token UUID, p_merchant_data JSONB) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "claim_solidgate_card_update_attemptp_payment_environment-text-p_user_id-uuid-p_solidgate_order_id-text-p_apply_token-uuid-returns-text",
+        "text": "claim_solidgate_card_update_attempt(p_payment_environment TEXT, p_user_id UUID, p_solidgate_order_id TEXT, p_apply_token UUID) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "get_solidgate_card_update_attemptp_payment_environment-text-p_user_id-uuid-p_solidgate_order_id-text-returns-table-attempt_id-uuid-bound_customer_email-text-bound_checkout_locale-text-source_created_at-timestamptz-attempt_state-text-is_current-boolean",
+        "text": "get_solidgate_card_update_attempt(p_payment_environment TEXT, p_user_id UUID, p_solidgate_order_id TEXT) RETURNS TABLE (attempt_id UUID, bound_customer_email TEXT, bound_checkout_locale TEXT, source_created_at TIMESTAMPTZ, attempt_state TEXT, is_current BOOLEAN)",
+        "level": 3
+      },
+      {
+        "id": "release_solidgate_card_update_attemptp_payment_environment-text-p_user_id-uuid-p_solidgate_order_id-text-p_apply_token-uuid-p_provider_status-text-returns-boolean",
+        "text": "release_solidgate_card_update_attempt(p_payment_environment TEXT, p_user_id UUID, p_solidgate_order_id TEXT, p_apply_token UUID, p_provider_status TEXT) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "complete_solidgate_card_update_attemptp_payment_environment-text-p_user_id-uuid-p_solidgate_order_id-text-p_apply_token-uuid-p_provider_status-text-returns-boolean",
+        "text": "complete_solidgate_card_update_attempt(p_payment_environment TEXT, p_user_id UUID, p_solidgate_order_id TEXT, p_apply_token UUID, p_provider_status TEXT) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "record_solidgate_card_update_attempt_statusp_payment_environment-text-p_user_id-uuid-p_solidgate_order_id-text-p_provider_status-text-p_terminal-boolean-default-false-returns-boolean",
+        "text": "record_solidgate_card_update_attempt_status(p_payment_environment TEXT, p_user_id UUID, p_solidgate_order_id TEXT, p_provider_status TEXT, p_terminal BOOLEAN DEFAULT FALSE) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "tokenų-sinchronizacija-solidgate_subscription_token_sync_jobs",
+        "text": "Tokenų sinchronizacija (solidgate_subscription_token_sync_jobs)",
+        "level": 2
+      },
+      {
+        "id": "solidgate_subscription_token_sync_is_billablep_payment_environment-text-p_user_id-uuid-p_solidgate_subscription_id-text-returns-boolean",
+        "text": "solidgate_subscription_token_sync_is_billable(p_payment_environment TEXT, p_user_id UUID, p_solidgate_subscription_id TEXT) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "enqueue_solidgate_subscription_token_syncp_payment_environment-text-p_user_id-uuid-returns-integer",
+        "text": "enqueue_solidgate_subscription_token_sync(p_payment_environment TEXT, p_user_id UUID) RETURNS INTEGER",
+        "level": 3
+      },
+      {
+        "id": "fence_solidgate_subscription_token_sync_for_tokenless_sourcep_payment_environment-text-p_user_id-uuid-p_source_kind-text-p_source_created_at-timestamptz-p_source_sequence-bigint-p_source_id-text-returns-integer",
+        "text": "fence_solidgate_subscription_token_sync_for_tokenless_source(p_payment_environment TEXT, p_user_id UUID, p_source_kind TEXT, p_source_created_at TIMESTAMPTZ, p_source_sequence BIGINT, p_source_id TEXT) RETURNS INTEGER",
+        "level": 3
+      },
+      {
+        "id": "claim_solidgate_subscription_token_syncp_payment_environment-text-p_limit-integer-default-10-p_lease_seconds-integer-default-300-p_user_id-uuid-default-null-returns-setof-publicsolidgate_subscription_token_sync_jobs",
+        "text": "claim_solidgate_subscription_token_sync(p_payment_environment TEXT, p_limit INTEGER DEFAULT 10, p_lease_seconds INTEGER DEFAULT 300, p_user_id UUID DEFAULT NULL) RETURNS SETOF public.solidgate_subscription_token_sync_jobs",
+        "level": 3
+      },
+      {
+        "id": "read_claimed_solidgate_subscription_token_syncp_payment_environment-text-p_user_id-uuid-p_solidgate_subscription_id-text-p_claim_token-uuid-returns-table-desired_source_kind-text-desired_source_created_at-timestamptz-desired_source_sequence-bigint-desired_source_id-text-card_token-text-subscription_is_billable-boolean",
+        "text": "read_claimed_solidgate_subscription_token_sync(p_payment_environment TEXT, p_user_id UUID, p_solidgate_subscription_id TEXT, p_claim_token UUID) RETURNS TABLE (desired_source_kind TEXT, desired_source_created_at TIMESTAMPTZ, desired_source_sequence BIGINT, desired_source_id TEXT, card_token TEXT, subscription_is_billable BOOLEAN)",
+        "level": 3
+      },
+      {
+        "id": "complete_solidgate_subscription_token_syncp_payment_environment-text-p_user_id-uuid-p_solidgate_subscription_id-text-p_claim_token-uuid-p_desired_source_kind-text-p_desired_source_id-text-p_require_nonbillable-boolean-default-false-returns-boolean",
+        "text": "complete_solidgate_subscription_token_sync(p_payment_environment TEXT, p_user_id UUID, p_solidgate_subscription_id TEXT, p_claim_token UUID, p_desired_source_kind TEXT, p_desired_source_id TEXT, p_require_nonbillable BOOLEAN DEFAULT FALSE) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "fail_solidgate_subscription_token_syncp_payment_environment-text-p_user_id-uuid-p_solidgate_subscription_id-text-p_claim_token-uuid-p_desired_source_kind-text-p_desired_source_id-text-p_last_error-text-returns-boolean",
+        "text": "fail_solidgate_subscription_token_sync(p_payment_environment TEXT, p_user_id UUID, p_solidgate_subscription_id TEXT, p_claim_token UUID, p_desired_source_kind TEXT, p_desired_source_id TEXT, p_last_error TEXT) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "intro-ribojimas-solidgate_intro_claims",
+        "text": "Intro ribojimas (solidgate_intro_claims)",
+        "level": 2
+      },
+      {
+        "id": "claim_solidgate_intro_offerp_payment_environment-text-p_email_hash-text-p_session_id-uuid-p_tier-text-returns-text",
+        "text": "claim_solidgate_intro_offer(p_payment_environment TEXT, p_email_hash TEXT, p_session_id UUID, p_tier TEXT) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "consume_solidgate_intro_offerp_payment_environment-text-p_email_hash-text-p_session_id-uuid-p_tier-text-p_subscription_id-text-returns-text",
+        "text": "consume_solidgate_intro_offer(p_payment_environment TEXT, p_email_hash TEXT, p_session_id UUID, p_tier TEXT, p_subscription_id TEXT) RETURNS TEXT",
+        "level": 3
+      },
+      {
+        "id": "view-solidgate_intro_claims_needing_refund",
+        "text": "View solidgate_intro_claims_needing_refund",
+        "level": 3
+      },
+      {
+        "id": "atribucija",
+        "text": "Atribucija",
+        "level": 2
+      },
+      {
+        "id": "persist_user_acquisition_attributionp_payment_environment-text-p_user_id-uuid-p_source_session_id-uuid-p_source_order_id-uuid-p_captured_at-timestamptz-p_utm_source-text-default-null-p_utm_medium-text-default-null-p_utm_campaign-text-default-null-p_utm_content-text-default-null-p_utm_term-text-default-null-returns-boolean",
+        "text": "persist_user_acquisition_attribution(p_payment_environment TEXT, p_user_id UUID, p_source_session_id UUID, p_source_order_id UUID, p_captured_at TIMESTAMPTZ, p_utm_source TEXT DEFAULT NULL, p_utm_medium TEXT DEFAULT NULL, p_utm_campaign TEXT DEFAULT NULL, p_utm_content TEXT DEFAULT NULL, p_utm_term TEXT DEFAULT NULL) RETURNS BOOLEAN",
+        "level": 3
+      },
+      {
+        "id": "kita",
+        "text": "Kita",
+        "level": 2
+      },
+      {
+        "id": "find_auth_user_id_by_emailp_email-text-returns-uuid",
+        "text": "find_auth_user_id_by_email(p_email text) RETURNS uuid",
+        "level": 3
+      },
+      {
+        "id": "revoke_user_auth_sessionsp_user_id-uuid-returns-integer",
+        "text": "revoke_user_auth_sessions(p_user_id UUID) RETURNS INTEGER",
+        "level": 3
+      },
+      {
+        "id": "bump_user_app_openp_user_id-uuid-p_default_locale-text-returns-table-app_open_count-integer-last_active_at-timestamptz",
+        "text": "bump_user_app_open(p_user_id UUID, p_default_locale TEXT) RETURNS TABLE (app_open_count INTEGER, last_active_at TIMESTAMPTZ)",
+        "level": 3
+      },
+      {
+        "id": "funkcija--kvietėjai",
+        "text": "Funkcija → kvietėjai",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "webhook-queues",
+    "title": "Webhook inbox ir darbų eilės",
+    "description": "Įvykių priėmimas, deduplikacija, tvarka, užraktai ir patvarus darbų vykdymas.",
+    "group": "reliability",
+    "source": "docs/solidgate/payments/05-lenteles-webhook-eiles.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "lentelė-publicsolidgate_webhook_events",
+        "text": "Lentelė public.solidgate_webhook_events",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicsolidgate_entity_watermarks",
+        "text": "Lentelė public.solidgate_entity_watermarks",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-1",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicsolidgate_analytics_outbox",
+        "text": "Lentelė public.solidgate_analytics_outbox",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-2",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicsolidgate_fulfillment_outbox",
+        "text": "Lentelė public.solidgate_fulfillment_outbox",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-3",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicmeta_capi_event_claims",
+        "text": "Lentelė public.meta_capi_event_claims",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-4",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publiccron_runs",
+        "text": "Lentelė public.cron_runs",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-5",
+        "text": "Stulpeliai",
+        "level": 3
+      },
+      {
+        "id": "lentelė-publicgeneration_locks",
+        "text": "Lentelė public.generation_locks",
+        "level": 2
+      },
+      {
+        "id": "stulpeliai-6",
+        "text": "Stulpeliai",
+        "level": 3
+      }
+    ]
+  },
+  {
+    "slug": "stripe-cleanup",
+    "title": "Stripe išvalymas ir renewal indeksas",
+    "description": "Ankstesnės integracijos pavadinimų sutvarkymas ir pratęsimo įrašų unikalumo pataisa.",
+    "group": "reliability",
+    "source": "docs/solidgate/STRIPE_CLEANUP.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "išvada-viena-pastraipa",
+        "text": "Išvada viena pastraipa",
+        "level": 2
+      },
+      {
+        "id": "patikrinimo-inventorius",
+        "text": "Patikrinimo inventorius",
+        "level": 2
+      },
+      {
+        "id": "kas-pakeista-šiuo-žingsniu",
+        "text": "Kas pakeista šiuo žingsniu",
+        "level": 2
+      },
+      {
+        "id": "patikra-po-pakeitimų",
+        "text": "Patikra po pakeitimų",
+        "level": 3
+      },
+      {
+        "id": "kodėl-csp-palieka-hooksstripecom-ir-jsstripecom",
+        "text": "Kodėl CSP palieka hooks.stripe.com ir js.stripe.com",
+        "level": 2
+      },
+      {
+        "id": "likęs-sprendimas-orderspsp-stulpelis",
+        "text": "Likęs sprendimas: orders.psp stulpelis",
+        "level": 2
+      },
+      {
+        "id": "savininko-sprendimai-nevykdyta",
+        "text": "Savininko sprendimai (nevykdyta)",
+        "level": 2
+      },
+      {
+        "id": "papildomi-radiniai-mokėjimų-sistemoje",
+        "text": "Papildomi radiniai mokėjimų sistemoje",
+        "level": 2
+      },
+      {
+        "id": "1-kritinis--pataisyta-kiekvienas-apmokėtas-pratęsimas-krenta-ties-renewal_events-upsert",
+        "text": "1. Kritinis — pataisyta: kiekvienas apmokėtas pratęsimas krenta ties renewal_events upsert",
+        "level": 3
+      },
+      {
+        "id": "2-aukštas--nepataisyta-webhook-aplinka-visada-production",
+        "text": "2. Aukštas — nepataisyta: webhook aplinka visada production",
+        "level": 3
+      },
+      {
+        "id": "3-aukštas--nepataisyta-laimėtas-ginčas-reversed-chargeback-visam-laikui-užšaldo-order",
+        "text": "3. Aukštas — nepataisyta: laimėtas ginčas (reversed chargeback) visam laikui užšaldo order",
+        "level": 3
+      },
+      {
+        "id": "4-vidutinis--nepataisyta-funnel-proxy-neatpažįsta-prenumeratos-pirkėjo",
+        "text": "4. Vidutinis — nepataisyta: funnel proxy neatpažįsta prenumeratos pirkėjo",
+        "level": 3
+      },
+      {
+        "id": "5-vidutinis--nepataisyta-dunning-grace-skaičiuojamas-nuo-datenow",
+        "text": "5. Vidutinis — nepataisyta: dunning grace skaičiuojamas nuo Date.now()",
+        "level": 3
+      },
+      {
+        "id": "6-vidutinis--nepataisyta-jau-žinoma-charge-oto-expectedamount-0",
+        "text": "6. Vidutinis — nepataisyta (jau žinoma): charge-oto expectedAmount: 0",
+        "level": 3
+      },
+      {
+        "id": "7-žemas--nepataisyta-klaidinantys-bet-nekenksmingi",
+        "text": "7. Žemas — nepataisyta: klaidinantys, bet nekenksmingi",
+        "level": 3
+      },
+      {
+        "id": "8-saugumas--nepataisyta-pwa-neturi-jokios-content-security-policy",
+        "text": "8. Saugumas — nepataisyta: PWA neturi jokios Content-Security-Policy",
+        "level": 3
+      },
+      {
+        "id": "9-negyvas-kodas-grep-patikrinta",
+        "text": "9. Negyvas kodas (grep patikrinta)",
+        "level": 3
+      },
+      {
+        "id": "kas-nepatikrinta",
+        "text": "Kas nepatikrinta",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "boilerplate-review",
+    "title": "Boilerplate peržiūra ir pataisos",
+    "description": "Ankstesnės kodo peržiūros išvados, jau įgyvendintos rekomendacijos ir patikrų kontekstas.",
+    "group": "reliability",
+    "source": "docs/solidgate/BOILERPLATE_REVIEW.lt.md",
+    "updatedAt": "2026-09-11",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "būsenų-reikšmės",
+        "text": "Būsenų reikšmės",
+        "level": 2
+      },
+      {
+        "id": "pataisyta-vietiniame-kode-mokamas-prenumeratos-pratęsimas",
+        "text": "Pataisyta vietiniame kode: mokamas prenumeratos pratęsimas",
+        "level": 2
+      },
+      {
+        "id": "tik-skaitymo-diagnostika-konkrečiai-prenumeratai",
+        "text": "Tik skaitymo diagnostika konkrečiai prenumeratai",
+        "level": 3
+      },
+      {
+        "id": "aktualūs-radiniai",
+        "text": "Aktualūs radiniai",
+        "level": 2
+      },
+      {
+        "id": "1-kritinis-checkout-el-paštas-naudojamas-prisijungimui",
+        "text": "1. Kritinis: checkout el. paštas naudojamas prisijungimui",
+        "level": 3
+      },
+      {
+        "id": "2-aukštas-bendras-prieigos-tikrinimas-leidžia-trūkstamą-ar-pasibaigusią-teisę",
+        "text": "2. Aukštas: bendras prieigos tikrinimas leidžia trūkstamą ar pasibaigusią teisę",
+        "level": 3
+      },
+      {
+        "id": "3-aukštas-finansinės-istorijos-gyvavimas-susietas-su-funnel-sesija",
+        "text": "3. Aukštas: finansinės istorijos gyvavimas susietas su funnel sesija",
+        "level": 3
+      },
+      {
+        "id": "4-aukštas-grant-ir-outbox-dar-nėra-viena-transakcija-trūksta-inbox-atkūrimo",
+        "text": "4. Aukštas: grant ir outbox dar nėra viena transakcija; trūksta inbox atkūrimo",
+        "level": 3
+      },
+      {
+        "id": "5-aukštas-intro-dublikatų-sprendimas-lieka-rankinis-ir-nesekamas",
+        "text": "5. Aukštas: intro dublikatų sprendimas lieka rankinis ir nesekamas",
+        "level": 3
+      },
+      {
+        "id": "6-vidutinis-entity-ir-analytics-lease-neturi-vykdytojo-nuosavybės-apsaugos",
+        "text": "6. Vidutinis: entity ir analytics lease neturi vykdytojo nuosavybės apsaugos",
+        "level": 3
+      },
+      {
+        "id": "7-vidutinis-mokamo-add-on-trial-pradinė-suma-kai-kur-vis-dar-lygi-nuliui",
+        "text": "7. Vidutinis: mokamo add-on trial pradinė suma kai kur vis dar lygi nuliui",
+        "level": 3
+      },
+      {
+        "id": "8-vidutinis-neįjungta-locale-tyliai-keičia-naujo-checkout-valiutos-kontekstą",
+        "text": "8. Vidutinis: neįjungta locale tyliai keičia naujo checkout valiutos kontekstą",
+        "level": 3
+      },
+      {
+        "id": "9-vidutinis-catalog-verify-nepatikrina-pilnų-prenumeratos-sąlygų",
+        "text": "9. Vidutinis: catalog verify nepatikrina pilnų prenumeratos sąlygų",
+        "level": 3
+      },
+      {
+        "id": "10-vidutinis-pajamų-agregatai-priklauso-nuo-data-api-grąžinamų-eilučių-ribos",
+        "text": "10. Vidutinis: pajamų agregatai priklauso nuo Data API grąžinamų eilučių ribos",
+        "level": 3
+      },
+      {
+        "id": "kas-iš-pirminio-audito-jau-nebegalioja",
+        "text": "Kas iš pirminio audito jau nebegalioja",
+        "level": 2
+      },
+      {
+        "id": "prioritetinė-tolesnio-darbo-seka",
+        "text": "Prioritetinė tolesnio darbo seka",
+        "level": 2
+      },
+      {
+        "id": "patikrinimų-ribos",
+        "text": "Patikrinimų ribos",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "audit-2026-09-14",
+    "title": "Pilnas auditas prieš pataisas",
+    "description": "Pradiniai radiniai apie prisijungimą, pinigų apskaitą, renewal, refund, chargeback ir ataskaitas.",
+    "group": "audit-history",
+    "source": "docs/solidgate/AUDIT_2026-09-14.lt.md",
+    "updatedAt": "2026-09-14",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "1-ką-iš-tikrųjų-patikrinome",
+        "text": "1. Ką iš tikrųjų patikrinome",
+        "level": 2
+      },
+      {
+        "id": "2-tikri-theastrologist-db-rezultatai",
+        "text": "2. Tikri theastrologist DB rezultatai",
+        "level": 2
+      },
+      {
+        "id": "3-taisymo-prioritetai",
+        "text": "3. Taisymo prioritetai",
+        "level": 2
+      },
+      {
+        "id": "a01-checkout-nėra-el-pašto-nuosavybės-įrodymas",
+        "text": "A01. Checkout nėra el. pašto nuosavybės įrodymas",
+        "level": 3
+      },
+      {
+        "id": "a02-refund--settlement-eiliškumas-iškreipia-likutį",
+        "text": "A02. Refund / settlement eiliškumas iškreipia likutį",
+        "level": 3
+      },
+      {
+        "id": "a03-refund-ignoruoja-jau-užfiksuotą-chargeback",
+        "text": "A03. Refund ignoruoja jau užfiksuotą chargeback",
+        "level": 3
+      },
+      {
+        "id": "a04-pinigų-istorija-priklauso-nuo-dabartinės-prieigos-būsenos",
+        "text": "A04. Pinigų istorija priklauso nuo dabartinės prieigos būsenos",
+        "level": 3
+      },
+      {
+        "id": "a05-vėlyvas-renew-nepaiso-ankstesnio-invoice-refund",
+        "text": "A05. Vėlyvas renew nepaiso ankstesnio invoice refund",
+        "level": 3
+      },
+      {
+        "id": "a06-chargeback-atėjus-be-mapping-prarandamas-apdorojimas",
+        "text": "A06. Chargeback atėjus be mapping prarandamas apdorojimas",
+        "level": 3
+      },
+      {
+        "id": "a07-kortelė-gali-būti-parodyta-atnaujinta-nors-atnaujinimas-nebaigtas",
+        "text": "A07. Kortelė gali būti parodyta atnaujinta, nors atnaujinimas nebaigtas",
+        "level": 3
+      },
+      {
+        "id": "a08-tikras-restore-supainiojamas-su-neleistinu-replay",
+        "text": "A08. Tikras restore supainiojamas su neleistinu replay",
+        "level": 3
+      },
+      {
+        "id": "a09a10-prieigos-ir-prenumeratos-atkūrimo-būsenos-nesutampa",
+        "text": "A09–A10. Prieigos ir prenumeratos atkūrimo būsenos nesutampa",
+        "level": 3
+      },
+      {
+        "id": "a11a12-faktinis-capture-ir-pinigų-judėjimas-turi-būti-patvarūs",
+        "text": "A11–A12. Faktinis capture ir pinigų judėjimas turi būti patvarūs",
+        "level": 3
+      },
+      {
+        "id": "a13-admin-skaičiai-negali-būti-naudojami-kaip-pilna-finansinė-ataskaita",
+        "text": "A13. Admin skaičiai negali būti naudojami kaip pilna finansinė ataskaita",
+        "level": 3
+      },
+      {
+        "id": "a14-kada-trial-kada-renewal-kiek-paimta-dar-neturi-pilno-db-modelio",
+        "text": "A14. „Kada trial, kada renewal, kiek paimta“ dar neturi pilno DB modelio",
+        "level": 3
+      },
+      {
+        "id": "a15-ne-uuid-srautai-turi-būti-klasifikuojami-prieš-db-lookup",
+        "text": "A15. Ne UUID srautai turi būti klasifikuojami prieš DB lookup",
+        "level": 3
+      },
+      {
+        "id": "4-papildomos-ribos-ir-kontrakto-patikros",
+        "text": "4. Papildomos ribos ir kontrakto patikros",
+        "level": 2
+      },
+      {
+        "id": "5-kas-jau-padaryta-gerai",
+        "text": "5. Kas jau padaryta gerai",
+        "level": 2
+      },
+      {
+        "id": "6-patikrinimų-rezultatai-ir-įrodymų-ribos",
+        "text": "6. Patikrinimų rezultatai ir įrodymų ribos",
+        "level": 2
+      },
+      {
+        "id": "7-siūloma-taisymo-seka",
+        "text": "7. Siūloma taisymo seka",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "architecture",
+    "title": "Architektūra ir projekto paruošimas",
+    "description": "Pirminės sistemos architektūros schema, modulio ribos ir naujo projekto paruošimo kontekstas.",
+    "group": "audit-history",
+    "source": "docs/solidgate/boilerplate-architecture-audit.lt.md",
+    "updatedAt": "2026-09-09",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "vertinimas",
+        "text": "Vertinimas",
+        "level": 2
+      },
+      {
+        "id": "priimtas-sprendimas-boilerplate-naudoja-v1",
+        "text": "Priimtas sprendimas: boilerplate naudoja v1",
+        "level": 2
+      },
+      {
+        "id": "kaip-suprasti-dabartinį-duomenų-modelį",
+        "text": "Kaip suprasti dabartinį duomenų modelį",
+        "level": 2
+      },
+      {
+        "id": "dabartinis-srautas",
+        "text": "Dabartinis srautas",
+        "level": 2
+      },
+      {
+        "id": "kurios-lentelės-reikalingos",
+        "text": "Kurios lentelės reikalingos",
+        "level": 2
+      },
+      {
+        "id": "svarbiausi-radiniai-prieš-pakartotinį-naudojimą",
+        "text": "Svarbiausi radiniai prieš pakartotinį naudojimą",
+        "level": 2
+      },
+      {
+        "id": "1-kritinis-mokėjimas-nėra-el-pašto-nuosavybės-įrodymas",
+        "text": "1. Kritinis: mokėjimas nėra el. pašto nuosavybės įrodymas",
+        "level": 3
+      },
+      {
+        "id": "2-aukštas-bendros-mokamos-prieigos-tikrinimas-per-daug-atviras",
+        "text": "2. Aukštas: bendros mokamos prieigos tikrinimas per daug atviras",
+        "level": 3
+      },
+      {
+        "id": "3-aukštas-finansinė-istorija-priklauso-nuo-funnel-sesijos-gyvavimo",
+        "text": "3. Aukštas: finansinė istorija priklauso nuo funnel sesijos gyvavimo",
+        "level": 3
+      },
+      {
+        "id": "4-aukštas-įvadinio-pasiūlymo-dublikatai-registruojami-bet-automatiškai-neišsprendžiami",
+        "text": "4. Aukštas: įvadinio pasiūlymo dublikatai registruojami, bet automatiškai neišsprendžiami",
+        "level": 3
+      },
+      {
+        "id": "5-aukštas-patikimo-apdorojimo-garantijos-dar-ne-visur-pilnos",
+        "text": "5. Aukštas: patikimo apdorojimo garantijos dar ne visur pilnos",
+        "level": 3
+      },
+      {
+        "id": "6-vidutinis-analitikos-outbox-apsaugotas-silpniau-nei-fulfillment",
+        "text": "6. Vidutinis: analitikos outbox apsaugotas silpniau nei fulfillment",
+        "level": 3
+      },
+      {
+        "id": "7-vidutinis-kainos-ir-produktų-taisyklės-kartojamos-keliose-vietose",
+        "text": "7. Vidutinis: kainos ir produktų taisyklės kartojamos keliose vietose",
+        "level": 3
+      },
+      {
+        "id": "8-vidutinis-locale-nustatymas-gali-tyliai-pakeisti-kainos-kontekstą",
+        "text": "8. Vidutinis: locale nustatymas gali tyliai pakeisti kainos kontekstą",
+        "level": 3
+      },
+      {
+        "id": "9-vidutinis-db-tipai-ir-dokumentacija-nėra-pilnai-sinchronizuoti",
+        "text": "9. Vidutinis: DB tipai ir dokumentacija nėra pilnai sinchronizuoti",
+        "level": 3
+      },
+      {
+        "id": "10-vidutinis-pajamų-suvestinės-sumuojamos-aplikacijoje",
+        "text": "10. Vidutinis: pajamų suvestinės sumuojamos aplikacijoje",
+        "level": 3
+      },
+      {
+        "id": "siūloma-modulio-struktūra",
+        "text": "Siūloma modulio struktūra",
+        "level": 2
+      },
+      {
+        "id": "siūlomas-naujos-schemos-karkasas",
+        "text": "Siūlomas naujos schemos karkasas",
+        "level": 2
+      },
+      {
+        "id": "duomenų-bazės-taisyklės-kurias-būtina-išsaugoti",
+        "text": "Duomenų bazės taisyklės, kurias būtina išsaugoti",
+        "level": 2
+      },
+      {
+        "id": "indeksai-ir-eksploatavimas",
+        "text": "Indeksai ir eksploatavimas",
+        "level": 2
+      },
+      {
+        "id": "dokumentacija-kitam-projektui-ir-agentui",
+        "text": "Dokumentacija kitam projektui ir agentui",
+        "level": 2
+      },
+      {
+        "id": "naujo-projekto-setup-seka",
+        "text": "Naujo projekto setup seka",
+        "level": 2
+      },
+      {
+        "id": "peržiūros-patikrinimai",
+        "text": "Peržiūros patikrinimai",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "handoff",
+    "title": "Darbo kontekstas ir tęstinumas",
+    "description": "Analizės kilmė, priimti sprendimai ir ankstesnių darbų perdavimo užrašai.",
+    "group": "audit-history",
+    "source": "docs/solidgate/HANDOFF.lt.md",
+    "updatedAt": "2026-09-09",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "naujausias-darbas-šiame-boilerplate",
+        "text": "Naujausias darbas šiame boilerplate",
+        "level": 2
+      },
+      {
+        "id": "tikslas",
+        "text": "Tikslas",
+        "level": 2
+      },
+      {
+        "id": "priimti-sprendimai-ir-darbo-taisyklės",
+        "text": "Priimti sprendimai ir darbo taisyklės",
+        "level": 2
+      },
+      {
+        "id": "kas-iš-tikrųjų-patikrinta",
+        "text": "Kas iš tikrųjų patikrinta",
+        "level": 2
+      },
+      {
+        "id": "svarbiausi-šaltinio-audito-radiniai",
+        "text": "Svarbiausi šaltinio audito radiniai",
+        "level": 2
+      },
+      {
+        "id": "šio-boilerplate-pradinė-būklė",
+        "text": "Šio boilerplate pradinė būklė",
+        "level": 2
+      },
+      {
+        "id": "nuo-ko-tęsti-darbus",
+        "text": "Nuo ko tęsti darbus",
+        "level": 2
+      },
+      {
+        "id": "dokumentų-ir-skaityklės-priežiūra",
+        "text": "Dokumentų ir skaityklės priežiūra",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "price-map",
+    "title": "Šaltinio kainodara ir Solidgate katalogas",
+    "description": "Pirminio projekto pasiūlymai, kainų žemėlapis, prenumeratos sąlygos ir katalogo susiejimas.",
+    "group": "audit-history",
+    "source": "docs/solidgate/price-map-and-catalog.lt.md",
+    "updatedAt": "2026-09-09",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "1-penki-sluoksniai-kurių-nereikia-suplakti",
+        "text": "1. Penki sluoksniai, kurių nereikia suplakti",
+        "level": 2
+      },
+      {
+        "id": "2-ką-tiksliai-daro-price-mapts",
+        "text": "2. Ką tiksliai daro price-map.ts",
+        "level": 2
+      },
+      {
+        "id": "tikslus-trial1-ir-lt-pavyzdys",
+        "text": "Tikslus trial1 ir lt pavyzdys",
+        "level": 3
+      },
+      {
+        "id": "kur-kaina-naudojama-ui",
+        "text": "Kur kaina naudojama UI",
+        "level": 3
+      },
+      {
+        "id": "kodėl-productname-atrodo-kaip-techninis-kodas",
+        "text": "Kodėl productName atrodo kaip techninis kodas",
+        "level": 3
+      },
+      {
+        "id": "3-ką-tiksliai-daro-solidgatecatalogts",
+        "text": "3. Ką tiksliai daro solidgate/catalog.ts",
+        "level": 2
+      },
+      {
+        "id": "ką-reiškia-subscription-apibrėžimo-laukai",
+        "text": "Ką reiškia subscription apibrėžimo laukai",
+        "level": 3
+      },
+      {
+        "id": "kodėl-yra-aštuoni-recurring-katalogo-įrašai",
+        "text": "Kodėl yra aštuoni recurring katalogo įrašai",
+        "level": 3
+      },
+      {
+        "id": "4-seederis-tikras-providerio-katalogas-ir-catalog-idsjson",
+        "text": "4. Seederis, tikras providerio katalogas ir catalog-ids.json",
+        "level": 2
+      },
+      {
+        "id": "5-visas-naujo-main-checkout-kelias",
+        "text": "5. Visas naujo main checkout kelias",
+        "level": 2
+      },
+      {
+        "id": "kodėl-pradėto-order-kainos-snapshot-yra-būtinas",
+        "text": "Kodėl pradėto order kainos snapshot yra būtinas",
+        "level": 3
+      },
+      {
+        "id": "6-kam-dar-kainos-įrašytos-sql",
+        "text": "6. Kam dar kainos įrašytos SQL",
+        "level": 2
+      },
+      {
+        "id": "ką-užtikrina-testai-ir-ko-jie-neįrodo",
+        "text": "Ką užtikrina testai ir ko jie neįrodo",
+        "level": 3
+      },
+      {
+        "id": "7-dabartiniai-pavadinimai-ir-vietos-kurios-gali-klaidinti",
+        "text": "7. Dabartiniai pavadinimai ir vietos, kurios gali klaidinti",
+        "level": 2
+      },
+      {
+        "id": "advisory-neatitikimas-statinio-patikrinimo-tęsinys",
+        "text": "Advisory neatitikimas: statinio patikrinimo tęsinys",
+        "level": 3
+      },
+      {
+        "id": "8-ką-siūloma-supaprastinti-bendriniame-modulyje",
+        "text": "8. Ką siūloma supaprastinti bendriniame modulyje",
+        "level": 2
+      },
+      {
+        "id": "9-ką-kitam-agentui-iš-šios-analizės-laikyti-taisyklėmis",
+        "text": "9. Ką kitam agentui iš šios analizės laikyti taisyklėmis",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "source-core-tables",
+    "title": "Šaltinio pirkimų ir prieigos lentelės",
+    "description": "Pirminio projekto užsakymų, sąskaitų ir prieigos laukų žodynas bei audito įrodymai.",
+    "group": "audit-history",
+    "source": "docs/solidgate/boilerplate-tables-core.lt.md",
+    "updatedAt": "2026-09-09",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "esminė-išvada",
+        "text": "Esminė išvada",
+        "level": 2
+      },
+      {
+        "id": "šaltinių-žymėjimas",
+        "text": "Šaltinių žymėjimas",
+        "level": 2
+      },
+      {
+        "id": "1-orders--39-stulpeliai",
+        "text": "1. orders — 39 stulpeliai",
+        "level": 2
+      },
+      {
+        "id": "2-renewal_events--21-stulpelis",
+        "text": "2. renewal_events — 21 stulpelis",
+        "level": 2
+      },
+      {
+        "id": "3-solidgate_invoice_orders--20-stulpelių",
+        "text": "3. solidgate_invoice_orders — 20 stulpelių",
+        "level": 2
+      },
+      {
+        "id": "4-entitlements--15-stulpelių",
+        "text": "4. entitlements — 15 stulpelių",
+        "level": 2
+      },
+      {
+        "id": "5-sessions--20-stulpelių",
+        "text": "5. sessions — 20 stulpelių",
+        "level": 2
+      },
+      {
+        "id": "6-payment_intent_sessions--3-stulpeliai-legacy",
+        "text": "6. payment_intent_sessions — 3 stulpeliai, legacy",
+        "level": 2
+      },
+      {
+        "id": "7-stripe_customers--10-stulpelių-legacy-vault",
+        "text": "7. stripe_customers — 10 stulpelių, legacy vault",
+        "level": 2
+      },
+      {
+        "id": "8-user_acquisition_attribution--12-stulpelių-optional-marketing-integracija",
+        "text": "8. user_acquisition_attribution — 12 stulpelių, optional marketing integracija",
+        "level": 2
+      },
+      {
+        "id": "9-funnel_events--6-stulpeliai-optional-funnel-analitika",
+        "text": "9. funnel_events — 6 stulpeliai, optional funnel analitika",
+        "level": 2
+      },
+      {
+        "id": "patvirtinti-trūkumai-ir-siūlomi-pagerinimai",
+        "text": "Patvirtinti trūkumai ir siūlomi pagerinimai",
+        "level": 2
+      },
+      {
+        "id": "ką-agentui-būtina-žinoti-prieš-perkeliant",
+        "text": "Ką agentui būtina žinoti prieš perkeliant",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "source-workflows",
+    "title": "Šaltinio checkout ir kortelių lentelės",
+    "description": "Pirminio projekto checkout būsenos, kortelių tokenai, atnaujinimas ir sinchronizacija.",
+    "group": "audit-history",
+    "source": "docs/solidgate/boilerplate-tables-workflows.lt.md",
+    "updatedAt": "2026-09-09",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "pagrindiniai-sprendimai-naujam-boilerplate",
+        "text": "Pagrindiniai sprendimai naujam boilerplate",
+        "level": 2
+      },
+      {
+        "id": "1-solidgate_main_checkout_states",
+        "text": "1. solidgate_main_checkout_states",
+        "level": 2
+      },
+      {
+        "id": "2-solidgate_pwa_purchase_states",
+        "text": "2. solidgate_pwa_purchase_states",
+        "level": 2
+      },
+      {
+        "id": "3-solidgate_intro_claims",
+        "text": "3. solidgate_intro_claims",
+        "level": 2
+      },
+      {
+        "id": "4-solidgate_session_vault",
+        "text": "4. solidgate_session_vault",
+        "level": 2
+      },
+      {
+        "id": "5-solidgate_account_vault",
+        "text": "5. solidgate_account_vault",
+        "level": 2
+      },
+      {
+        "id": "6-solidgate_card_update_attempts",
+        "text": "6. solidgate_card_update_attempts",
+        "level": 2
+      },
+      {
+        "id": "7-solidgate_subscription_token_sync_jobs",
+        "text": "7. solidgate_subscription_token_sync_jobs",
+        "level": 2
+      },
+      {
+        "id": "architektūros-ir-optimizavimo-pastabos-šioms-7-lentelėms",
+        "text": "Architektūros ir optimizavimo pastabos šioms 7 lentelėms",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "slug": "source-events",
+    "title": "Šaltinio webhook ir įvykių lentelės",
+    "description": "Pirminio projekto įvykių tvarka, inbox, outbox, pakartojimas ir darbų eilių garantijos.",
+    "group": "audit-history",
+    "source": "docs/solidgate/boilerplate-tables-events.lt.md",
+    "updatedAt": "2026-09-09",
+    "status": "historical",
+    "headings": [
+      {
+        "id": "esminis-vertinimas",
+        "text": "Esminis vertinimas",
+        "level": 2
+      },
+      {
+        "id": "1-solidgate_webhook_events--15-stulpelių",
+        "text": "1. solidgate_webhook_events — 15 stulpelių",
+        "level": 2
+      },
+      {
+        "id": "2-solidgate_entity_watermarks--8-stulpeliai",
+        "text": "2. solidgate_entity_watermarks — 8 stulpeliai",
+        "level": 2
+      },
+      {
+        "id": "3-solidgate_analytics_outbox--15-stulpelių",
+        "text": "3. solidgate_analytics_outbox — 15 stulpelių",
+        "level": 2
+      },
+      {
+        "id": "4-solidgate_fulfillment_outbox--15-stulpelių",
+        "text": "4. solidgate_fulfillment_outbox — 15 stulpelių",
+        "level": 2
+      },
+      {
+        "id": "5-meta_capi_event_claims--7-stulpeliai-neprivaloma-payments-moduliui",
+        "text": "5. meta_capi_event_claims — 7 stulpeliai; neprivaloma payments moduliui",
+        "level": 2
+      },
+      {
+        "id": "6-stripe_webhook_events--3-stulpeliai-legacy",
+        "text": "6. stripe_webhook_events — 3 stulpeliai; legacy",
+        "level": 2
+      },
+      {
+        "id": "bendros-architektūros-išvados-su-įrodymais",
+        "text": "Bendros architektūros išvados su įrodymais",
+        "level": 2
+      },
+      {
+        "id": "minimalūs-dokumentacijos-punktai-agentui-kuris-perkelia-šią-dalį",
+        "text": "Minimalūs dokumentacijos punktai agentui, kuris perkelia šią dalį",
+        "level": 2
+      }
+    ]
+  }
+]

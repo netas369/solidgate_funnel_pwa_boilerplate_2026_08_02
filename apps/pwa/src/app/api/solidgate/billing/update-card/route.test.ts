@@ -615,6 +615,8 @@ describe("Solidgate update-card route", () => {
       "secret",
       expect.objectContaining({ customer_email: "buyer@example.com" }),
     );
+    // Card verification follows the same static descriptor policy as purchases.
+    expect(mocks.buildFormMerchantData.mock.calls[0][2]).not.toHaveProperty("dynamic_descriptor");
   });
 
   it("uses the same exact localized URL for successful and failed full-page 3DS", async () => {

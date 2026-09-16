@@ -208,6 +208,12 @@ function stripLocalePrefix(pathname: string): string {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Documentation owns a layout outside [locale] and is public for now.
+  // Keep this independent of locale redirects and Supabase session refresh.
+  if (pathname === '/documentation' || pathname.startsWith('/documentation/')) {
+    return NextResponse.next();
+  }
+
   // API routes bypass i18n middleware entirely.
   if (pathname.startsWith('/api/')) {
     return await updateSession(request);

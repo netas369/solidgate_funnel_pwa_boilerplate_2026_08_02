@@ -1,10 +1,16 @@
 # Solidgate modulio dokumentacija ir auditas
 
-Visa medžiaga skaitoma **viename naršyklės puslapyje**:
-[`output/solidgate-reader/solidgate-analysis.html`](../../output/solidgate-reader/solidgate-analysis.html).
-Failas veikia lokaliai, be serverio ir interneto. Chrome jį galima atidaryti per „Open File“ / `⌘O`. Puslapis padalytas į du blokus; turinys leidžia pereiti prie temos, `⌘F` / `Ctrl+F` ieško visame tekste.
+Visa medžiaga skaitoma **funnel appse, adresu `/documentation`**. Dokumentai suskirstyti pagal temas, kiekvienas turi savo URL, skyrių turinį ir paiešką. Mermaid diagramos atvaizduojamos pačiame appse, be išorinio CDN. Kol kas dokumentacija vieša, be slaptažodžio; puslapiai pažymėti `noindex`.
+
+Vietinis adresas: `http://localhost:3205/documentation` (`npm run dev:funnel`). Ankstesnis [`solidgate-analysis.html`](../../output/solidgate-reader/solidgate-analysis.html) išsaugotas kaip atskirai atidaromas archyvas.
+
+Dokumentacijos UI ir naujo appso instrukcijos naudoja tik **shadcn/ui Base Nova** komponentus ir juodos, baltos bei neutralių pilkų tonų paletę. Komponentai laikomi `apps/funnel/src/components/ui/`, konfigūracija – `apps/funnel/components.json`. Markdown turiniui paliekamas semantinis HTML su skaitymo stiliais; Mermaid schemos generuojamos monochromiškai, o jų valdikliai ir langai yra shadcn. Ši tema taikoma dokumentacijos layout ir jo langams.
 
 Darbus tęsiame naudodami **API v1 / Billing 1.0**.
+
+**2026-09-15 — statinis Descriptor visiems produktams.** Banko išrašo Descriptor nustatomas Solidgate kanale / connector ir naudojamas main, trial, OTO2 prenumeratai, vienkartiniams OTO, PWA pirkimams bei renewal. Naujose užklausose aplikacija nesiunčia `dynamic_descriptor` ir nekuria produkto suffix. Jau pradėto checkout išsaugotas payload nekeičiamas vien dėl šio atnaujinimo. Locale pagrįsti `product_code`, `order_description` ir UTM išlieka atskiri pirkimo duomenys. [Įgyvendinimo taisyklė](IMPLEMENTATION_AND_MIGRATION_GUIDE.md#8-static-statement-descriptor), [srautų papildymas](payments/01-srautai.lt.md). Oficialus OpenAPI aprašo providerio galimybes; tai nekeičia šio appso statinės politikos.
+
+**Naujo appso instrukcijos:** `/documentation/setup` — [penkių žingsnių seka](setup/README.md): 01 produktai, 02 katalogas ir OTO, 03 DB bei webhook, 04 checkout ir OTO, 05 sandbox patikra. Kiekvienas žingsnis turi atskirą URL, reikalingą įvestį, perduodamus failus, priėmimo kriterijus ir kopijuojamą agento promptą. Bendras 02–05 planas apima main variantus, vieną OTO2 prenumeratą ir kitus vienkartinius OTO. Šis interaktyvus skyrius laikomas atskirai nuo 20 archyvinės skaityklės šaltinių; jo kodas yra `apps/funnel/src/features/documentation/setup/`. Markdown atitikmenys generuojami `npm run docs:setup:build`, tikrinami `npm run docs:setup:check`.
 
 **2026-09-14:** [pilnas auditas](AUDIT_2026-09-14.lt.md) ir [įgyvendintos pataisos, pinigų žurnalas bei diegimo seka](FIXES_2026-09-14.lt.md). Senesni lentelių kiekiai ir srautų aprašymai žemiau yra iki šių pataisų; naujų finansinių lentelių aprašymas yra pataisų dokumente.
 
@@ -45,7 +51,19 @@ Keturi `boilerplate-*.lt.md` dokumentai analizuoja `/Users/Netas/Projects/theast
 
 Jau buvę [įgyvendinimo dokumentas](IMPLEMENTATION_AND_MIGRATION_GUIDE.md) ir [go-live runbook](go-live-runbook.md) palikti kaip atskiri šio projekto dokumentai. Perkėlimas jų teiginių nepatvirtina ir neatnaujina.
 
-## Skaityklės atnaujinimas
+## Appso dokumentacijos atnaujinimas
+
+Redaguoti Markdown šaltinius šiame kataloge, tada iš projekto šaknies vykdyti:
+
+```bash
+npm run docs:build
+```
+
+Generatoriui reikia vietinių `python3` ir `pandoc`. Jis sugeneruoja turinį į `apps/funnel/src/features/documentation/generated/`; šiuos failus reikia įtraukti kartu su Markdown pakeitimais. Next.js build naudoja paruoštą turinį ir nereikalauja `pandoc`, DB ar išorinių API. Naują dokumentą ir jo temą pridėti į `scripts/build-documentation.py` sąrašą `DOCUMENTS` ir archyvinės skaityklės `SOURCES` manifestą. Viešame puslapyje nuorodos į kitus dokumentus veda į `/documentation/...`, o lokalių šaltinio failų keliai pateikiami kaip repo nuorodos be kompiuterio absoliutaus kelio.
+
+Naujausios pataisos ir ankstesnės sistemos aprašymai pažymėti atskirai. Istoriniai lentelių kiekiai nėra dabartinio inventoriaus patvirtinimas.
+
+## Archyvinės HTML skaityklės atnaujinimas
 
 Redaguoti Markdown šaltinius šiame kataloge (1 blokas — `payments/`, 2 blokas — šis katalogas), tada iš projekto šaknies vykdyti:
 
@@ -63,4 +81,4 @@ Pagrindiniai rezultatai:
 
 Naują dokumentą pridėti į `SOURCES` sąrašą `build_full_reader.py` faile su bloko raktu (`payments` arba `audit`); turinys, greita navigacija ir bloko antraštės susigeneruoja.
 
-Senas `solidgate-reader.html` su dokumentų perjungimu ir jo generavimo failai taip pat išsaugoti kaip ankstesnė versija. Aktualus skaitymo puslapis yra `solidgate-analysis.html`.
+Senas `solidgate-reader.html` su dokumentų perjungimu ir jo generavimo failai taip pat išsaugoti kaip ankstesnė versija. Aktualus skaitymo puslapis yra appso `/documentation`.

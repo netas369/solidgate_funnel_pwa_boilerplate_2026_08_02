@@ -1,0 +1,127 @@
+/* Documentation uses the app's shadcn neutral theme, including portalled UI. */
+.documentation-body {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.46 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.205 0 0);
+  --border: oklch(0.90 0 0);
+  --input: var(--border);
+  --ring: oklch(0.55 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --docs-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --font-sans-loaded: var(--docs-font);
+  --font-display-loaded: var(--docs-font);
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--docs-font);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+.documentation-body :is(h1,h2,h3,h4,h5,h6,[id]) { scroll-margin-top: 100px; }
+.documentation-body ::selection { background: var(--foreground); color: var(--background); }
+.documentation-body a:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+#documentation-main { min-width: 0; outline: none; }
+
+/* Content layout and Markdown typography. Controls and surfaces come from shadcn/ui. */
+.docs-article-layout { display: grid; grid-template-columns: minmax(0, 900px) 210px; align-items: start; gap: 40px; max-width: 1400px; margin: 0 auto; padding: 48px; }
+.docs-article { min-width: 0; }
+.docs-article-header { margin-bottom: 32px; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
+.docs-eyebrow { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0; color: var(--muted-foreground); font-size: 12px; font-weight: 500; }
+.docs-article-header h1 { margin: 20px 0 16px; font-size: clamp(30px, 3vw, 40px); font-weight: 600; line-height: 1.2; letter-spacing: -1px; overflow-wrap: anywhere; }
+.docs-article-description { max-width: 700px; margin: 0; color: var(--muted-foreground); font-size: 16px; line-height: 1.75; }
+.docs-article-meta { display: flex; gap: 24px; margin-top: 24px; color: var(--muted-foreground); font-size: 12px; }
+.docs-article-meta > span { display: flex; align-items: center; gap: 8px; }
+.docs-prose { color: var(--foreground); font-size: 15px; line-height: 1.85; overflow-wrap: anywhere; }
+.docs-prose > div > :first-child { margin-top: 0; }
+.docs-prose :is(h1,h2,h3,h4,h5) { color: var(--foreground); font-weight: 600; line-height: 1.4; letter-spacing: -.3px; }
+.docs-prose h1 { font-size: 28px; margin: 44px 0 20px; }
+.docs-prose h2 { margin: 40px 0 20px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 24px; letter-spacing: -.5px; }
+.docs-prose h3 { font-size: 20px; margin: 32px 0 16px; }
+.docs-prose h4 { font-size: 17px; margin: 24px 0 12px; }
+.docs-prose h5 { font-size: 15px; margin: 24px 0 12px; }
+.docs-prose p { margin: 0 0 16px; }
+.docs-prose strong { color: var(--foreground); font-weight: 600; }
+.docs-prose a { color: var(--foreground); text-decoration: underline; text-underline-offset: 4px; }
+.docs-prose a:hover { text-decoration-thickness: 2px; }
+.docs-prose :is(ul,ol) { margin: 16px 0 24px; padding-left: 24px; }
+.docs-prose ul { list-style: disc; }
+.docs-prose ol { list-style: decimal; }
+.docs-prose li { margin: 8px 0; padding-left: 4px; }
+.docs-prose li::marker { color: var(--muted-foreground); }
+.docs-prose li > p { margin-bottom: 8px; }
+.docs-prose li > :is(ul,ol) { margin-top: 8px; margin-bottom: 12px; }
+.docs-prose blockquote { margin: 24px 0; padding-left: 24px; border-left: 2px solid var(--border); color: var(--muted-foreground); font-style: italic; }
+.docs-prose blockquote p:last-child { margin-bottom: 0; }
+.docs-prose code { border-radius: 4px; padding: 2px 5px; color: var(--foreground); background: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em; box-decoration-break: clone; }
+.docs-prose pre { max-width: 100%; overflow-x: auto; margin: 24px 0; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--muted); line-height: 1.8; scrollbar-width: thin; }
+.docs-prose pre code { border-radius: 0; padding: 0; color: inherit; background: transparent; font-size: 12px; white-space: pre; }
+.docs-prose .documentation-table-scroll { max-width: 100%; overflow-x: auto; margin: 24px 0; border: 1px solid var(--border); border-radius: var(--radius); scrollbar-width: thin; }
+.docs-prose table { width: 100%; min-width: 550px; border-collapse: collapse; margin: 0; color: var(--foreground); font-size: 13px; line-height: 1.75; }
+.docs-prose :is(th,td) { min-width: 120px; padding: 12px 16px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.docs-prose th { background: var(--muted); font-weight: 600; }
+.docs-prose tbody tr:hover { background: var(--muted); }
+.docs-prose tr:last-child td { border-bottom: 0; }
+.docs-prose hr { height: 1px; margin: 32px 0; border: 0; background: var(--border); }
+.docs-prose img { max-width: 100%; height: auto; border-radius: var(--radius); }
+.docs-prose .documentation-source-reference { text-decoration: underline dotted; text-underline-offset: 4px; cursor: help; }
+.docs-source-reference { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 40px; padding: 16px 0; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 12px; }
+.docs-source-reference code { overflow-wrap: anywhere; font-size: 11px; }
+.docs-pagination { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.docs-article-footer { margin-top: 32px; color: var(--muted-foreground); font-size: 12px; line-height: 1.8; }
+
+/* Diagram layout; the toolbar, modal and source disclosure are shadcn components. */
+.docs-prose .docs-diagram { min-width: 0; margin: 28px 0; }
+.docs-diagram-viewport { max-width: 100%; max-height: 850px; overflow: auto; padding: 24px 16px; scrollbar-width: thin; }
+.docs-diagram-svg { min-width: 0; margin: auto; }
+.docs-diagram-svg svg { display: block; width: 100% !important; height: auto; max-width: none !important; }
+.docs-diagram-expanded-viewport { max-height: calc(90dvh - 100px); overflow: auto; padding: 24px; scrollbar-width: thin; }
+.docs-diagram-dialog .docs-diagram-svg { max-width: 1200px; }
+.docs-prose .docs-diagram-source pre { margin: 12px 0 0; }
+
+/* Static flow figures retained from the source documents. */
+.reader-flow { margin: 24px 0; padding: 24px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--muted); }
+.reader-flow-step { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; background: var(--card); color: var(--foreground); text-align: center; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.8; }
+.reader-flow-arrow { padding: 8px; color: var(--muted-foreground); text-align: center; font-size: 22px; line-height: 1.3; }
+.reader-flow-branches, .reader-flow-results { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.reader-flow-results { grid-template-columns: repeat(3,minmax(0,1fr)); }
+
+@media (max-width: 1250px) {
+  .docs-article-layout { grid-template-columns: minmax(0,1fr); padding: 32px; gap: 24px; }
+  .docs-article-layout > .docs-toc { grid-row: 1; position: static; max-height: 250px; }
+}
+@media (max-width: 580px) {
+  .docs-article-layout { padding: 28px 20px; }
+  .docs-article-header h1 { font-size: 30px; }
+  .docs-article-description { font-size: 15px; }
+  .docs-prose h2 { font-size: 22px; }
+  .docs-prose h3 { font-size: 18px; }
+  .docs-prose pre { padding: 16px; }
+  .docs-prose :is(th,td) { padding: 12px; }
+  .docs-diagram-viewport { padding: 20px 8px; }
+  .docs-diagram-expanded-viewport { padding: 16px 8px; }
+  .docs-pagination { gap: 12px; }
+  .reader-flow { padding: 12px; }
+  .reader-flow-branches, .reader-flow-results { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .documentation-body *, .documentation-body *::before, .documentation-body *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+}

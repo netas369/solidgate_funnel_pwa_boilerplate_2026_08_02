@@ -381,6 +381,20 @@ beforeEach(() => {
 });
 
 describe('solidgate create-session gates', () => {
+  it.each(['trial1', 'trial2', 'trial3', 'trial4', 'special_1eur', 'special_free'])(
+    'uses the static channel descriptor for %s while preserving locale order descriptions',
+    async (productId) => {
+      const response = await post({ productId, sessionId: SESSION_ID });
+
+      expect(response.status).toBe(200);
+      expect(buildFormMerchantDataMock).toHaveBeenCalledTimes(1);
+      const intent = buildFormMerchantDataMock.mock.calls[0][2];
+      expect(intent).not.toHaveProperty('dynamic_descriptor');
+      expect(intent.order_description).toBe(`LT_${MAIN_PRODUCT}`);
+      expect(intent.order_metadata).toMatchObject({ product_slug: productId });
+    },
+  );
+
   it('rejects an unknown product', async () => {
     const res = await post({ productId: 'not_a_tier', sessionId: SESSION_ID });
     expect(res.status).toBe(400);

@@ -20,7 +20,6 @@ import {
   paymentEnvironmentForVercel,
   solidgateCapturedAmount,
   persistSolidgatePartialCapture,
-  solidgateDynamicDescriptor,
   subscribeSavedCard,
   type PaymentEnvironment,
   type SolidgateCaptureState,
@@ -891,7 +890,7 @@ export async function POST(request: Request) {
           productCode,
           SOLIDGATE_PRODUCT_CODES.main,
         ),
-        dynamic_descriptor: solidgateDynamicDescriptor(productCode),
+        // All purchases use the channel / connector's static bank descriptor.
         amount: amountCents,
         currency: currency.toUpperCase(),
         // Shown in the Apple Pay sheet. Must match the merchant name registered
