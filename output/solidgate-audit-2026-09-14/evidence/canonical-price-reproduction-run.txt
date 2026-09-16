@@ -1,0 +1,356 @@
+Isolated reproductions. Network disabled. Expected on audited code: 14 assertion failures.
+Temporary harness: /var/folders/qx/b1z7lv4d0qx8v_z3sqhq9jt40000gn/T/solidgate-audit-repro-o9s7p8
+
+ RUN  v3.2.4 /var/folders/qx/b1z7lv4d0qx8v_z3sqhq9jt40000gn/T/solidgate-audit-repro-o9s7p8
+
+ ❯ orders.test.ts (6 tests | 6 failed) 27ms
+   × cumulative refund must not regress on a lower snapshot with equal provider timestamp 10ms
+     → expected { amount_cents: 1200, …(5) } to match object { amount_cents: 700, …(1) }
+(4 matching properties omitted from actual)
+   × refund after a full chargeback must not resurrect disputed money 1ms
+     → expected { amount_cents: 1200, …(5) } to match object { amount_cents: +0 }
+(5 matching properties omitted from actual)
+   × refund outbox failure followed by retry must retain the original refund delta 2ms
+     → expected { session_id: 'sess-1', …(37) } to match object { revenue: -500, …(1) }
+(36 matching properties omitted from actual)
+   × partial settlement followed by refund of all captured funds must retain no net money 1ms
+     → expected { amount_cents: 500, …(5) } to match object { amount_cents: +0, …(2) }
+(4 matching properties omitted from actual)
+   × renewal refund after full chargeback must preserve zero net and dispute status 2ms
+     → expected { amount_cents: 4700, …(3) } to match object { Object (amount_cents, status) }
+(2 matching properties omitted from actual)
+   × late same-second settlement after first partial refund must not overwrite collected net 10ms
+     → expected { status: 'trialing', …(8) } to match object { amount_cents: 1200 }
+(8 matching properties omitted from actual)
+ ❯ renewals.test.ts (8 tests | 8 failed) 27ms
+   × AUDIT renewal ledger invariants > preserves money from a genuinely paid renewal after local cancellation 14ms
+     → expected [] to deep equally contain ObjectContaining{…}
+   × AUDIT renewal ledger invariants > never recreates full paid revenue when refund arrived before the renewal projection 4ms
+     → expected [ { …(14) } ] to not deep equally contain ObjectContaining{…}
+   × AUDIT renewal ledger invariants > does not grant the refunded paid period again when the ledger already says refunded 3ms
+     → expected [ { …(9) } ] to have a length of +0 but got 1
+   × AUDIT renewal ledger invariants > does not silently acknowledge a renewal chargeback while its invoice mapping is missing 1ms
+     → promise resolved "undefined" instead of rejecting
+   × AUDIT renewal ledger invariants > preserves paid invoice history even when a newer pause snapshot overtakes renewal 1ms
+     → expected [] to deep equally contain ObjectContaining{…}
+   × AUDIT lifecycle fact selection > restores a legitimately canceled provider subscription when a newer paid restore arrives 1ms
+     → expected [] to deep equally contain ObjectContaining{…}
+   × AUDIT lifecycle fact selection > uses the current paid billing term even if an old invoice was modified later 1ms
+     → expected [ { …(9) } ] to deep equally contain ObjectContaining{…}
+   × AUDIT lifecycle fact selection > does not double-count the initial paid invoice when a bound callback omits its term 1ms
+     → expected [ { …(13) } ] to have a length of +0 but got 1
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 14 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  orders.test.ts > cumulative refund must not regress on a lower snapshot with equal provider timestamp
+AssertionError: expected { amount_cents: 1200, …(5) } to match object { amount_cents: 700, …(1) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "amount_cents": 700,
+-   "solidgate_refunded_amount_cents": 1000,
++   "amount_cents": 1200,
++   "solidgate_refunded_amount_cents": 500,
+  }
+
+ ❯ orders.test.ts:401:36
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/14]⎯
+
+ FAIL  orders.test.ts > refund after a full chargeback must not resurrect disputed money
+AssertionError: expected { amount_cents: 1200, …(5) } to match object { amount_cents: +0 }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "amount_cents": 0,
++   "amount_cents": 1200,
+  }
+
+ ❯ orders.test.ts:407:36
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/14]⎯
+
+ FAIL  orders.test.ts > refund outbox failure followed by retry must retain the original refund delta
+AssertionError: expected { session_id: 'sess-1', …(37) } to match object { revenue: -500, …(1) }
+(36 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "refund_amount_cents": 500,
+-   "revenue": -500,
++   "refund_amount_cents": 0,
++   "revenue": -0,
+  }
+
+ ❯ orders.test.ts:415:67
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/14]⎯
+
+ FAIL  orders.test.ts > partial settlement followed by refund of all captured funds must retain no net money
+AssertionError: expected { amount_cents: 500, …(5) } to match object { amount_cents: +0, …(2) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "amount_cents": 0,
++   "amount_cents": 500,
+    "solidgate_refunded_amount_cents": 1200,
+-   "status": "refunded",
+  }
+
+ ❯ orders.test.ts:423:36
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/14]⎯
+
+ FAIL  orders.test.ts > renewal refund after full chargeback must preserve zero net and dispute status
+AssertionError: expected { amount_cents: 4700, …(3) } to match object { Object (amount_cents, status) }
+(2 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "amount_cents": 0,
+-   "status": "disputed",
++   "amount_cents": 4700,
++   "status": "partially_refunded",
+  }
+
+ ❯ orders.test.ts:431:44
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/14]⎯
+
+ FAIL  orders.test.ts > late same-second settlement after first partial refund must not overwrite collected net
+AssertionError: expected { status: 'trialing', …(8) } to match object { amount_cents: 1200 }
+(8 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "amount_cents": 1200,
++   "amount_cents": 1700,
+  }
+
+ ❯ orders.test.ts:444:36
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/14]⎯
+
+ FAIL  renewals.test.ts > AUDIT renewal ledger invariants > preserves money from a genuinely paid renewal after local cancellation
+AssertionError: expected [] to deep equally contain ObjectContaining{…}
+
+- Expected: 
+ObjectContaining {
+  "amount_cents": 5900,
+  "solidgate_invoice_id": "inv-audit",
+}
+
++ Received: 
+[]
+
+ ❯ renewals.test.ts:491:49
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/14]⎯
+
+ FAIL  renewals.test.ts > AUDIT renewal ledger invariants > never recreates full paid revenue when refund arrived before the renewal projection
+AssertionError: expected [ { …(14) } ] to not deep equally contain ObjectContaining{…}
+
+- Expected: 
+ObjectContaining {
+  "amount_cents": 5900,
+  "refunded_amount_cents": 0,
+  "status": "paid",
+}
+
++ Received: 
+[
+  {
+    "amount_cents": 5900,
+    "created_at": "2026-08-31T10:00:00.000Z",
+    "currency": "usd",
+    "event_created_at": null,
+    "gross_amount_cents": 5900,
+    "invoice_created_at": "2026-08-31T10:00:00.000Z",
+    "payment_environment": "production",
+    "product_key": "BRAND_000000_SUB",
+    "refunded_amount_cents": 0,
+    "solidgate_invoice_id": "inv-audit",
+    "solidgate_order_id": "provider-recurring-audit",
+    "solidgate_subscription_id": "sub-uuid-1",
+    "status": "paid",
+    "subscription_term_number": 1,
+  },
+]
+
+ ❯ renewals.test.ts:500:53
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/14]⎯
+
+ FAIL  renewals.test.ts > AUDIT renewal ledger invariants > does not grant the refunded paid period again when the ledger already says refunded
+AssertionError: expected [ { …(9) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ renewals.test.ts:509:82
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/14]⎯
+
+ FAIL  renewals.test.ts > AUDIT renewal ledger invariants > does not silently acknowledge a renewal chargeback while its invoice mapping is missing
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ renewals.test.ts:517:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/14]⎯
+
+ FAIL  renewals.test.ts > AUDIT renewal ledger invariants > preserves paid invoice history even when a newer pause snapshot overtakes renewal
+AssertionError: expected [] to deep equally contain ObjectContaining{…}
+
+- Expected: 
+ObjectContaining {
+  "amount_cents": 5900,
+  "solidgate_invoice_id": "inv-audit",
+}
+
++ Received: 
+[]
+
+ ❯ renewals.test.ts:523:49
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/14]⎯
+
+ FAIL  renewals.test.ts > AUDIT lifecycle fact selection > restores a legitimately canceled provider subscription when a newer paid restore arrives
+AssertionError: expected [] to deep equally contain ObjectContaining{…}
+
+- Expected: 
+ObjectContaining {
+  "p_expires_at": "2026-09-30T10:00:00.000Z",
+  "p_status": "active",
+}
+
++ Received: 
+[]
+
+ ❯ renewals.test.ts:536:82
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/14]⎯
+
+ FAIL  renewals.test.ts > AUDIT lifecycle fact selection > uses the current paid billing term even if an old invoice was modified later
+AssertionError: expected [ { …(9) } ] to deep equally contain ObjectContaining{…}
+
+- Expected: 
+ObjectContaining {
+  "p_expires_at": "2026-09-30T10:00:00.000Z",
+}
+
++ Received: 
+[
+  {
+    "p_access_level": "full",
+    "p_expires_at": "2026-08-31T10:00:00.000Z",
+    "p_order_db_id": "order-1",
+    "p_payment_environment": "production",
+    "p_product_slug": "BRAND_000000_SUB",
+    "p_solidgate_subscription_id": "sub-uuid-1",
+    "p_source": "solidgate_renew",
+    "p_status": "active",
+    "p_user_id": "user-1",
+  },
+]
+
+ ❯ renewals.test.ts:547:82
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/14]⎯
+
+ FAIL  renewals.test.ts > AUDIT lifecycle fact selection > does not double-count the initial paid invoice when a bound callback omits its term
+AssertionError: expected [ { …(13) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ renewals.test.ts:555:49
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/14]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  14 failed (14)
+   Start at  09:55:26
+   Duration  521ms (transform 162ms, setup 16ms, collect 375ms, tests 54ms, environment 0ms, prepare 109ms)
+
+{"proof":"existing-account checkout email autologin","result":{"linked":true,"userId":"11111111-1111-4111-8111-111111111111","isNewUser":false},"authCalls":[["createUser",{"email":"victim@example.test","email_confirm":true}],["generateLink",{"type":"magiclink","email":"victim@example.test"}],["verifyOtp",{"token_hash":"server-created-token-never-sent-to-inbox","type":"email"}]]}
+{"proof":"inactive-addon recovery purchase suppressed","fixture":{"status":"active","expires_at":"2025-01-01T00:00:00Z","revoked_at":null},"response":{"status":200,"body":{"ok":true,"alreadyOwned":true}},"filters":[["eq","user_id","11111111-1111-4111-8111-111111111111"],["eq","payment_environment","sandbox"],["eq","user_id","11111111-1111-4111-8111-111111111111"],["eq","product_slug","BRANDADDON_000000_SUB"],["is","revoked_at",null]]}
+{"proof":"inactive-addon recovery purchase suppressed","fixture":{"status":"past_due","expires_at":"2025-01-01T00:00:00Z","revoked_at":null},"response":{"status":200,"body":{"ok":true,"alreadyOwned":true}},"filters":[["eq","user_id","11111111-1111-4111-8111-111111111111"],["eq","payment_environment","sandbox"],["eq","user_id","11111111-1111-4111-8111-111111111111"],["eq","product_slug","BRANDADDON_000000_SUB"],["is","revoked_at",null]]}
+{"proof":"202 pending is treated as successful card update","actualFetch202Ok":true,"fetchCalls":1,"returnedWithoutFinal200":true}
+[
+  {
+    "case": "1100 paid orders at100 cents each, configured API max_rows1000",
+    "actual": 100000,
+    "expected": 110000
+  },
+  {
+    "case": "renewal-only period",
+    "kpiAmount": 0,
+    "renewalAmount": 5900,
+    "kpiTables": [
+      "orders"
+    ]
+  },
+  {
+    "case": "invoice created Sep2, succeeded Sep10",
+    "actual": [
+      {
+        "date": "2026-09-02",
+        "value": 5900
+      }
+    ],
+    "expectedPaidDate": "2026-09-10"
+  },
+  {
+    "case": "Sep14 refund1200 rewrites Sep2 balance",
+    "before": [
+      {
+        "date": "2026-09-02",
+        "value": 5900
+      }
+    ],
+    "after": [
+      {
+        "date": "2026-09-02",
+        "value": 4700
+      }
+    ],
+    "expectedMovementDate": "2026-09-14"
+  },
+  {
+    "case": "equivalent partial chargeback leaves1267",
+    "initialCounted": 0,
+    "renewalCounted": 1267
+  }
+]
+Assertions in .test.ts describe correct desired behavior and intentionally fail until fixes.
+The .cjs diagnostic proofs assert the observed faulty behavior and pass on audited code.

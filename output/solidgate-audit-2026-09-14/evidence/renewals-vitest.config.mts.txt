@@ -1,0 +1,8 @@
+import { defineConfig } from 'vitest/config';
+export default defineConfig({
+ resolve: { alias: [
+ {find: /^npm:@supabase\/supabase-js@2$/, replacement: '/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@supabase/supabase-js'},
+ {find: /^npm:posthog-node$/, replacement: '/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/test-stubs/posthog-node.ts'}
+ ] },
+ test: { environment: 'node', include: ['/tmp/solidgate-renewals-audit/renewals-audit-minimal.test.ts'] }
+});

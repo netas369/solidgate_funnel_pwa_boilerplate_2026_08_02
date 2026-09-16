@@ -209,7 +209,7 @@ describe('POST /api/auth/request-otp', () => {
     // Self-heal created the auth user and backfilled the linkage.
     expect(createUser).toHaveBeenCalledWith({
       email: 'purchaser@example.com',
-      email_confirm: true,
+      email_confirm: false,
     });
     expect(sessionsUpdate).toHaveBeenCalledWith({ user_id: 'user-new-1' });
     expect(ordersUpdate).toHaveBeenCalledWith({ user_id: 'user-new-1' });

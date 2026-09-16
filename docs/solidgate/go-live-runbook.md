@@ -11,7 +11,20 @@ No command in this document has been run against production by this audit.
 
 - Live Solidgate channel has the API (`api_pk_` / `api_sk_`) and webhook
   (`wh_pk_` / `wh_sk_`) key pairs.
-- Channel descriptor and every localized billing disclosure agree.
+- The same approved **static** statement descriptor is configured on every active
+  channel/connector route and agrees with every localized billing disclosure.
+  Newly built main/trial, OTO2, one-time OTO, PWA, and card-replacement requests
+  must omit `dynamic_descriptor` and product-specific suffixes; renewals must
+  follow the static provider configuration. Verify existing
+  subscription renewals against provider configuration as well as new purchases;
+  local code changes do not update previously retained provider values.
+  Already-started checkouts may replay pre-release encrypted `merchant_data`
+  containing an old suffix until they complete or expire. Preserve the same
+  cached payload and order identity; do not reset a payable checkout to change
+  its statement label. New builders do not add the field.
+  Keep locale-based product codes and `order_description` separate from this
+  static statement label. Any real statement-test payment requires prior
+  explicit approval and a monetary limit.
 - Live product catalog verification passes. The catalog is merchant-scoped and
   shared by sandbox/live; do not seed it again merely for cutover.
 - Funnel Production uses `SOLIDGATE_ENVIRONMENT=production`; Preview uses

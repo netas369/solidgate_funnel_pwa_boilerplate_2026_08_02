@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@repo/i18n/navigation";
+import { Link, useRouter } from "@repo/i18n/navigation";
 import { BOILERPLATE_BRAND } from "@repo/shared/boilerplate-brand";
 import { resetPwaAnalytics } from "@/lib/analytics/posthog";
 
@@ -15,7 +15,7 @@ import { resetPwaAnalytics } from "@/lib/analytics/posthog";
  * so the member-area theme tokens are not in scope here. Keep the literals in
  * sync with the dark surface in dashboard/_components/theme.css.
  */
-export function SubscriptionEndedScreen() {
+export function SubscriptionEndedScreen({ canRecoverBilling = false }: { canRecoverBilling?: boolean }) {
   const t = useTranslations("pwa.subscriptionEnded");
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
@@ -71,6 +71,7 @@ export function SubscriptionEndedScreen() {
         {t("body")}
       </p>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginTop: 10 }}>
+        {canRecoverBilling && <Link href="/billing/update-payment" style={{ color: 'inherit', textDecoration: 'underline' }}>Update payment method</Link>}
         <a
           href={`mailto:${BOILERPLATE_BRAND.supportEmail}`}
           style={{

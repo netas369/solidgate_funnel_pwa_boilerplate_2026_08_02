@@ -1,42 +1,140 @@
 [
   {
+    "id": "audit-fixes-20260914",
+    "block": "payments",
+    "filename": "FIXES_2026-09-14.lt.md",
+    "source_sha256": "eb3df63a4e8fea0ae34c59cd898671b6cfe85058f611e122b2c413d473461376",
+    "section_count": 7
+  },
+  {
+    "id": "audit-20260914",
+    "block": "audit",
+    "filename": "AUDIT_2026-09-14.lt.md",
+    "source_sha256": "f554a1bbb69305d720a56d5a4422a96e8e635c09743c028b73f93907927e59dc",
+    "section_count": 8
+  },
+  {
+    "id": "auth-rollout-20260914",
+    "block": "audit",
+    "filename": "AUTH_BILLING_ROLLOUT.md",
+    "source_sha256": "6f68d8f358979c6518a3dad5d74e0c813284a60d2d8663b4687f875aeb486ab9",
+    "section_count": 1
+  },
+  {
+    "id": "pay-overview",
+    "block": "payments",
+    "filename": "payments/00-apzvalga.lt.md",
+    "source_sha256": "fdef980042327c27bdb14e16a9ac3da9516d48a1b3298a26683fc4c90c3ee257",
+    "section_count": 7
+  },
+  {
+    "id": "pay-flows",
+    "block": "payments",
+    "filename": "payments/01-srautai.lt.md",
+    "source_sha256": "e1d09f164342a82ecdb8ee2ccfa732e3f0309618063024c773d31d73885a64d2",
+    "section_count": 14
+  },
+  {
+    "id": "pay-orders",
+    "block": "payments",
+    "filename": "payments/02-lenteles-orders-entitlements.lt.md",
+    "source_sha256": "236fd535acfdf9f9462ffe330206618d4e3a35dfa77383b565c2b691d49ac56b",
+    "section_count": 3
+  },
+  {
+    "id": "pay-renewals",
+    "block": "payments",
+    "filename": "payments/03-lenteles-prenumeratos-saskaitos.lt.md",
+    "source_sha256": "ecae747649b1b26f77580b371e053f469473acd5dae6178ed30bc454aae67403",
+    "section_count": 5
+  },
+  {
+    "id": "pay-cards",
+    "block": "payments",
+    "filename": "payments/04-lenteles-checkout-korteles-tokenai.lt.md",
+    "source_sha256": "5278fece70b250c8af7caadbf99479202ddee9e10865671f6566d3823962ce37",
+    "section_count": 8
+  },
+  {
+    "id": "pay-queues",
+    "block": "payments",
+    "filename": "payments/05-lenteles-webhook-eiles.lt.md",
+    "source_sha256": "36edc15d5e6a67b5ed8f15e7c93b7c927d2c7d97894005c01f057aab82846c74",
+    "section_count": 8
+  },
+  {
+    "id": "pay-platform",
+    "block": "payments",
+    "filename": "payments/06-lenteles-platforma.lt.md",
+    "source_sha256": "a486082afe3ab437f2df0abb3003660bd1049d6dccc711a39d18109a99d9a52d",
+    "section_count": 6
+  },
+  {
+    "id": "pay-functions",
+    "block": "payments",
+    "filename": "payments/07-funkcijos-rpc-triggeriai.lt.md",
+    "source_sha256": "161725002b95862fee4cebf09a266eb36a8812f5b90a5a85f877deee8ca85252",
+    "section_count": 17
+  },
+  {
+    "id": "pay-catalog",
+    "block": "payments",
+    "filename": "payments/08-produktu-katalogas-ir-kodai.lt.md",
+    "source_sha256": "f3518257e703578708ea6427b3ed12432591223781b6487bc084e0f54a6102ee",
+    "section_count": 8
+  },
+  {
+    "id": "cleanup",
+    "block": "audit",
+    "filename": "STRIPE_CLEANUP.lt.md",
+    "source_sha256": "093c1a9ed5def74fc063d9c75e67425754b8bcfebd1ec63a3a646cca65b317a8",
+    "section_count": 9
+  },
+  {
     "id": "review",
+    "block": "audit",
     "filename": "BOILERPLATE_REVIEW.lt.md",
-    "source_sha256": "57a20e3932a9c97c979f01b8511a1b5aa693f4c716e4019e0f8a6dadc336c858",
+    "source_sha256": "79bf6e4e4f625d6774d776da04cf0eded14a6434a937a87e2274025e1804f8c1",
     "section_count": 7
   },
   {
     "id": "handoff",
+    "block": "audit",
     "filename": "HANDOFF.lt.md",
     "source_sha256": "529ee0851f732f612826fda62df620ebae5ea41af4ca2041101538750e120452",
     "section_count": 9
   },
   {
     "id": "architecture",
+    "block": "audit",
     "filename": "boilerplate-architecture-audit.lt.md",
     "source_sha256": "1a6cc2c11c517645110da662872c011f93e0d68bce7cc1f62cbb82e7d4cb9267",
     "section_count": 14
   },
   {
     "id": "pricing",
+    "block": "audit",
     "filename": "price-map-and-catalog.lt.md",
     "source_sha256": "d8a918268fca74dd16a4685076b02666e9ad8d7e7d588098bc6e87750b6b437f",
     "section_count": 10
   },
   {
     "id": "core",
+    "block": "audit",
     "filename": "boilerplate-tables-core.lt.md",
     "source_sha256": "cd0f4e00b8f4f50a489726b7f0afb2b56e8c69d670eef4d6cbe982722c8c71ec",
     "section_count": 14
   },
   {
     "id": "workflows",
+    "block": "audit",
     "filename": "boilerplate-tables-workflows.lt.md",
     "source_sha256": "35269ecb4767aa4a0091ae201a3cd66841246beec6cf46b141efe8f420eb14d2",
     "section_count": 10
   },
   {
     "id": "events",
+    "block": "audit",
     "filename": "boilerplate-tables-events.lt.md",
     "source_sha256": "99fb12276303b6c6e5a67253ae76daabb05d16fc2769d9214a18c35b3799a3db",
     "section_count": 10

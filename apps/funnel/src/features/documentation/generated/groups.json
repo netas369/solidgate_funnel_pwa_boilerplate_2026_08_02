@@ -1,0 +1,27 @@
+[
+  {
+    "id": "getting-started",
+    "title": "Pradžia",
+    "description": "Sistemos žemėlapis, naujausios pataisos ir prisijungimo taisyklės."
+  },
+  {
+    "id": "payment-flows",
+    "title": "Mokėjimų srautai",
+    "description": "Nuo checkout iki atnaujinimo: kanalai, produktai ir kainos."
+  },
+  {
+    "id": "data-model",
+    "title": "Duomenų modelis",
+    "description": "Užsakymai, sąskaitos, prieigos teisės, kortelės ir DB funkcijos."
+  },
+  {
+    "id": "reliability",
+    "title": "Patikimumas",
+    "description": "Webhook apdorojimas, eilės ir ankstesnių pataisų kontekstas."
+  },
+  {
+    "id": "audit-history",
+    "title": "Auditas ir istorija",
+    "description": "Pirminio audito įrodymai, architektūra ir šaltinio projekto analizė."
+  }
+]

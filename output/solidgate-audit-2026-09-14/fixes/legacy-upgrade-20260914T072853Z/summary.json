@@ -1,0 +1,53 @@
+{
+  "database": "solidgate_legacy_verify_20260914t072853z_4d0a85",
+  "host": "127.0.0.1",
+  "stages": [
+    {
+      "stage": "00-create-database",
+      "exit_code": 0
+    },
+    {
+      "stage": "01-scaffold",
+      "exit_code": 0
+    },
+    {
+      "stage": "02-legacy-baseline",
+      "exit_code": 0
+    },
+    {
+      "stage": "03-seed-populated-legacy",
+      "exit_code": 0
+    },
+    {
+      "stage": "40-migration-1-20260914070652_financial_event_ledger",
+      "exit_code": 0
+    },
+    {
+      "stage": "41-migration-1-20260914070819_solidgate_financial_reporting",
+      "exit_code": 0
+    },
+    {
+      "stage": "49-assert-1",
+      "exit_code": 0
+    },
+    {
+      "stage": "50-migration-2-20260914070652_financial_event_ledger",
+      "exit_code": 0
+    },
+    {
+      "stage": "51-migration-2-20260914070819_solidgate_financial_reporting",
+      "exit_code": 0
+    },
+    {
+      "stage": "59-assert-2",
+      "exit_code": 0
+    }
+  ],
+  "input_hashes": {
+    "supabase/migrations/00001_baseline.sql": "323b1921ab60fcef8af271fd797876c8d7230aab060ad01fc6b0e36c22f23a89",
+    "supabase/migrations/20260914070652_financial_event_ledger.sql": "d6ef8b100c7d1c2b0bf1c6a4ac2aaa9bfeed4b916dc8979678981e39c41299fc",
+    "supabase/migrations/20260914070819_solidgate_financial_reporting.sql": "bda7a66fc266ab37c57caae415ca8511734dd2a5c9daab048771b20308ec99e0"
+  },
+  "changed_inputs_during_run": [],
+  "status": "passed"
+}

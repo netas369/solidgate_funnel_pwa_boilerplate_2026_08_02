@@ -1,0 +1,14 @@
+You are now connected to database "solidgate_final_verify_20260914_072351_5809d6" as user "supabase_admin".
+BEGIN
+INSERT 0 1
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 3
+SET
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072351Z/inputs/supabase/tests/solidgate_subscription_renewals.sql:297: NOTICE:  SOLIDGATE SUBSCRIPTION RENEWAL SCENARIOS PASSED
+DO
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072351Z/inputs/supabase/tests/solidgate_subscription_renewals.sql:336: NOTICE:  SOLIDGATE RENEWAL LEDGER ARBITER INDEX PASSED
+DO
+ROLLBACK
+SOLIDGATE SUBSCRIPTION RENEWAL TESTS PASSED

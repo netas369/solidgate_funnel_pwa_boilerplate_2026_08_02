@@ -9,12 +9,14 @@ const mockNotCalls: Array<[string, string, unknown]> = [];
 const mockNeqCalls: Array<[string, unknown]> = [];
 const mockOrderCalls: Array<[string, unknown]> = [];
 const mockLimitCalls: number[] = [];
+const mockInCalls: Array<[string, unknown]> = [];
 
 vi.mock('../supabase/admin', () => ({
   getSupabaseAdminClient: vi.fn(() => ({
     from: vi.fn((table: string) => {
-      if (table !== 'entitlements') throw new Error(`Unexpected table: ${table}`);
+      if (!['entitlements', 'orders'].includes(table)) throw new Error(`Unexpected table: ${table}`);
       const chainable: Record<string, unknown> = {};
+      chainable.in = vi.fn((col: string, values: unknown) => { mockInCalls.push([col, values]); return chainable; });
       chainable.eq = vi.fn((col: string, val: unknown) => {
         mockEqCalls.push([col, val]);
         return chainable;
@@ -53,6 +55,7 @@ vi.mock('../supabase/admin', () => ({
 
 import {
   getActiveGracePeriodSubscription,
+  getRecoverableSubscription,
   GRACE_EXCLUDED_SLUGS,
   GRACE_EXCLUDED_SLUG_PATTERNS,
 } from '../grace-period';
@@ -67,6 +70,7 @@ describe('getActiveGracePeriodSubscription', () => {
     mockNeqCalls.length = 0;
     mockOrderCalls.length = 0;
     mockLimitCalls.length = 0;
+    mockInCalls.length = 0;
   });
 
   it('returns null when no past_due+grace row exists', async () => {
@@ -225,4 +229,31 @@ describe('getActiveGracePeriodSubscription', () => {
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
+  it('recovers an existing add-on after access expires without requiring main grace', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({ data: {
+      solidgate_subscription_id: 'existing-addon-sub', product_slug: 'BRANDADDON_000000_SUB', product_name: 'Weekly add-on',
+    }, error: null });
+    const result = await getRecoverableSubscription('buyer');
+    expect(result?.subscriptionId).toBe('existing-addon-sub');
+    expect(mockInCalls).toContainEqual(['status', ['completed', 'trialing', 'past_due']]);
+    expect(mockEqCalls).toContainEqual(['payment_environment', 'sandbox']);
+    expect(mockEqCalls).toContainEqual(['user_id', 'buyer']);
+    expect(mockNotCalls).toContainEqual(['solidgate_subscription_id', 'is', null]);
+    expect(mockOrCalls).toEqual([]);
+  });
+
+  it('does not present a recoverable subscription when the lookup fails', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'unavailable' } });
+    await expect(getRecoverableSubscription('buyer')).rejects.toThrow('Subscription recovery lookup failed');
+  });
+
+  it('limits locked member-area recovery links to main subscriptions', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    await getRecoverableSubscription('buyer', { mainOnly: true });
+    const products = mockInCalls.find(([column]) => column === 'product_slug')?.[1] as string[];
+    expect(products).toContain('trial1');
+    expect(products).not.toContain('oto2_addon_weekly');
+    expect(products).not.toContain('oto1_lifetime');
+  });
+
 });

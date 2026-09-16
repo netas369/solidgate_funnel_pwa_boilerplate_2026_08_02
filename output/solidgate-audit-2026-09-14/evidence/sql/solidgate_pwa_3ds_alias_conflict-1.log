@@ -1,0 +1,4 @@
+BEGIN
+psql:supabase/tests/solidgate_pwa_3ds_alias_conflict.sql:95: NOTICE:  SOLIDGATE PWA 3DS ALIAS-CONFLICT SCENARIO PASSED
+DO
+ROLLBACK

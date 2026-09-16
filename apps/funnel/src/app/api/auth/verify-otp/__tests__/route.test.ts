@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockCookieGet = vi.fn();
+const mockVerifyPaymentCookie = vi.fn();
+const mockPromote = vi.fn(async () => {});
+const claimedSessionMaybeSingle = vi.fn();
+vi.mock('next/headers', () => ({ cookies: async () => ({ get: mockCookieGet }) }));
+vi.mock('@repo/shared/payment-cookie', () => ({
+  PAYMENT_COOKIE_NAME: 'payment_access', verifyPaymentCookie: mockVerifyPaymentCookie,
+}));
+
 // ─── Rate-limit mock ──────────────────────────────────────────────────────────
 const mockCheckOtpRateLimit = vi.fn();
 const mockRecordOtpAttempt = vi.fn().mockResolvedValue(undefined);
@@ -11,7 +20,7 @@ vi.mock('@repo/shared/auth/otp-rate-limit', () => ({
 
 // ─── Customer-ownership mock ─────────────────────────────────────────────────
 vi.mock('@repo/shared/solidgate/account-vault', () => ({
-  promoteSessionVaultToAccount: vi.fn(async () => {}),
+  promoteSessionVaultToAccount: mockPromote,
 }));
 
 // ─── Entitlements mock ───────────────────────────────────────────────────────
@@ -55,7 +64,7 @@ const updateEq = vi.fn();
 const updateChain = { in: updateIn, eq: updateEq, is: updateIs };
 updateIn.mockImplementation(() => updateChain);
 updateEq.mockImplementation(() => updateChain);
-const updateFn = vi.fn(() => updateChain);
+const updateFn = vi.fn((_patch: Record<string, unknown>) => updateChain);
 
 vi.mock('@repo/shared/supabase/server', () => ({
   createClient: vi.fn(() => ({
@@ -90,6 +99,9 @@ vi.mock('@repo/shared/supabase/admin', () => ({
             }
             if (columns === 'locale') {
               return { in: latestSessionLocaleIn };
+            }
+            if (columns === 'email, user_id') {
+              return { eq: vi.fn(() => ({ maybeSingle: claimedSessionMaybeSingle })) };
             }
             return { eq: linkedSessionEq };
           },
@@ -161,6 +173,11 @@ function arrangeSolidgateMainOtpBackfill() {
 
 describe('POST /api/auth/verify-otp', () => {
   beforeEach(() => {
+    mockCookieGet.mockReset();
+    mockVerifyPaymentCookie.mockReset();
+    mockPromote.mockClear();
+    claimedSessionMaybeSingle.mockReset().mockResolvedValue({ data: { email: 'buyer@example.com', user_id: 'user-1' }, error: null });
+    updateFn.mockClear();
     verifyOtp.mockReset();
     linkedSessionMaybeSingle.mockReset();
     linkedSessionOrder.mockClear();
@@ -344,5 +361,44 @@ describe('POST /api/auth/verify-otp', () => {
     expect(res.status).toBe(200);
     expect(mockAdminRpc).toHaveBeenCalledOnce();
     expect(mockUpsertEntitlement).not.toHaveBeenCalled();
+  });
+
+  it('does not promote unrelated anonymous checkouts when the mailbox owner logs in', async () => {
+    arrangeSolidgateMainOtpBackfill();
+    const response = await postRoute({ email: 'buyer@example.com', token: '123456' });
+    expect(response.status).toBe(200);
+    expect(mockPromote).not.toHaveBeenCalled();
+    expect(updateFn.mock.calls.some(([patch]) => 'auth_verified_at' in patch)).toBe(false);
+  });
+
+  it('claims a prelinked account card only for the current signed purchase journey after OTP', async () => {
+    verifyOtp.mockResolvedValue({ data: { user: { id: 'user-1', email: 'buyer@example.com' } }, error: null });
+    linkedSessionMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockCookieGet.mockReturnValue({ value: 'signed-current-purchase' });
+    mockVerifyPaymentCookie.mockResolvedValue({ sessionId: 'current-session' });
+    const response = await postRoute({ email: 'buyer@example.com', token: '123456' });
+    expect(response.status).toBe(200);
+    expect(mockPromote).toHaveBeenCalledWith(expect.anything(), {
+      userId: 'user-1', sessionId: 'current-session', paymentEnvironment: 'sandbox',
+    });
+    expect(updateFn).toHaveBeenCalledWith({ claimed_at: expect.any(String), auth_verified_at: expect.any(String) });
+    expect(updateEq).toHaveBeenCalledWith('session_id', 'current-session');
+    expect(updateEq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(updateEq).toHaveBeenCalledWith('solidgate_customer_email', 'buyer@example.com');
+  });
+
+  it.each([
+    { email: 'other@example.com', user_id: 'user-1' },
+    { email: 'buyer@example.com', user_id: 'other-user' },
+  ])('does not promote a mismatched payment-cookie purchase: %o', async (session) => {
+    verifyOtp.mockResolvedValue({ data: { user: { id: 'user-1', email: 'buyer@example.com' } }, error: null });
+    linkedSessionMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockCookieGet.mockReturnValue({ value: 'signed-other-purchase' });
+    mockVerifyPaymentCookie.mockResolvedValue({ sessionId: 'other-session' });
+    claimedSessionMaybeSingle.mockResolvedValue({ data: session, error: null });
+    const response = await postRoute({ email: 'buyer@example.com', token: '123456' });
+    expect(response.status).toBe(200);
+    expect(mockPromote).not.toHaveBeenCalled();
+    expect(updateFn.mock.calls.some(([patch]) => 'auth_verified_at' in patch)).toBe(false);
   });
 });

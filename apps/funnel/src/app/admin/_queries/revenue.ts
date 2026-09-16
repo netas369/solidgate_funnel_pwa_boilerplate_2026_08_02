@@ -1,92 +1,124 @@
-// Revenue aggregations in EUR.
-// - One-time / OTO orders summed via convertToEur (EUR-unified totals).
-// - Renewal events (renewal_events table) summed separately.
-// - Collected money is independent of the order's CURRENT lifecycle state: a
-//   paid trial settles its intro fee at signup (Solidgate auth_settle), so a
-//   'trialing' row with amount > 0 is real revenue, and a sub that later went
-//   past_due/canceled keeps the money it already took. The amount_cents > 0
-//   predicate excludes zero-auth rows (a free intro tier authorizes €0 and
-//   collects nothing); pending/failed never charged, and refunded gave the
-//   money back.
-// Server-only; never import from a 'use client' module.
-
+// PostgreSQL aggregates financial movements, avoiding Data API row limits and
+// mutable order/access status filters. All amounts are native minor units.
+import { z } from 'zod';
 import { getSupabaseAdminClient } from '@repo/shared/supabase/admin';
 import { convertToEur } from './fx';
 import type { DateRange } from './_shared';
 
-type OrderRow = { amount_cents: number; currency: string };
-type RenewalRow = { amount_cents: number; currency: string; created_at: string };
-type OrderTimeRow = OrderRow & { created_at: string };
+const Money = z.number().int().safe();
+const ReportSchema = z.object({
+  rows: z.array(z.object({
+    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    currency: z.string().regex(/^[A-Za-z]{3}$/),
+    billing_type: z.enum(['initial', 'renewal']),
+    product_slug: z.string().nullable(),
+    captured_cents: Money,
+    refunded_cents: Money,
+    chargeback_cents: Money,
+    net_cents: Money,
+    payments: z.number().int().nonnegative(),
+  })),
+  legacy_movements: z.number().int().nonnegative(),
+  estimated_timing_movements: z.number().int().nonnegative().default(0),
+});
+export type FinancialReport = z.infer<typeof ReportSchema>;
+export type FinancialRow = FinancialReport['rows'][number];
+export type RevenueSummary = {
+  oneTimeEur: number | null;
+  renewalEur: number | null;
+  totalEur: number | null;
+  grossEur: number | null;
+  refundsEur: number | null;
+  chargebacksEur: number | null;
+  byCurrency: Record<string, number>;
+  currencyTotals: Array<{ currency: string; captured: number; refunded: number; chargeback: number; net: number }>;
+  timeSeries: Array<{ date: string; value: number }>;
+  missingFxCurrencies: string[];
+  legacyMovements: number;
+  estimatedTimingMovements: number;
+};
 
-async function fetchOneTimeOrders({ from, to }: DateRange): Promise<OrderTimeRow[]> {
-  const admin = getSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('orders')
-    .select('amount_cents,currency,created_at')
-    .eq('payment_environment', 'production')
-    .in('status', ['completed', 'active', 'trialing', 'past_due', 'canceled'])
-    .gt('amount_cents', 0)
-    .gte('created_at', from)
-    .lt('created_at', to);
-  if (error || !data) {
-    console.error('[admin/revenue] fetchOneTimeOrders failed:', error?.message);
-    return [];
+export async function financialReport({ from, to }: DateRange): Promise<FinancialReport> {
+  const { data, error } = await getSupabaseAdminClient().rpc('get_solidgate_revenue_report', {
+    p_environment: 'production', p_from: from, p_to: to,
+  });
+  if (error) throw new Error(`Revenue report unavailable: ${error.message}`);
+  return ReportSchema.parse(data);
+}
+
+function addExact(a: number, b: number): number {
+  const value = a + b;
+  if (!Number.isSafeInteger(value)) throw new Error('Monetary total exceeds safe precision');
+  return value;
+}
+
+export function sumInEur(rows: FinancialRow[], field: 'captured_cents' | 'refunded_cents' | 'chargeback_cents' | 'net_cents' = 'net_cents'): number | null {
+  const grouped = new Map<string, number>();
+  for (const row of rows) {
+    const code = row.currency.toUpperCase();
+    grouped.set(code, addExact(grouped.get(code) ?? 0, row[field]));
   }
-  return data as OrderTimeRow[];
-}
-
-async function fetchRenewals({ from, to }: DateRange): Promise<RenewalRow[]> {
-  const admin = getSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('renewal_events')
-    .select('amount_cents,currency,created_at')
-    .eq('payment_environment', 'production')
-    .gte('created_at', from)
-    .lt('created_at', to);
-  if (error || !data) {
-    console.error('[admin/revenue] fetchRenewals failed:', error?.message);
-    return [];
+  let total = 0;
+  for (const [currency, amount] of grouped) {
+    const value = convertToEur(amount, currency);
+    if (value === null) return null;
+    total = addExact(total, value);
   }
-  return data as RenewalRow[];
+  return total;
 }
 
-export async function grossRevenueInEurInRange(range: DateRange): Promise<number> {
-  const orders = await fetchOneTimeOrders(range);
-  return orders.reduce((sum, r) => sum + convertToEur(r.amount_cents, r.currency), 0);
-}
-
-export async function revenueByCurrencyInRange(
-  range: DateRange,
-): Promise<Record<string, number>> {
-  const orders = await fetchOneTimeOrders(range);
-  const out: Record<string, number> = {};
-  for (const r of orders) {
-    const code = (r.currency ?? 'eur').toUpperCase();
-    out[code] = (out[code] ?? 0) + r.amount_cents;
+export function summarizeFinancialReport(report: FinancialReport): RevenueSummary {
+  const totals = new Map<string, { currency: string; captured: number; refunded: number; chargeback: number; net: number }>();
+  const days = new Map<string, FinancialRow[]>();
+  const missingFx = new Set<string>();
+  for (const row of report.rows) {
+    const code = row.currency.toUpperCase();
+    const total = totals.get(code) ?? { currency: code, captured: 0, refunded: 0, chargeback: 0, net: 0 };
+    total.captured = addExact(total.captured, row.captured_cents);
+    total.refunded = addExact(total.refunded, row.refunded_cents);
+    total.chargeback = addExact(total.chargeback, row.chargeback_cents);
+    total.net = addExact(total.net, row.net_cents);
+    totals.set(code, total);
+    const dayRows = days.get(row.day) ?? [];
+    dayRows.push(row);
+    days.set(row.day, dayRows);
+    if ([row.captured_cents, row.refunded_cents, row.chargeback_cents, row.net_cents].some(amount => convertToEur(amount, code) === null)) missingFx.add(code);
   }
-  return out;
-}
-
-export async function renewalRevenueInEur(range: DateRange): Promise<number> {
-  const renewals = await fetchRenewals(range);
-  return renewals.reduce((sum, r) => sum + convertToEur(r.amount_cents, r.currency), 0);
-}
-
-export async function revenueTimeSeriesInEur(
-  range: DateRange,
-): Promise<Array<{ date: string; value: number }>> {
-  const [orders, renewals] = await Promise.all([
-    fetchOneTimeOrders(range),
-    fetchRenewals(range),
-  ]);
-  const bucket = new Map<string, number>();
-  const add = (ts: string, value: number) => {
-    const day = new Date(ts).toISOString().slice(0, 10);
-    bucket.set(day, (bucket.get(day) ?? 0) + value);
+  const currencyTotals = [...totals.values()].sort((a, b) => a.currency.localeCompare(b.currency));
+  return {
+    oneTimeEur: sumInEur(report.rows.filter(row => row.billing_type === 'initial')),
+    renewalEur: sumInEur(report.rows.filter(row => row.billing_type === 'renewal')),
+    totalEur: sumInEur(report.rows),
+    grossEur: sumInEur(report.rows, 'captured_cents'),
+    refundsEur: sumInEur(report.rows, 'refunded_cents'),
+    chargebacksEur: sumInEur(report.rows, 'chargeback_cents'),
+    byCurrency: Object.fromEntries(currencyTotals.map(row => [row.currency, row.net])),
+    currencyTotals,
+    // Never show a partial EUR chart as though it covered all currencies.
+    timeSeries: missingFx.size ? [] : [...days.entries()].map(([date, rows]) => ({ date, value: sumInEur(rows)! })).sort((a, b) => a.date.localeCompare(b.date)),
+    missingFxCurrencies: [...missingFx].sort(),
+    legacyMovements: report.legacy_movements,
+    estimatedTimingMovements: report.estimated_timing_movements,
   };
-  for (const o of orders) add(o.created_at, convertToEur(o.amount_cents, o.currency));
-  for (const r of renewals) add(r.created_at, convertToEur(r.amount_cents, r.currency));
-  return [...bucket.entries()]
-    .map(([date, value]) => ({ date, value }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export async function revenueSummaryInRange(range: DateRange): Promise<RevenueSummary> {
+  return summarizeFinancialReport(await financialReport(range));
+}
+
+/** Captured gross includes both initial payments and renewals. */
+export async function grossRevenueInEurInRange(range: DateRange): Promise<number | null> {
+  return sumInEur((await financialReport(range)).rows, 'captured_cents');
+}
+export async function netRevenueInEurInRange(range: DateRange): Promise<number | null> {
+  return sumInEur((await financialReport(range)).rows);
+}
+export async function revenueByCurrencyInRange(range: DateRange): Promise<Record<string, number>> {
+  return (await revenueSummaryInRange(range)).byCurrency;
+}
+export async function renewalRevenueInEur(range: DateRange): Promise<number | null> {
+  return sumInEur((await financialReport(range)).rows.filter(row => row.billing_type === 'renewal'));
+}
+export async function revenueTimeSeriesInEur(range: DateRange): Promise<Array<{ date: string; value: number }>> {
+  return (await revenueSummaryInRange(range)).timeSeries;
 }

@@ -45,8 +45,9 @@ function isExistingUserError(
 }
 
 /**
- * Creates (or resolves) the auth user for a purchase and logs the browser in,
- * by minting a magic link server-side and redeeming it through the SSR client.
+ * Creates (or resolves) the purchase owner without authenticating the browser.
+ * A checkout email is not proof of mailbox ownership. Only an existing,
+ * verified matching session may be reported as linked.
  * Best-effort: never throws, returns linked=false on any failure.
  */
 export async function linkAuthUser(params: {
@@ -64,7 +65,7 @@ export async function linkAuthUser(params: {
   if (!resolvedUserId) {
     const { data: createdUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      email_confirm: true,
+      email_confirm: false,
     });
     if (createUserError && !isExistingUserError(createUserError)) {
       console.error(`${logPrefix} auth createUser failed:`, createUserError.message);
@@ -74,26 +75,26 @@ export async function linkAuthUser(params: {
     if (resolvedUserId) isNewUser = true;
   }
 
-  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'magiclink',
-    email,
-  });
-  if (linkError || !linkData?.properties.hashed_token) {
-    console.error(`${logPrefix} auth generateLink failed:`, linkError?.message ?? 'missing hash');
-    return { linked: false, userId: resolvedUserId, isNewUser };
+  if (!resolvedUserId) {
+    const { data, error } = await supabaseAdmin.rpc('find_auth_user_id_by_email', { p_email: email });
+    if (error || typeof data !== 'string') {
+      console.error(`${logPrefix} auth owner lookup failed:`, error?.message ?? 'missing user');
+      return { linked: false, userId: null, isNewUser };
+    }
+    resolvedUserId = data;
   }
-  resolvedUserId = resolvedUserId ?? linkData.user.id;
 
-  // SSR client is instantiated here, not at module scope: it binds to this
-  // request's cookies, which is what logs the buyer's browser in.
-  const ssrClient = await createClient();
-  const { error: verifyError } = await ssrClient.auth.verifyOtp({
-    token_hash: linkData.properties.hashed_token,
-    type: 'email',
-  });
-  if (verifyError) {
-    console.error(`${logPrefix} auth verifyOtp failed:`, verifyError.message);
-    return { linked: false, userId: resolvedUserId, isNewUser };
+  let linked = false;
+  try {
+    const ssrClient = await createClient();
+    const { data: auth, error: authError } = await ssrClient.auth.getUser();
+    linked = !authError && auth?.user?.id === resolvedUserId
+      && Boolean(auth.user.email_confirmed_at)
+      && auth.user.email?.trim().toLowerCase() === email.trim().toLowerCase();
+  } catch {
+    // A browser-session read outage must not lose the captured purchase. Its
+    // owner can still complete verified login later; no auth token is minted.
+    console.error(`${logPrefix} unable to verify the current browser session`);
   }
 
   const { error: sessionUpdateError } = await supabaseAdmin
@@ -107,7 +108,7 @@ export async function linkAuthUser(params: {
 
   const { error: orderUserIdError } = await supabaseAdmin
     .from('orders')
-    .update({ user_id: resolvedUserId, claimed_at: new Date().toISOString() })
+    .update({ user_id: resolvedUserId })
     .eq('payment_environment', currentPaymentEnvironment())
     .eq(orderMatch.column, orderMatch.value)
     .is('user_id', null);
@@ -115,7 +116,21 @@ export async function linkAuthUser(params: {
     console.error(`${logPrefix} orders user_id update failed:`, orderUserIdError.message);
   }
 
-  return { linked: true, userId: resolvedUserId, isNewUser };
+  if (linked) {
+    const verifiedAt = new Date().toISOString();
+    const { error: proofError } = await supabaseAdmin.from('orders')
+      .update({ claimed_at: verifiedAt, auth_verified_at: verifiedAt })
+      .eq('payment_environment', currentPaymentEnvironment())
+      .eq(orderMatch.column, orderMatch.value).eq('session_id', sessionId)
+      .eq('user_id', resolvedUserId).eq('solidgate_customer_email', email.trim().toLowerCase())
+      .is('auth_verified_at', null);
+    if (proofError) {
+      console.error(`${logPrefix} verified purchase claim failed:`, proofError.message);
+      return { linked: false, userId: resolvedUserId, isNewUser };
+    }
+  }
+
+  return { linked, userId: resolvedUserId, isNewUser };
 }
 
 /**

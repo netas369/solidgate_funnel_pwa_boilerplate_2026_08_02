@@ -363,6 +363,12 @@ Produkcijos eilučių skaičius, API limitas ir query planai netikrinti.
 
 ## Prioritetinė tolesnio darbo seka
 
+> 2026-09-11 papildymas: [Stripe išvalymo dokumente](STRIPE_CLEANUP.lt.md)
+> empiriškai patvirtinta, kad `renewal_events` PostgREST upsert su daliniu
+> unikaliu indeksu krenta `42P10` **prieš** pratęsimo RPC — tai tikėtina 1 punkto
+> incidento priežastis. Baseline indeksas pataisytas; gyvai DB reikia atskiros
+> migracijos ir `pg_indexes` patikros.
+
 1. Užfiksuoti galutinio SQL paleidimo rezultatą. Konkretaus vartotojo incidento
    priežastį tikrinti pagal jo prenumeratos duomenis ir callback istoriją;
    esamai DB paruošti atskirą lifecycle RPC migraciją prieš diegiant pataisą.

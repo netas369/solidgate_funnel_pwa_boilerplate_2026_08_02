@@ -1,0 +1,4 @@
+BEGIN
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_pwa_3ds_alias_conflict.sql:95: NOTICE:  SOLIDGATE PWA 3DS ALIAS-CONFLICT SCENARIO PASSED
+DO
+ROLLBACK

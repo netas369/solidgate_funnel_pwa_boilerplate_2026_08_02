@@ -11,6 +11,7 @@ vi.mock('@repo/shared/solidgate/catalog-ids.json', async () => {
 
 const mocks = vi.hoisted(() => ({
   chargeSavedCard: vi.fn(),
+  financialCapture: vi.fn(),
   subscribeSavedCard: vi.fn(),
   insertOrder: vi.fn(),
   updateOrder: vi.fn(),
@@ -94,6 +95,10 @@ vi.mock('@repo/shared/entitlements', () => ({
 vi.mock('@repo/shared/supabase/admin', () => ({
   getSupabaseAdminClient: () => ({
     rpc: async (name: string, args: Record<string, unknown>) => {
+      if (name === 'apply_solidgate_financial_event') {
+        mocks.financialCapture(args);
+        return { data: { net_amount_cents: 2999 }, error: null };
+      }
       if (name === 'advance_solidgate_oto_progress') {
         return mocks.advanceProgress(args);
       }
@@ -610,6 +615,7 @@ describe('Solidgate OTO attribution metadata', () => {
       solidgate_submission_token: null,
       solidgate_submission_started_at: null,
     }));
+    expect(mocks.updateOrder.mock.calls.some(([values]) => 'amount_cents' in values)).toBe(false);
     expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
     expect(mocks.enqueueFulfillment).not.toHaveBeenCalled();
   });
@@ -685,11 +691,11 @@ describe('Solidgate OTO attribution metadata', () => {
     expect(response.status).toBe(402);
     expect(mocks.updateOrder).toHaveBeenCalledWith(expect.objectContaining({
       status: 'failed',
-      amount_cents: 0,
       solidgate_payment_status: 'auth_failed',
       solidgate_submission_token: null,
       solidgate_submission_started_at: null,
     }));
+    expect(mocks.updateOrder.mock.calls.some(([values]) => 'amount_cents' in values)).toBe(false);
     expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
     expect(mocks.enqueueFulfillment).not.toHaveBeenCalled();
   });
@@ -711,7 +717,6 @@ describe('Solidgate OTO attribution metadata', () => {
     expect(response.status).toBe(402);
     expect(mocks.updateOrder).toHaveBeenCalledWith(expect.objectContaining({
       status: 'failed',
-      amount_cents: 0,
       solidgate_payment_status: 'request_rejected',
       solidgate_submission_token: null,
       solidgate_submission_started_at: null,
@@ -865,6 +870,7 @@ describe('Solidgate OTO attribution metadata', () => {
     expect(mocks.status).toHaveBeenCalledTimes(1);
     expect(mocks.resumeOrder).not.toHaveBeenCalled();
     expect(mocks.upsertEntitlement).not.toHaveBeenCalled();
+    expect(mocks.financialCapture).toHaveBeenCalledWith(expect.objectContaining({ p_facts: expect.objectContaining({ captured_amount_cents: 2999, quoted_amount_cents: 4900 }) }));
   });
 
   it('never promotes a missing provider status to accepted processing on retry', async () => {

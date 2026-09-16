@@ -1,0 +1,14 @@
+You are now connected to database "solidgate_final_verify_20260914_072351_5809d6" as user "supabase_admin".
+BEGIN
+INSERT 0 2
+INSERT 0 2
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072351Z/inputs/supabase/tests/solidgate_payment_identity.sql:646: NOTICE:  SOLIDGATE PAYMENT IDENTITY SCENARIOS PASSED
+DO
+INSERT 0 1
+UPDATE 1
+INSERT 0 1
+INSERT 0 1
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072351Z/inputs/supabase/tests/solidgate_payment_identity.sql:749: NOTICE:  SOLIDGATE EQUAL-TIME LIFECYCLE SCENARIO PASSED
+DO
+ROLLBACK
+SOLIDGATE PAYMENT IDENTITY TESTS PASSED

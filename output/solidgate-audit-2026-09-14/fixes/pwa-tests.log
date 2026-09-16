@@ -1,0 +1,71 @@
+
+ RUN  v3.2.4 /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/pwa
+
+ ✓ src/app/[locale]/(billing)/billing/update-payment/_components/SolidgateUpdateCard.test.tsx (4 tests) 482ms
+stderr | src/app/api/solidgate/purchase/route.test.ts > Solidgate PWA purchase authority and idempotency > fails closed on an RPC binding mismatch
+[solidgate/purchase] atomic purchase open failed: binding mismatch: amount
+
+stderr | src/app/api/solidgate/purchase/route.test.ts > Solidgate PWA purchase authority and idempotency > fails closed when an owner action is paired with provider-visible state
+[solidgate/purchase] atomic purchase open failed: binding mismatch: claim_payment_status
+
+stderr | src/app/api/solidgate/purchase/route.test.ts > Solidgate PWA purchase authority and idempotency > fails closed when an existing attempt is pinned to another submission mode
+[solidgate/purchase] checkout identity lookup failed: PWA purchase mode mismatch
+
+ ✓ src/app/api/solidgate/purchase/route.test.ts (81 tests) 430ms
+ ✓ src/app/[locale]/(app)/dashboard/_components/shell/FirstRunOnboarding.test.tsx (10 tests) 820ms
+ ✓ src/app/[locale]/(app)/dashboard/_components/shell/purchase-pending.test.tsx (7 tests) 1173ms
+   ✓ PWA pending purchase UI > keeps the one-time purchase sheet open and safely resumes a saved-card pending purchase  409ms
+ ✓ src/lib/analytics/posthog.test.ts (5 tests) 99ms
+ ✓ src/components/billing/SolidgatePurchaseReturn.test.tsx (6 tests) 369ms
+stderr | src/app/api/solidgate/purchase/confirm/route.test.ts > PWA Solidgate confirmation binding > grants access but returns retryable failure when the hosted watermark write fails
+[solidgate/purchase/confirm] vault unavailable
+
+stderr | src/app/api/solidgate/purchase/confirm/route.test.ts > PWA Solidgate confirmation binding > does not grant or vault when the hosted-form capture state cannot be published
+[solidgate/purchase/confirm] captured state publication failed: invalid
+
+stderr | src/app/api/solidgate/purchase/confirm/route.test.ts > PWA Solidgate confirmation binding > rejects a local money binding change during provider confirmation
+[solidgate/purchase/confirm] refreshed binding mismatch { orderId: 'u-11111111-1111-1111-1111-111111111111:oto3_bundle_all:1' }
+
+stderr | src/app/api/solidgate/purchase/confirm/route.test.ts > PWA Solidgate confirmation binding > rejects a successful provider settlement with mismatched original amount
+[solidgate/purchase/confirm] provider binding mismatch { orderId: 'u-11111111-1111-1111-1111-111111111111:oto3_bundle_all:1' }
+
+stderr | src/app/api/solidgate/purchase/confirm/route.test.ts > PWA Solidgate confirmation binding > rejects a successful provider settlement with mismatched currency
+[solidgate/purchase/confirm] provider binding mismatch { orderId: 'u-11111111-1111-1111-1111-111111111111:oto3_bundle_all:1' }
+
+stderr | src/app/api/solidgate/purchase/confirm/route.test.ts > PWA Solidgate confirmation binding > rejects a successful provider settlement with mismatched customer
+[solidgate/purchase/confirm] provider binding mismatch { orderId: 'u-11111111-1111-1111-1111-111111111111:oto3_bundle_all:1' }
+
+stderr | src/app/api/solidgate/purchase/confirm/route.test.ts > PWA Solidgate confirmation binding > rejects a successful provider settlement with mismatched order id
+[solidgate/purchase/confirm] provider binding mismatch { orderId: 'u-11111111-1111-1111-1111-111111111111:oto3_bundle_all:1' }
+
+stderr | src/app/api/solidgate/purchase/confirm/route.test.ts > PWA Solidgate confirmation binding > rejects a successful provider settlement with mismatched unexpected product
+[solidgate/purchase/confirm] provider binding mismatch { orderId: 'u-11111111-1111-1111-1111-111111111111:oto3_bundle_all:1' }
+
+stderr | src/app/api/solidgate/purchase/confirm/route.test.ts > PWA Solidgate confirmation binding > rejects an addon provider product mismatch without mutation
+[solidgate/purchase/confirm] provider binding mismatch {
+  orderId: 'u-11111111-1111-1111-1111-111111111111:oto2_addon_weekly:1'
+}
+
+stderr | src/app/api/solidgate/purchase/confirm/route.test.ts > PWA Solidgate confirmation binding > blocks a settled-order replay after a chargeback
+[solidgate/purchase/confirm] blocked replay {
+  orderId: 'u-11111111-1111-1111-1111-111111111111:oto3_bundle_all:1',
+  reason: 'order_status'
+}
+
+ ✓ src/app/api/solidgate/purchase/confirm/route.test.ts (50 tests) 120ms
+ ✓ src/components/solidgate/SolidgatePaymentForm.test.tsx (8 tests) 171ms
+stderr | src/app/api/solidgate/billing/update-card/route.test.ts > Solidgate update-card route > returns immediately when the durable background subscription sync is unavailable
+[solidgate/update-card] background subscription-token sync failed: Solidgate unavailable
+
+ ✓ src/app/api/solidgate/billing/update-card/route.test.ts (39 tests) 34ms
+ ✓ src/lib/solidgate/checkout.test.ts (21 tests) 21ms
+ ✓ src/lib/analytics/payment-event.test.ts (4 tests) 23ms
+ ✓ src/proxy.test.ts (7 tests) 5ms
+ ✓ src/app/[locale]/(app)/layout.test.tsx (5 tests) 6ms
+ ✓ src/lib/analytics/acquisition.test.ts (2 tests) 6ms
+
+ Test Files  14 passed (14)
+      Tests  249 passed (249)
+   Start at  10:36:22
+   Duration  8.60s (transform 1.50s, setup 0ms, collect 5.87s, tests 3.76s, environment 16.85s, prepare 1.75s)
+

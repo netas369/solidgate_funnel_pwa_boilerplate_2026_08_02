@@ -448,10 +448,10 @@ export async function chargeSavedCard(
     settlement?: { attempts?: number; intervalMs?: number };
   },
 ): Promise<SolidgateChargeResult> {
-  // NOTE: /recurring accepts NO dynamic_descriptor (spec + sandbox 2.01
-  // "Invalid request body" — verified 2026-07-13). Saved-card charges show
-  // the channel's base descriptor; only cardholder-present requests (the
-  // hosted form's paymentIntent) can append a suffix.
+  // All products use the static descriptor configured on the Solidgate
+  // channel / connector. Never send a per-payment descriptor override.
+  // /recurring also rejects dynamic_descriptor (schema + sandbox 2.01
+  // "Invalid request body", verified 2026-07-13).
   const res = await client.recurring<SolidgateOrderResponse>({
     order_id: params.orderId,
     recurring_token: params.recurringToken,
@@ -529,7 +529,8 @@ export async function subscribeSavedCard(
     settlement?: { attempts?: number; intervalMs?: number };
   },
 ): Promise<SolidgateChargeResult> {
-  // NOTE: /recurring accepts NO dynamic_descriptor — see chargeSavedCard.
+  // The add-on subscription uses the same static channel / connector
+  // descriptor policy as every other product, including its future renewals.
   const res = await client.recurring<SolidgateOrderResponse>({
     order_id: params.orderId,
     recurring_token: params.recurringToken,

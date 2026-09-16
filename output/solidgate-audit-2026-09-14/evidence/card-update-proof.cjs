@@ -1,0 +1,12 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const ts = require('/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/typescript');
+const filename='/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/pwa/src/app/[locale]/(app)/billing/update-payment/_components/SolidgateUpdateCard.tsx';
+const source=fs.readFileSync(filename,'utf8');
+const output=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+const moduleObject={exports:{}};
+let fetchCalls=0;
+const fetch=async()=>{fetchCalls++; return Response.json({ok:false,pending:true,orderId:'update-card-1',status:'processing',retryAfterMs:250},{status:202})};
+vm.runInNewContext(output,{module:moduleObject,exports:moduleObject.exports,require:()=>({}),console,Date,Promise,Map,AbortController,setTimeout,clearTimeout,fetch},{filename});
+(async()=>{await moduleObject.exports.confirmReturnedCardUpdate('update-card-1');assert.equal(fetchCalls,1);console.log(JSON.stringify({proof:'202 pending is treated as successful card update',actualFetch202Ok:Response.json({}, {status:202}).ok,fetchCalls,returnedWithoutFinal200:true}));})();

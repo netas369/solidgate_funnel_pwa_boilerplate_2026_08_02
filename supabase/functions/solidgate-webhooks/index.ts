@@ -22,7 +22,8 @@ import {
  * refunds, chargebacks, and the settlement of charges that were still
  * `processing` when the API route answered.
  *
- * Differences from the Stripe handler that shape this file:
+ * Solidgate delivery properties that shape this file (they differ from what
+ * event-per-outcome PSPs train you to expect):
  *
  *   ONE event multiplexes many. `card_gate.order.updated` covers success,
  *   decline, settle, void and refund — the routing is on `order.status`, not on
@@ -39,8 +40,8 @@ import {
  * therefore a REQUEST to be retried: return it only when a retry could help.
  */
 
-// `Deno` is undefined under vitest, which imports this file to test handleEvent.
-// Same guard the Stripe webhook uses.
+// `Deno` is undefined under vitest, which imports this file to test handleEvent,
+// so env reads must fall back to process.env.
 function env(key: string): string | undefined {
   return typeof Deno !== 'undefined'
     ? Deno.env.get(key)
@@ -98,6 +99,8 @@ interface CardOrderTransaction {
   operation?: string;
   amount?: number;
   currency?: string;
+  created_at?: string;
+  updated_at?: string;
   card_token?: {
     token?: string;
     original_payment_method?: unknown;
@@ -329,6 +332,68 @@ async function enqueueAnalytics(
   if (error) throw new Error(`analytics outbox enqueue failed: ${error.message}`);
 }
 
+interface FinancialResult {
+  applied: boolean;
+  captured_amount_cents: number;
+  refunded_amount_cents: number;
+  chargeback_amount_cents: number;
+  net_amount_cents: number;
+  status: string;
+}
+
+type FinancialAnalytics = Parameters<typeof enqueueAnalytics>[1];
+
+async function applyFinancialFacts(
+  db: SupabaseClient,
+  orderId: string,
+  facts: Record<string, unknown>,
+  context?: WebhookContext,
+  analytics?: FinancialAnalytics,
+): Promise<FinancialResult> {
+  const eventKey = context?.eventId ?? await deterministicUuid(
+    JSON.stringify([orderId, facts]),
+  );
+  const { data, error } = await db.rpc('apply_solidgate_financial_event', {
+    p_environment: paymentEnvironment(context),
+    p_event_key: eventKey,
+    p_solidgate_order_id: orderId,
+    p_facts: { occurred_at: context?.eventCreatedAt ?? null, ...facts },
+    p_analytics: analytics && runtime.analyticsEnabled ? {
+      event_key: analytics.eventKey,
+      event_name: analytics.eventName,
+      distinct_id: analytics.distinctId,
+      insert_id: await deterministicUuid(`solidgate:${analytics.eventKey}`),
+      properties: analytics.properties,
+    } : null,
+  });
+  if (error) throw new Error(`atomic financial event failed: ${error.message}`);
+  if (!data || typeof data !== 'object' || !Number.isSafeInteger(data.net_amount_cents)) {
+    throw new Error('atomic financial event returned no durable financial state');
+  }
+  return data as FinancialResult;
+}
+
+function minorUnits(value: unknown, label: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) {
+    throw new Error(`${label} must be a non-negative integer in minor units`);
+  }
+  return value as number;
+}
+
+function cardCaptureFacts(event: CardOrderEvent): Record<string, unknown> {
+  const transactions = financialSettlementTransactions(event) ?? [];
+  const settled = transactions.filter((tx) => tx.status === 'success');
+  const paymentTimes = settled.map((tx) => isoSolidgateDate(tx.updated_at ?? tx.created_at))
+    .filter((at): at is string => at !== null).sort();
+  return {
+    captured_amount_cents: minorUnits(capturedAmount(event), 'captured amount'),
+    provider_transaction_ids: settled.map((tx) => tx.id),
+    capture_transactions: settled.map((tx) => ({ id: tx.id, amount_cents: tx.amount, currency: tx.currency,
+      occurred_at: isoSolidgateDate(tx.updated_at ?? tx.created_at) })),
+    ...(paymentTimes.length > 0 && { occurred_at: paymentTimes[paymentTimes.length - 1], occurred_at_source: 'provider_operation' }),
+  };
+}
+
 async function enqueueOrderAnalytics(
   db: SupabaseClient,
   params: {
@@ -350,8 +415,9 @@ async function enqueueOrderAnalytics(
     priceId?: string | null;
     refundAmountCents?: number;
     refundedAmountCents?: number;
+    financial?: { facts: Record<string, unknown>; context?: WebhookContext };
   },
-): Promise<void> {
+): Promise<FinancialResult | void> {
   const eventName = params.eventName ?? (params.subscriptionId
     ? isRecurringAddon(params.productSlug)
       ? 'oto_subscription_started'
@@ -368,7 +434,7 @@ async function enqueueOrderAnalytics(
     : eventName === 'payment_voided' || eventName === 'payment_failed'
       ? 0
       : params.amountCents;
-  await enqueueAnalytics(db, {
+  const analytics: FinancialAnalytics = {
     eventKey: `order:${params.orderId}:${params.eventKeySuffix ?? 'settled'}`,
     eventName,
     distinctId: params.sessionId ?? params.userId ?? params.orderId,
@@ -412,7 +478,11 @@ async function enqueueOrderAnalytics(
       utm_content: params.metadata?.utm_content,
       utm_term: params.metadata?.utm_term,
     },
-  });
+  };
+  if (params.financial) {
+    return applyFinancialFacts(db, params.orderId, params.financial.facts, params.financial.context, analytics);
+  }
+  await enqueueAnalytics(db, analytics);
 }
 
 /**
@@ -1306,9 +1376,10 @@ async function endSessionsWithoutAppAccess(
 }
 
 /**
- * Webhook backstop for the normal grant/OTP promotion path. If the browser
- * disappears after payment, the account must still inherit the session card
- * before the Edge Function acknowledges the event.
+ * Webhook backstop after verified account authentication. The RPC locks the
+ * exact session-vault source order and requires auth_verified_at; resolving
+ * a checkout email or writing claimed_at alone does not authorize promotion.
+ * Unverified purchases retain their session card and await verified claiming.
  */
 async function promoteSessionCardToAccount(
   db: SupabaseClient,
@@ -1324,7 +1395,7 @@ async function promoteSessionCardToAccount(
     p_session_id: params.sessionId,
   });
   if (error) throw new Error(`account vault promotion failed: ${error.message}`);
-  if (!['written', 'same', 'stale'].includes(String(data))) {
+  if (!['written', 'same', 'stale', 'unverified'].includes(String(data))) {
     throw new Error(`account vault promotion returned ${String(data)}`);
   }
 }
@@ -1343,7 +1414,7 @@ async function resolveOrCreateUser(
 ): Promise<{ userId: string } | null> {
   const { data: created, error } = await db.auth.admin.createUser({
     email,
-    email_confirm: true,
+    email_confirm: false,
   });
   if (created?.user?.id) return { userId: created.user.id };
 
@@ -1770,6 +1841,7 @@ async function assertPositiveSettlementBinding(
   row: InitialOrderBindingRow,
   environment: PaymentEnvironment,
   observedCapturedAmount: number | null,
+  allowPartialCapture = false,
 ): Promise<TrustedPositiveSettlement> {
   const order = event.order;
   const trustedEntries = metadataEntries(row.tracking_metadata, 'trusted');
@@ -1806,7 +1878,9 @@ async function assertPositiveSettlementBinding(
     !Number.isSafeInteger(expectedAmount)
     || expectedAmount < 0
     || order?.amount !== expectedAmount
-    || observedCapturedAmount !== expectedAmount
+    || (allowPartialCapture
+      ? !Number.isSafeInteger(observedCapturedAmount) || observedCapturedAmount! < 0 || observedCapturedAmount! > expectedAmount
+      : observedCapturedAmount !== expectedAmount)
   ) {
     throw new Error('positive settlement amount binding mismatch');
   }
@@ -2024,7 +2098,6 @@ async function recoverCapturedOrderAfterLostSettlementClaim(
   const durable = data as InitialOrderBindingRow;
   if (
     terminalOrderPreventsGrant(durable)
-    || (durable.solidgate_refunded_amount_cents ?? 0) > 0
     || await originalEntitlementWasRevoked(db, durable.id, params.environment)
   ) {
     return null;
@@ -2050,11 +2123,12 @@ async function recoverCapturedOrderAfterLostSettlementClaim(
     && JSON.stringify(metadataEntries(durable.tracking_metadata, 'recovered')) ===
       JSON.stringify(metadataEntries(params.original.tracking_metadata, 'original'));
   const sameCapturedPayment =
-    durable.amount_cents === params.binding.amountCents
+    durable.amount_cents === params.binding.amountCents - (durable.solidgate_refunded_amount_cents ?? 0)
     && durable.solidgate_original_amount_cents === params.binding.amountCents
     && durable.currency.toLowerCase() === params.original.currency.toLowerCase()
     && durable.solidgate_subscription_id === params.binding.subscriptionId
-    && durable.solidgate_payment_status === params.providerStatus;
+    && (durable.solidgate_payment_status === params.providerStatus
+      || (durable.solidgate_payment_status === 'refunded' && (durable.solidgate_refunded_amount_cents ?? 0) > 0));
 
   if (successfulDurableStatus && sameImmutableOrder && sameCapturedPayment) return durable;
   if (durable.status === 'pending' || durable.status === 'failed') {
@@ -2081,17 +2155,19 @@ async function renewalAnalyticsContext(
 ): Promise<Record<string, unknown>> {
   const { data: origin, error: originError } = await db
     .from('orders')
-    .select('session_id,user_id,product_slug,currency,solidgate_checkout_locale')
+    .select('id,session_id,user_id,product_slug,currency,solidgate_checkout_locale')
     .eq('payment_environment', environment)
     .eq('solidgate_subscription_id', mapping.solidgate_subscription_id)
     .maybeSingle();
   if (originError) throw new Error(`renewal origin lookup failed: ${originError.message}`);
+  if (!origin) throw new Error(`unresolved renewal ${mapping.solidgate_subscription_id}: parent order not ready`);
   const metadata = { ...(mapping.order_metadata ?? {}) };
   const canonicalProductSlug = metadata.product_slug ?? metadata.tier ??
     slugFromCode(origin?.product_slug ?? null) ?? origin?.product_slug ?? null;
   const productCode = metadata.product_code ?? origin?.product_slug ?? null;
   const priceId = mapping.product_price_id ?? metadata.price_id ?? null;
   return {
+    order_db_id: origin.id,
     provider: 'solidgate',
     payment_provider: 'solidgate',
     session_id: origin?.session_id ?? metadata.session_id ?? null,
@@ -2146,123 +2222,49 @@ async function handleRecurringOrderUpdated(
   );
 
   const status = event.order?.status ?? '';
-  const eventCreatedAt = context?.eventCreatedAt ?? null;
-  const common = {
-    status,
-    event_created_at: eventCreatedAt,
-    updated_at: new Date().toISOString(),
+  if (event.order?.currency && event.order.currency.toLowerCase() !== mapping.currency.toLowerCase()) {
+    throw new Error('recurring financial currency binding mismatch');
+  }
+  const facts: Record<string, unknown> = {
+    order_db_id: analyticsContext.order_db_id,
+    invoice_id: mapping.solidgate_invoice_id,
+    subscription_id: mapping.solidgate_subscription_id,
+    currency: mapping.currency,
+    payment_status: status,
+    ...(SETTLED_ORDER_STATUSES.has(status) && capturedAmount(event) !== null && cardCaptureFacts(event)),
+    ...(status === 'refunded' && {
+      refunded_amount_cents: minorUnits(event.order?.refunded_amount, 'refunded amount'),
+    }),
   };
-
-  if (status === 'refunded') {
-    const refunded = Math.max(0, event.order?.refunded_amount ?? 0);
-    const refundDelta = Math.max(0, refunded - (mapping.refunded_amount_cents ?? 0));
-    const { error: mappingUpdateError } = await db.from('solidgate_invoice_orders').update({
-      ...common,
+  const refunded = facts.refunded_amount_cents;
+  const isCapture = facts.captured_amount_cents !== undefined;
+  const fullCapture = isCapture && Number(facts.captured_amount_cents) >= mapping.amount_cents;
+  const eventName = status === 'refunded' ? 'payment_refunded'
+    : status === 'void_ok' ? 'payment_voided'
+    : FAILED_ORDER_STATUSES.has(status) ? 'subscription_payment_failed'
+    : isCapture ? (fullCapture ? 'subscription_renewed' : 'payment_captured') : null;
+  const result = await applyFinancialFacts(db, orderId, facts, context, eventName ? {
+    eventKey: status === 'refunded' ? `renewal:${mapping.solidgate_invoice_id}:refunded:${refunded}`
+      : status === 'void_ok' ? `renewal:${mapping.solidgate_invoice_id}:voided`
+      : isCapture ? `renewal:${mapping.solidgate_invoice_id}:${fullCapture ? 'paid' : `captured:${facts.captured_amount_cents}`}`
+      : `subscription:${mapping.solidgate_subscription_id}:payment-failed:${mapping.solidgate_invoice_id}`,
+    eventName,
+    distinctId: mapping.solidgate_subscription_id,
+    properties: {
+      ...analyticsContext,
+      environment,
+      billing_type: 'subscription_renewal',
+      solidgate_order_id: orderId,
+      solidgate_invoice_id: mapping.solidgate_invoice_id,
+      solidgate_subscription_id: mapping.solidgate_subscription_id,
       refunded_amount_cents: refunded,
-    }).eq('environment', environment).eq('solidgate_order_id', orderId);
-    if (mappingUpdateError) {
-      throw new Error(`recurring refund mapping update failed: ${mappingUpdateError.message}`);
-    }
-
-    const { data: renewal, error: renewalError } = await db
-      .from('renewal_events')
-      .select('gross_amount_cents,amount_cents')
-      .eq('payment_environment', environment)
-      .eq('solidgate_invoice_id', mapping.solidgate_invoice_id)
-      .maybeSingle();
-    if (renewalError) throw new Error(`renewal refund lookup failed: ${renewalError.message}`);
-    if (renewal) {
-      const gross = renewal.gross_amount_cents ?? mapping.amount_cents ?? renewal.amount_cents ?? 0;
-      const net = Math.max(0, gross - refunded);
-      const { error: renewalUpdateError } = await db.from('renewal_events').update({
-        amount_cents: net,
-        refunded_amount_cents: refunded,
-        status: net === 0 ? 'refunded' : 'partially_refunded',
-        event_created_at: eventCreatedAt,
-      }).eq('payment_environment', environment)
-        .eq('solidgate_invoice_id', mapping.solidgate_invoice_id);
-      if (renewalUpdateError) {
-        throw new Error(`renewal refund update failed: ${renewalUpdateError.message}`);
-      }
-    }
-    await enqueueAnalytics(db, {
-      eventKey: `renewal:${mapping.solidgate_invoice_id}:refunded:${refunded}`,
-      eventName: 'payment_refunded',
-      distinctId: mapping.solidgate_subscription_id,
-      properties: {
-        ...analyticsContext,
-        environment: context?.environment ?? runtime.environment,
-        billing_type: 'subscription_renewal',
-        solidgate_order_id: orderId,
-        solidgate_invoice_id: mapping.solidgate_invoice_id,
-        solidgate_subscription_id: mapping.solidgate_subscription_id,
-        refunded_amount_cents: refunded,
-        refund_amount_cents: refundDelta,
-        revenue: -refundDelta,
-        currency: (event.order?.currency ?? mapping.currency ?? '').toUpperCase(),
-      },
-    });
-    return true;
-  }
-
-  if (status === 'void_ok') {
-    const { error: mappingUpdateError } = await db.from('solidgate_invoice_orders').update(common)
-      .eq('environment', environment).eq('solidgate_order_id', orderId);
-    if (mappingUpdateError) {
-      throw new Error(`recurring void mapping update failed: ${mappingUpdateError.message}`);
-    }
-    const { error: renewalUpdateError } = await db.from('renewal_events').update({
-      amount_cents: 0,
-      status: 'voided',
-      event_created_at: eventCreatedAt,
-    }).eq('payment_environment', environment)
-      .eq('solidgate_invoice_id', mapping.solidgate_invoice_id);
-    if (renewalUpdateError) {
-      throw new Error(`renewal void update failed: ${renewalUpdateError.message}`);
-    }
-    await enqueueAnalytics(db, {
-      eventKey: `renewal:${mapping.solidgate_invoice_id}:voided`,
-      eventName: 'payment_voided',
-      distinctId: mapping.solidgate_subscription_id,
-      properties: {
-        ...analyticsContext,
-        environment: context?.environment ?? runtime.environment,
-        billing_type: 'subscription_renewal',
-        solidgate_order_id: orderId,
-        solidgate_invoice_id: mapping.solidgate_invoice_id,
-        solidgate_subscription_id: mapping.solidgate_subscription_id,
-      },
-    });
-    return true;
-  }
-
-  if (FAILED_ORDER_STATUSES.has(status)) {
-    const { error: mappingUpdateError } = await db.from('solidgate_invoice_orders').update(common)
-      .eq('environment', environment).eq('solidgate_order_id', orderId);
-    if (mappingUpdateError) {
-      throw new Error(`recurring decline mapping update failed: ${mappingUpdateError.message}`);
-    }
-    await enqueueAnalytics(db, {
-      eventKey: `subscription:${mapping.solidgate_subscription_id}:payment-failed:${mapping.solidgate_invoice_id}`,
-      eventName: 'subscription_payment_failed',
-      distinctId: mapping.solidgate_subscription_id,
-      properties: {
-        ...analyticsContext,
-        environment: context?.environment ?? runtime.environment,
-        billing_type: 'subscription_renewal',
-        solidgate_order_id: orderId,
-        solidgate_invoice_id: mapping.solidgate_invoice_id,
-        solidgate_subscription_id: mapping.solidgate_subscription_id,
-        decline_code: event.error?.code,
-      },
-    });
-    return true;
-  }
-
-  const { error: mappingUpdateError } = await db.from('solidgate_invoice_orders').update(common)
-    .eq('environment', environment).eq('solidgate_order_id', orderId);
-  if (mappingUpdateError) {
-    throw new Error(`recurring order status update failed: ${mappingUpdateError.message}`);
+      amount_cents: facts.captured_amount_cents ?? mapping.amount_cents,
+      currency: mapping.currency.toUpperCase(),
+      decline_code: event.error?.code,
+    },
+  } : undefined);
+  if (status === 'refunded' && result.net_amount_cents === 0 && result.refunded_amount_cents > 0) {
+    await revokeBySubscription(db, mapping.solidgate_subscription_id, environment);
   }
   return true;
 }
@@ -2315,83 +2317,42 @@ async function handleOrderUpdated(
 
   // ── Refund ───────────────────────────────────────────────────────────────
   if (status === 'refunded') {
-    // Solidgate sends the cumulative refunded amount. Preserve gross and make
-    // amount_cents net so existing admin revenue queries stay correct.
-    const gross = row.solidgate_original_amount_cents ??
-      ((row.amount_cents ?? 0) + (row.solidgate_refunded_amount_cents ?? 0));
-    const refunded = Math.min(gross, Math.max(0, order?.refunded_amount ?? 0));
-    const net = Math.max(0, gross - refunded);
-    const refundDelta = Math.max(0, refunded - (row.solidgate_refunded_amount_cents ?? 0));
-    const full = net === 0;
-
-    const { data: refundedOrder, error: refundUpdateError } = await db.from('orders').update({
-      // A partial refund does not own the lifecycle status. Omitting the field
-      // preserves a successful browser/webhook winner that committed after
-      // our initial read. A full refund is authoritative and must terminate it.
-      ...(full && { status: 'refunded' }),
-      amount_cents: net,
-      solidgate_original_amount_cents: gross,
-      solidgate_refunded_amount_cents: refunded,
-      solidgate_payment_status: status,
-      solidgate_submission_token: null,
-      solidgate_submission_started_at: null,
-    })
-      .eq('payment_environment', environment)
-      .eq('id', row.id)
-      .eq('solidgate_order_id', orderId)
-      .select(INITIAL_ORDER_BINDING_COLUMNS)
-      .maybeSingle();
-    if (refundUpdateError) throw new Error(`order refund update failed: ${refundUpdateError.message}`);
-    if (!refundedOrder) throw new Error('order refund update lost its exact order');
-    const effectiveRow = refundedOrder as InitialOrderBindingRow;
-    if (full) {
-      await revokeInitialOrderEntitlement(db, {
-        environment,
-        orderId: effectiveRow.id,
-        reason: 'refund',
-      });
-    }
-    await enqueueOrderAnalytics(db, {
+    const refunded = minorUnits(order?.refunded_amount, 'refunded amount');
+    const result = await enqueueOrderAnalytics(db, {
       orderId,
-      productSlug: effectiveRow.product_slug,
-      subscriptionId: effectiveRow.solidgate_subscription_id,
-      amountCents: net,
-      currency: (effectiveRow.currency ?? '').toLowerCase(),
-      sessionId: effectiveRow.session_id,
-      userId: effectiveRow.user_id,
+      productSlug: row.product_slug,
+      subscriptionId: trustedSubscriptionId,
+      amountCents: null,
+      currency: row.currency.toLowerCase(),
+      sessionId: row.session_id,
+      userId: row.user_id,
       email: null,
-      locale: null,
+      locale: row.solidgate_checkout_locale,
       eventKeySuffix: `refunded:${refunded}`,
       eventName: 'payment_refunded',
       paymentStatus: status,
       metadata: orderMetadata,
-      solidgateProductId: null,
-      solidgateProductName: null,
       priceId: orderMetadata.price_id ?? null,
-      refundAmountCents: refundDelta,
       refundedAmountCents: refunded,
+      financial: { context, facts: {
+        order_db_id: row.id,
+        currency: row.currency,
+        payment_status: status,
+        refunded_amount_cents: refunded,
+      } },
     });
+    if (result && result.net_amount_cents === 0 && result.refunded_amount_cents > 0) {
+      await revokeInitialOrderEntitlement(db, { environment, orderId: row.id, reason: 'refund' });
+    }
     return;
   }
 
   // ── Void ─────────────────────────────────────────────────────────────────
   if (status === 'void_ok') {
-    const { data: voidedOrder, error: voidUpdateError } = await db.from('orders').update({
-      status: 'failed',
-      amount_cents: 0,
-      solidgate_original_amount_cents: row.solidgate_original_amount_cents ?? row.amount_cents,
-      solidgate_payment_status: status,
-      solidgate_submission_token: null,
-      solidgate_submission_started_at: null,
-    })
-      .eq('payment_environment', environment)
-      .eq('id', row.id)
-      .eq('solidgate_order_id', orderId)
-      .select(INITIAL_ORDER_BINDING_COLUMNS)
-      .maybeSingle();
-    if (voidUpdateError) throw new Error(`order void update failed: ${voidUpdateError.message}`);
-    if (!voidedOrder) throw new Error('order void update lost its exact order');
-    const effectiveRow = voidedOrder as InitialOrderBindingRow;
+    await applyFinancialFacts(db, orderId, {
+      order_db_id: row.id, currency: row.currency, payment_status: status,
+    }, context);
+    const effectiveRow = row as InitialOrderBindingRow;
     await revokeInitialOrderEntitlement(db, {
       environment,
       orderId: effectiveRow.id,
@@ -2418,6 +2379,53 @@ async function handleOrderUpdated(
     return;
   }
 
+  let verifiedCapturedTotal: number | undefined;
+  // Every verified capture is a financial fact even after cancellation or a
+  // refund. Access below is separately ordered and never erases reversals.
+  if (SETTLED_ORDER_STATUSES.has(status) && capturedAmount(event) !== null) {
+    const captured = capturedAmount(event)!;
+    const binding = await assertPositiveSettlementBinding(
+      db, event, row as InitialOrderBindingRow, environment, captured, true,
+    );
+    const financial = await enqueueOrderAnalytics(db, {
+      orderId, productSlug: row.product_slug, subscriptionId: binding.subscriptionId,
+      amountCents: captured, currency: binding.currency, sessionId: row.session_id,
+      userId: row.user_id, email: binding.email, locale: binding.checkoutLocale,
+      eventKeySuffix: captured < binding.amountCents ? `captured:${captured}` : 'settled',
+      eventName: captured < binding.amountCents ? 'payment_captured' : undefined,
+      paymentStatus: status, metadata: binding.metadata,
+      solidgateProductId: binding.productId, solidgateProductName: order?.product_name,
+      priceId: binding.priceId,
+      financial: { context, facts: {
+        order_db_id: row.id, currency: binding.currency,
+        payment_status: status, ...cardCaptureFacts(event),
+      } },
+    });
+    if (financial) verifiedCapturedTotal = financial.captured_amount_cents;
+  } else if (FAILED_ORDER_STATUSES.has(status)) {
+    await applyFinancialFacts(db, orderId, {
+      order_db_id: row.id, currency: row.currency, payment_status: status,
+    }, context);
+  }
+
+  await withEntityOrdering(db, context, 'payment', orderId, () =>
+    handleInitialOrderLifecycle(db, event, row as InitialOrderBindingRow, context, verifiedCapturedTotal));
+}
+
+async function handleInitialOrderLifecycle(
+  db: SupabaseClient,
+  event: CardOrderEvent,
+  row: InitialOrderBindingRow,
+  context?: WebhookContext,
+  verifiedCapturedTotal?: number,
+): Promise<void> {
+  const order = event.order;
+  const orderId = row.solidgate_order_id;
+  const environment = paymentEnvironment(context);
+  const orderMetadata = stringMetadata(row.tracking_metadata);
+  const status = order?.status ?? '';
+  const trustedSubscriptionId = row.solidgate_subscription_id;
+
   // Never let a late settle/active callback resurrect access after our durable
   // refund, cancellation, dispute, void, or explicit entitlement revocation.
   // The DB trigger is the atomic last line of defence; this guard lets us ACK
@@ -2440,8 +2448,6 @@ async function handleOrderUpdated(
     ) return;
     const { data: declinedOrder, error: declineUpdateError } = await db.from('orders').update({
       status: 'failed',
-      amount_cents: 0,
-      solidgate_original_amount_cents: row.solidgate_original_amount_cents ?? row.amount_cents,
       solidgate_payment_status: status,
       solidgate_submission_token: null,
       solidgate_submission_started_at: null,
@@ -2509,7 +2515,7 @@ async function handleOrderUpdated(
     && order?.amount === 0
     && !!callbackSubscriptionId;
   const expectedAmount = row.solidgate_original_amount_cents ?? row.amount_cents ?? null;
-  const observedCapturedAmount = capturedAmount(event);
+  const observedCapturedAmount = verifiedCapturedTotal ?? capturedAmount(event);
   const durableOrderAlreadyCaptured =
     row.status === 'completed'
     || row.status === 'trialing'
@@ -2526,8 +2532,8 @@ async function handleOrderUpdated(
   ) {
     if (durableOrderAlreadyCaptured) return;
     // `partial_settled` is only a successful checkout when the captured total
-    // covers the amount we opened. Never grant access or record revenue for an
-    // under-capture; a later full-settlement event can still reconcile it.
+    // covers the amount we opened. The finance reducer already recorded any
+    // verified under-capture; entitlement still requires the whole quote.
     const { error: partialUpdateError } = await db.from('orders').update({
       solidgate_payment_status: status,
       solidgate_submission_token: null,
@@ -2644,9 +2650,7 @@ async function handleOrderUpdated(
     .update({
       status: subscriptionId ? (pwaDirectSubscription ? 'active' : 'trialing') : 'completed',
       ...(subscriptionId && { solidgate_subscription_id: subscriptionId }),
-      amount_cents: paidAmount,
-      solidgate_original_amount_cents: binding.amountCents,
-      solidgate_payment_status: status,
+      ...(zeroAmountTrialAuth && { solidgate_payment_status: status }),
       currency: row.currency.toLowerCase(),
       solidgate_verify_url: null,
       solidgate_submission_token: null,
@@ -2919,7 +2923,7 @@ async function handleOrderUpdated(
   // Server-side canonical purchase event. Fires for every paid
   // order — the client route only settles the happy path; this covers redirect
   // returns and settle-later too — and the row claim keeps it once per order.
-  await enqueueOrderAnalytics(db, {
+  if (zeroAmountTrialAuth) await enqueueOrderAnalytics(db, {
     orderId,
     productSlug: effectiveRow.product_slug,
     subscriptionId,
@@ -3206,13 +3210,17 @@ function latestInvoice(event: SubscriptionEvent) {
     return normalized ? new Date(normalized).getTime() : Number.MIN_SAFE_INTEGER;
   };
   return entries.reduce((latest, candidate) => {
+    const latestTerm = Number.isSafeInteger(latest[1].subscription_term_number)
+      ? latest[1].subscription_term_number! : -1;
+    const candidateTerm = Number.isSafeInteger(candidate[1].subscription_term_number)
+      ? candidate[1].subscription_term_number! : -1;
+    if (candidateTerm !== latestTerm) return candidateTerm > latestTerm ? candidate : latest;
+    const latestPeriod = isoSolidgateDate(latest[1].billing_period_ended_at) ?? '';
+    const candidatePeriod = isoSolidgateDate(candidate[1].billing_period_ended_at) ?? '';
+    if (candidatePeriod !== latestPeriod) return candidatePeriod > latestPeriod ? candidate : latest;
     const latestAt = timestamp(latest[1]);
     const candidateAt = timestamp(candidate[1]);
     if (candidateAt !== latestAt) return candidateAt > latestAt ? candidate : latest;
-
-    const latestTerm = latest[1].subscription_term_number ?? -1;
-    const candidateTerm = candidate[1].subscription_term_number ?? -1;
-    if (candidateTerm !== latestTerm) return candidateTerm > latestTerm ? candidate : latest;
 
     // Final deterministic tie-breaker: provider invoice id, then map key.
     const latestId = latest[1].id ?? latest[0];
@@ -3264,7 +3272,6 @@ async function resolveSubscriptionOrder(
   // guessing cross-links retries and is intentionally forbidden.
   const references = initialSubscriptionReferences(event);
   const metadataCandidates = Object.values(event.invoices ?? {})
-    .filter((invoice) => invoice.subscription_term_number === 0)
     .map((invoice) => stringMetadata(invoice.order_metadata));
   // Unconfigured catalog ids are dropped: an empty string must never make an
   // event with a blank product_id look like ours.
@@ -3282,7 +3289,7 @@ async function resolveSubscriptionOrder(
     ?? null;
   const accountIsPwaMember = Boolean(accountRef?.startsWith('u-'));
   let accountIsOurs = false;
-  if (accountRef && !accountRef.startsWith('u-')) {
+  if (accountRef && UUID_PATTERN.test(accountRef)) {
     const { data: ownSession, error: ownSessionError } = await db.from('sessions')
       .select('id')
       .eq('id', accountRef)
@@ -3426,6 +3433,7 @@ async function assertInitialSubscriptionCardFinalized(
   subscriptionId: string,
   environment: PaymentEnvironment,
   lifecycleKind: FinancialLifecycleKind,
+  providerRestore = false,
 ): Promise<{
   row: SubscriptionOrderRow;
   disposition: SubscriptionLifecycleDisposition;
@@ -3470,6 +3478,11 @@ async function assertInitialSubscriptionCardFinalized(
     sameImmutableOrder
     && isExactTerminalInitialCardFailure(durable, subscriptionId);
   if (exactTerminalInitialCardFailure) {
+    return { row: durable, disposition: 'ignore_terminal' };
+  }
+
+  if (sameImmutableOrder && durable.solidgate_subscription_id === subscriptionId &&
+    nonLifecycleTerminalOrder(durable)) {
     return { row: durable, disposition: 'ignore_terminal' };
   }
 
@@ -3562,7 +3575,7 @@ async function assertInitialSubscriptionCardFinalized(
   if (
     nonLifecycleTerminalOrder(durable)
     || (
-      lifecycleKind !== 'terminal'
+      lifecycleKind !== 'terminal' && !providerRestore
       && (durable.status === 'canceled' || canceledEntitlement)
     )
   ) {
@@ -3663,7 +3676,8 @@ function isPaidRenewalSnapshot(
   row: SubscriptionOrderRow,
 ): boolean {
   if (
-    !['order_update', 'scheduled_for_cancellation'].includes(event.callback_type ?? '')
+    !(OBSERVATIONAL_SUBSCRIPTION_CALLBACKS.has(event.callback_type ?? '')
+      || event.callback_type === 'scheduled_for_cancellation')
     || event.subscription?.status !== 'active'
     || event.product?.product_id !== row.solidgate_product_id
     || event.product?.currency?.toLowerCase() !== row.currency.toLowerCase()
@@ -3765,78 +3779,36 @@ async function recordSubscriptionInvoices(
   const subscriptionId = event.subscription?.id;
   if (!subscriptionId) return;
   const environment = paymentEnvironment(context);
-  const currency = (event.product?.currency ?? row.currency ?? 'eur').toLowerCase();
-  const currentInvoice = latestInvoice(event)?.[1];
-
+  const currency = (event.product?.currency ?? row.currency).toLowerCase();
+  if (currency !== row.currency.toLowerCase()) throw new Error('subscription invoice currency binding mismatch');
+  if (event.product?.product_id && event.product.product_id !== row.solidgate_product_id) {
+    throw new Error('subscription invoice product binding mismatch');
+  }
   for (const [invoiceMapId, invoice] of Object.entries(event.invoices ?? {})) {
     const invoiceId = invoice.id ?? invoiceMapId;
-    if (!invoiceId) continue;
-    const term = invoice.subscription_term_number ?? null;
-    const invoiceCreatedAt = isoSolidgateDate(invoice.created_at);
-    const metadata = invoice.order_metadata ?? {};
-    const orderEntries = Object.entries(invoice.orders ?? {});
-
-    for (const [orderMapId, invoiceOrder] of orderEntries) {
-      const recurringOrderId = invoiceOrder.id ?? orderMapId;
-      if (!recurringOrderId) continue;
-      const { error } = await db.from('solidgate_invoice_orders').upsert(
-        {
-          environment,
-          solidgate_order_id: recurringOrderId,
-          solidgate_invoice_id: invoiceId,
-          solidgate_subscription_id: subscriptionId,
-          subscription_term_number: term,
-          status: invoiceOrder.status ?? invoice.status ?? 'processing',
-          amount_cents: invoiceOrder.amount ?? invoice.amount ?? 0,
-          currency,
-          operation: invoiceOrder.operation ?? null,
-          product_price_id: invoice.product_price_id ?? metadata.price_id ?? null,
-          order_metadata: metadata,
-          source_created_at: isoSolidgateDate(invoiceOrder.created_at),
-          source_updated_at: isoSolidgateDate(invoiceOrder.updated_at),
-          event_created_at: context?.eventCreatedAt ?? null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'environment,solidgate_order_id', ignoreDuplicates: true },
-      );
-      if (error) throw new Error(`recurring order ledger upsert failed: ${error.message}`);
+    const term = invoice.subscription_term_number;
+    if (!Number.isSafeInteger(term) || term! < 0) {
+      throw new Error(`invoice ${invoiceId} requires a non-negative integer subscription term`);
     }
-
-    const successfulOrder = orderEntries.find(([, order]) =>
-      order.status === 'settle_ok' || order.status === 'approved' || order.status === 'partial_settled'
+    const invoiceCreatedAt = isoSolidgateDate(invoice.created_at);
+    const metadata = { ...stringMetadata(row.tracking_metadata), ...stringMetadata(invoice.order_metadata) };
+    const orderEntries = Object.entries(invoice.orders ?? {});
+    const successfulOrders = orderEntries.filter(([, order]) =>
+      ['settle_ok', 'approved', 'partial_settled'].includes(order.status ?? '')
     );
-    const renewal = invoice.status === 'success'
-      && (RENEWAL_CALLBACKS.has(callbackType)
-        || (invoice === currentInvoice && isPaidRenewalSnapshot(event, invoice, row)))
-      && term !== 0;
-    if (!renewal || (invoice.amount ?? 0) <= 0) continue;
-
-    const renewalOrderId = successfulOrder?.[1]?.id ?? successfulOrder?.[0] ?? null;
-    const { error: renewalError } = await db.from('renewal_events').upsert(
-      {
-        payment_environment: environment,
-        solidgate_invoice_id: invoiceId,
-        solidgate_subscription_id: subscriptionId,
-        solidgate_order_id: renewalOrderId,
-        subscription_term_number: term,
-        amount_cents: invoice.amount ?? 0,
-        gross_amount_cents: invoice.amount ?? 0,
-        refunded_amount_cents: 0,
-        status: 'paid',
-        currency,
-        product_key: row.product_slug,
-        invoice_created_at: invoiceCreatedAt,
-        event_created_at: context?.eventCreatedAt ?? null,
-        ...(invoiceCreatedAt && { created_at: invoiceCreatedAt }),
-      },
-      { onConflict: 'payment_environment,solidgate_invoice_id', ignoreDuplicates: true },
-    );
-    if (renewalError) throw new Error(`renewal ledger upsert failed: ${renewalError.message}`);
-
+    const renewal = invoice.status === 'success' && term! > 0;
+    if (renewal && (successfulOrders.length !== 1 || !Number.isSafeInteger(invoice.amount) || invoice.amount! <= 0)) {
+      throw new Error(`invoice ${invoiceId} lacks unambiguous paid renewal evidence`);
+    }
+    const successfulOrder = successfulOrders[0];
+    const renewalOrderId = successfulOrder?.[1].id ?? successfulOrder?.[0] ?? null;
+    if (renewal && (renewalOrderId === row.solidgate_order_id || successfulOrder[1].amount !== invoice.amount)) {
+      throw new Error(`invoice ${invoiceId} renewal amount or original-order binding mismatch`);
+    }
     const canonicalProductSlug = metadata.product_slug ?? metadata.tier ??
       slugFromCode(row.product_slug) ?? row.product_slug;
     const priceId = invoice.product_price_id ?? metadata.price_id ?? null;
-    await enqueueAnalytics(db, {
+    const analytics: FinancialAnalytics = {
       eventKey: `renewal:${invoiceId}:paid`,
       eventName: 'subscription_renewed',
       distinctId: row.session_id ?? row.user_id ?? subscriptionId,
@@ -3878,8 +3850,60 @@ async function recordSubscriptionInvoices(
         utm_content: metadata.utm_content,
         utm_term: metadata.utm_term,
       },
-    });
+    };
+
+    for (const [orderMapId, invoiceOrder] of orderEntries) {
+      const recurringOrderId = invoiceOrder.id ?? orderMapId;
+      if (!recurringOrderId) throw new Error(`invoice ${invoiceId} has an empty provider order id`);
+      const captured = renewal && recurringOrderId === renewalOrderId;
+      const paymentTime = isoSolidgateDate(invoiceOrder.updated_at ?? invoiceOrder.created_at)
+        ?? isoSolidgateDate(invoice.updated_at) ?? context?.eventCreatedAt ?? null;
+      await applyFinancialFacts(db, recurringOrderId, {
+        order_db_id: row.id,
+        invoice_id: invoiceId,
+        subscription_id: subscriptionId,
+        subscription_term_number: term,
+        product_key: row.product_slug,
+        currency,
+        payment_status: invoiceOrder.status ?? invoice.status ?? 'processing',
+        quoted_amount_cents: minorUnits(invoiceOrder.amount ?? invoice.amount, 'invoice amount'),
+        ...(captured && { captured_amount_cents: invoice.amount, occurred_at: paymentTime,
+          occurred_at_source: 'provider_event' }),
+        invoice_created_at: invoiceCreatedAt,
+        period_start_at: isoSolidgateDate(invoice.billing_period_started_at),
+        period_end_at: isoSolidgateDate(invoice.billing_period_ended_at),
+        operation: invoiceOrder.operation ?? null,
+        product_price_id: invoice.product_price_id ?? metadata.price_id ?? null,
+        order_metadata: metadata,
+        source_created_at: isoSolidgateDate(invoiceOrder.created_at),
+        source_updated_at: isoSolidgateDate(invoiceOrder.updated_at),
+      }, context, captured ? analytics : undefined);
+    }
   }
+  const currentInvoice = latestInvoice(event)?.[1];
+  const eventKey = context?.eventId ?? await deterministicUuid(JSON.stringify(event));
+  const { error } = await db.rpc('record_solidgate_subscription_snapshot', {
+    p_environment: environment,
+    p_event_key: eventKey,
+    p_order_db_id: row.id,
+    p_subscription_id: subscriptionId,
+    p_event_type: callbackType,
+    p_event_created_at: context?.eventCreatedAt ?? null,
+    p_facts: {
+      status: event.subscription?.status ?? null,
+      started_at: isoSolidgateDate(event.subscription?.started_at),
+      next_charge_at: isoSolidgateDate(event.subscription?.next_charge_at),
+      cancelled_at: isoSolidgateDate(event.subscription?.cancelled_at),
+      trial: event.subscription?.trial ?? null,
+      ...(event.subscription?.trial === true && {
+        trial_started_at: isoSolidgateDate(currentInvoice?.billing_period_started_at ?? event.subscription.started_at),
+        trial_ends_at: isoSolidgateDate(currentInvoice?.billing_period_ended_at ?? event.subscription.next_charge_at),
+      }),
+      period_start_at: isoSolidgateDate(currentInvoice?.billing_period_started_at),
+      period_end_at: isoSolidgateDate(currentInvoice?.billing_period_ended_at),
+    },
+  });
+  if (error) throw new Error(`subscription history write failed: ${error.message}`);
 }
 
 async function handleSubscription(
@@ -3912,10 +3936,25 @@ async function handleSubscription(
     throw new Error(`unsupported subscription callback_type: ${callbackLabel}`);
   }
 
+  await recordSubscriptionInvoices(db, event, row, callbackType, context, row.solidgate_checkout_locale);
+  await withEntityOrdering(db, context, 'subscription', subscriptionId, () =>
+    handleSubscriptionLifecycle(db, event, row!, context));
+}
+
+async function handleSubscriptionLifecycle(
+  db: SupabaseClient,
+  event: SubscriptionEvent,
+  row: SubscriptionOrderRow,
+  context?: WebhookContext,
+): Promise<void> {
+  const callbackType = event.callback_type!;
+  const sub = event.subscription!;
+  const subscriptionId = sub.id!;
+  const environment = paymentEnvironment(context);
   const invoiceEntry = latestInvoice(event);
   const invoice = invoiceEntry?.[1];
   const paidRenewalSnapshot = isPaidRenewalSnapshot(event, invoice, row);
-  if (paidRenewalSnapshot && await renewalSnapshotWasReversed(
+  if (invoice?.subscription_term_number! > 0 && invoice?.status === 'success' && await renewalSnapshotWasReversed(
     db, invoice!.id ?? invoiceEntry![0], subscriptionId, environment,
   )) return;
   const lifecycleKind = financialLifecycleKind(callbackType) ?? (paidRenewalSnapshot ? 'positive' : null);
@@ -3927,6 +3966,7 @@ async function handleSubscription(
       subscriptionId,
       environment,
       lifecycleKind,
+      callbackType === 'restore',
     );
     row = finalized.row;
     if (finalized.disposition === 'ignore_terminal') return;
@@ -3945,7 +3985,6 @@ async function handleSubscription(
   const userId = row.user_id ?? session?.user_id ?? null;
   const analyticsLocale = row.solidgate_checkout_locale;
 
-  await recordSubscriptionInvoices(db, event, row, callbackType, context, analyticsLocale);
   await enqueueIdentityMerge(db, userId, row.session_id);
 
   const productSlug = row.product_slug as string;
@@ -4020,8 +4059,9 @@ async function handleSubscription(
       if (!paid) return;
 
       if (
-        terminalOrderPreventsGrant(row) ||
-        await originalEntitlementWasRevoked(db, row.id, environment)
+        nonLifecycleTerminalOrder(row) ||
+        (callbackType !== 'restore' && (terminalOrderPreventsGrant(row) ||
+          await originalEntitlementWasRevoked(db, row.id, environment)))
       ) {
         return;
       }
@@ -4043,6 +4083,28 @@ async function handleSubscription(
         environment,
         metadata: invoiceMetadata,
       });
+
+      if (callbackType === 'restore' && row.status === 'canceled') {
+        if (!userId || !context?.eventCreatedAt || !context.eventId) {
+          throw new Error('provider restore requires an exact timed inbox event and bound user');
+        }
+        const { data, error } = await db.rpc('restore_solidgate_subscription_entitlement', {
+          p_payment_environment: environment,
+          p_order_db_id: row.id,
+          p_user_id: userId,
+          p_product_slug: productSlug,
+          p_solidgate_subscription_id: subscriptionId,
+          p_access_level: sub.trial ? 'trial' : 'full',
+          p_expires_at: positiveSubscriptionExpiry(event, invoice, productSlug, context),
+          p_event_key: context.eventId,
+          p_event_created_at: context.eventCreatedAt,
+        });
+        if (error) throw new Error(`provider subscription restore failed: ${error.message}`);
+        if (!['applied', 'stale', 'reversed', 'lifecycle_owned'].includes(String(data))) {
+          throw new Error(`provider subscription restore rejected: ${String(data)}`);
+        }
+        return;
+      }
 
       const { error: orderUpdateError } = await db
         .from('orders')
@@ -4072,7 +4134,7 @@ async function handleSubscription(
 
       // Backstop for card_gate.order.updated arriving late/missing. The outbox
       // key is identical to the card/PWA path, so either callback may win.
-      if (callbackType === 'active' && paid && row.solidgate_order_id) {
+      if (callbackType === 'active' && paid && invoice?.subscription_term_number === 0 && row.solidgate_order_id) {
         const invoiceOrder = Object.values(invoice?.orders ?? {}).find((order) =>
           order.status === 'settle_ok' || order.status === 'approved' || order.status === 'auth_ok'
         );
@@ -4226,7 +4288,7 @@ async function handleChargeback(
   const environment = paymentEnvironment(context);
   const chargebackId = event.chargeback?.id !== undefined ? String(event.chargeback.id) : null;
   const chargebackStatus = event.chargeback?.status ?? 'in_progress';
-  const chargebackAmount = Math.max(0, event.chargeback?.amount ?? event.order?.amount ?? 0);
+  const chargebackAmount = minorUnits(event.chargeback?.amount ?? event.order?.amount, 'chargeback amount');
   const reversed = CHARGEBACK_REVERSED_STATUSES.has(chargebackStatus);
 
   const { data: row, error: orderLookupError } = await db
@@ -4236,196 +4298,62 @@ async function handleChargeback(
     .eq('solidgate_order_id', orderId)
     .maybeSingle();
   if (orderLookupError) throw new Error(`chargeback order lookup failed: ${orderLookupError.message}`);
-  if (row && isOurProduct(row.product_slug)) {
-    let sourceRow = row as InitialOrderBindingRow;
-    let committedRow: InitialOrderBindingRow | null = null;
-    let gross = 0;
-    let refunded = 0;
-    let net = 0;
-
-    // Preserve the actual pre-dispute status. A browser finalizer may change
-    // pending -> trialing between SELECT and UPDATE, so use a status CAS and
-    // retry from the durable winner instead of writing a stale restore point.
-    for (let attempt = 0; attempt < 3; attempt++) {
-      gross = sourceRow.solidgate_original_amount_cents
-        ?? sourceRow.amount_cents
-        ?? event.order?.amount
-        ?? 0;
-      refunded = sourceRow.solidgate_refunded_amount_cents ?? 0;
-      net = reversed
-        ? Math.max(0, gross - refunded)
-        : Math.max(0, gross - Math.max(refunded, chargebackAmount));
-      const restoredStatus = sourceRow.solidgate_pre_dispute_status
-        ?? (sourceRow.solidgate_subscription_id ? 'active' : 'completed');
-      const { data: updated, error: orderUpdateError } = await db.from('orders').update({
-        status: reversed ? restoredStatus : 'disputed',
-        amount_cents: net,
-        solidgate_original_amount_cents: gross,
-        solidgate_chargeback_id: chargebackId,
-        solidgate_chargeback_status: chargebackStatus,
-        solidgate_chargeback_amount_cents: chargebackAmount,
-        ...(
-          !reversed
-          && sourceRow.status !== 'disputed'
-          && { solidgate_pre_dispute_status: sourceRow.status }
-        ),
-      })
-        .eq('payment_environment', environment)
-        .eq('id', sourceRow.id)
-        .eq('solidgate_order_id', orderId)
-        .eq('status', sourceRow.status)
-        .select(INITIAL_ORDER_BINDING_COLUMNS)
-        .maybeSingle();
-      if (orderUpdateError) {
-        throw new Error(`chargeback order update failed: ${orderUpdateError.message}`);
-      }
-      if (updated) {
-        committedRow = updated as InitialOrderBindingRow;
-        break;
-      }
-
-      const { data: winner, error: winnerError } = await db.from('orders')
-        .select(INITIAL_ORDER_BINDING_COLUMNS)
-        .eq('payment_environment', environment)
-        .eq('id', sourceRow.id)
-        .eq('solidgate_order_id', orderId)
-        .maybeSingle();
-      if (winnerError) {
-        throw new Error(`chargeback order winner read failed: ${winnerError.message}`);
-      }
-      if (!winner || !isOurProduct(winner.product_slug)) {
-        throw new Error('chargeback order CAS lost and the exact order disappeared');
-      }
-      sourceRow = winner as InitialOrderBindingRow;
-    }
-    if (!committedRow) throw new Error('chargeback order CAS exhausted without a durable update');
-    const trustedMetadata = stringMetadata(committedRow.tracking_metadata);
-
-    // Access goes immediately while funds are disputed. A reversal restores
-    // revenue but not access automatically: the subscription may meanwhile
-    // have legitimately expired/cancelled in its own ordered event stream.
-    if (!reversed) {
-      await revokeInitialOrderEntitlement(db, {
-        environment,
-        orderId: committedRow.id,
-        reason: 'chargeback',
-      });
-    }
-
-    await enqueueAnalytics(db, {
-      eventKey: `chargeback:${chargebackId ?? orderId}:${chargebackStatus}`,
-      eventName: reversed ? 'chargeback_reversed' : 'chargeback_received',
-      distinctId: committedRow.session_id ?? committedRow.user_id ?? orderId,
-      properties: {
-        provider: 'solidgate',
-        environment: context?.environment ?? runtime.environment,
-        billing_type: committedRow.solidgate_subscription_id ? 'subscription_initial' : 'one_time',
-        product_slug: committedRow.product_slug,
-        product: slugFromCode(committedRow.product_slug) ?? committedRow.product_slug,
-        product_code: committedRow.product_slug,
-        product_id: committedRow.product_slug,
-        product_name: canonicalProductName(committedRow.product_slug, trustedMetadata.product_name),
-        price_id: trustedMetadata.price_id ?? null,
-        solidgate_price_id: trustedMetadata.price_id ?? null,
-        solidgate_order_id: orderId,
-        order_id: orderId,
-        transaction_id: orderId,
-        solidgate_subscription_id: committedRow.solidgate_subscription_id,
-        chargeback_id: chargebackId,
-        chargeback_status: chargebackStatus,
-        chargeback_amount_cents: chargebackAmount,
-        currency: (
-          event.chargeback?.currency
-          ?? event.order?.currency
-          ?? committedRow.currency
-          ?? ''
-        ).toUpperCase(),
-        reason_code: event.chargeback?.reason_code,
-        reason: event.chargeback?.reason_description,
-      },
-    });
-
-    await sendDisputeAlert(
-      `⚠️ Solidgate chargeback ${event.chargeback?.type ?? ''} (${chargebackStatus})\norder: ${orderId}\namount: ${chargebackAmount} ${event.chargeback?.currency ?? committedRow.currency}\nreason: ${event.chargeback?.reason_description ?? 'n/a'}`,
-    );
-    return;
-  }
-
-  // Solidgate-generated renewal order ids do not exist in `orders`; resolve
-  // them through the invoice-order map populated by subscription.updated.v2.
-  const { data: mapping, error: mappingError } = await db.from('solidgate_invoice_orders')
+  // A signed dispute without a known invoice is unresolved evidence. Keep
+  // the inbox retryable until a subscription snapshot supplies its owner;
+  // acknowledging it here used to lose a real recurring dispute forever.
+  const mappingResult = row ? { data: null, error: null } : await db.from('solidgate_invoice_orders')
     .select('solidgate_invoice_id,solidgate_subscription_id,amount_cents,currency,refunded_amount_cents,product_price_id,order_metadata')
-    .eq('environment', environment)
-    .eq('solidgate_order_id', orderId)
-    .maybeSingle();
-  if (mappingError) throw new Error(`chargeback renewal mapping lookup failed: ${mappingError.message}`);
-  if (!mapping) return;
-  const analyticsContext = await renewalAnalyticsContext(
-    db,
-    event,
-    mapping as RenewalOrderMapping,
-    environment,
-  );
-  const { data: renewal, error: renewalError } = await db.from('renewal_events')
-    .select('gross_amount_cents,amount_cents,refunded_amount_cents')
-    .eq('payment_environment', environment)
-    .eq('solidgate_invoice_id', mapping.solidgate_invoice_id)
-    .maybeSingle();
-  if (renewalError) throw new Error(`chargeback renewal lookup failed: ${renewalError.message}`);
-  const gross = renewal?.gross_amount_cents ?? mapping.amount_cents ?? renewal?.amount_cents ?? 0;
-  const refunded = renewal?.refunded_amount_cents ?? mapping.refunded_amount_cents ?? 0;
-  const net = reversed
-    ? Math.max(0, gross - refunded)
-    : Math.max(0, gross - Math.max(refunded, chargebackAmount));
-  const { error: mappingUpdateError } = await db.from('solidgate_invoice_orders').update({
+    .eq('environment', environment).eq('solidgate_order_id', orderId).maybeSingle();
+  if (mappingResult.error) throw new Error(`chargeback renewal mapping lookup failed: ${mappingResult.error.message}`);
+  const mapping = mappingResult.data as RenewalOrderMapping | null;
+  if (row && !isOurProduct(row.product_slug)) return;
+  if (!row && !mapping) throw new Error(`unresolved chargeback ${orderId}: invoice ownership mapping not ready`);
+  const sourceCurrency = row?.currency ?? mapping!.currency;
+  const reportedCurrency = event.chargeback?.currency ?? event.order?.currency;
+  if (reportedCurrency && reportedCurrency.toLowerCase() !== sourceCurrency.toLowerCase()) {
+    throw new Error('chargeback currency binding mismatch');
+  }
+  const metadata = stringMetadata(row?.tracking_metadata ?? mapping?.order_metadata);
+  const analyticsContext: Record<string, unknown> = row ? {
+    provider: 'solidgate', payment_provider: 'solidgate',
+    session_id: row.session_id, user_id: row.user_id,
+    product_slug: row.product_slug, product: slugFromCode(row.product_slug) ?? row.product_slug,
+    product_code: row.product_slug, product_id: row.product_slug,
+    product_name: canonicalProductName(row.product_slug, metadata.product_name),
+    price_id: metadata.price_id ?? null, solidgate_price_id: metadata.price_id ?? null,
+  } : await renewalAnalyticsContext(db, event, mapping!, environment);
+  await applyFinancialFacts(db, orderId, {
+    ...(row ? { order_db_id: row.id } : {
+      order_db_id: analyticsContext.order_db_id,
+      invoice_id: mapping!.solidgate_invoice_id,
+      subscription_id: mapping!.solidgate_subscription_id,
+    }),
+    currency: sourceCurrency,
     chargeback_id: chargebackId,
     chargeback_status: chargebackStatus,
     chargeback_amount_cents: chargebackAmount,
-    event_created_at: context?.eventCreatedAt ?? null,
-    updated_at: new Date().toISOString(),
-  }).eq('environment', environment).eq('solidgate_order_id', orderId);
-  if (mappingUpdateError) {
-    throw new Error(`chargeback renewal mapping update failed: ${mappingUpdateError.message}`);
-  }
-  if (renewal) {
-    const { error: renewalUpdateError } = await db.from('renewal_events').update({
-      amount_cents: net,
-      status: reversed ? 'chargeback_reversed' : 'disputed',
-      chargeback_id: chargebackId,
-      chargeback_status: chargebackStatus,
-      chargeback_amount_cents: chargebackAmount,
-      event_created_at: context?.eventCreatedAt ?? null,
-    }).eq('payment_environment', environment)
-      .eq('solidgate_invoice_id', mapping.solidgate_invoice_id);
-    if (renewalUpdateError) {
-      throw new Error(`chargeback renewal update failed: ${renewalUpdateError.message}`);
-    }
-  }
-  if (!reversed) await revokeBySubscription(db, mapping.solidgate_subscription_id, environment);
-  await enqueueAnalytics(db, {
+    chargeback_occurred_at: context?.eventCreatedAt ?? null,
+  }, context, {
     eventKey: `chargeback:${chargebackId ?? orderId}:${chargebackStatus}`,
     eventName: reversed ? 'chargeback_reversed' : 'chargeback_received',
-    distinctId: mapping.solidgate_subscription_id,
+    distinctId: row?.session_id ?? row?.user_id ?? mapping?.solidgate_subscription_id ?? orderId,
     properties: {
-      ...analyticsContext,
-      environment: context?.environment ?? runtime.environment,
-      billing_type: 'subscription_renewal',
-      solidgate_order_id: orderId,
-      order_id: orderId,
-      transaction_id: orderId,
-      solidgate_invoice_id: mapping.solidgate_invoice_id,
-      solidgate_subscription_id: mapping.solidgate_subscription_id,
-      chargeback_id: chargebackId,
-      chargeback_status: chargebackStatus,
-      chargeback_amount_cents: chargebackAmount,
-      currency: (event.chargeback?.currency ?? mapping.currency ?? '').toUpperCase(),
-      reason_code: event.chargeback?.reason_code,
-      reason: event.chargeback?.reason_description,
+      ...analyticsContext, environment,
+      billing_type: mapping ? 'subscription_renewal' : row?.solidgate_subscription_id ? 'subscription_initial' : 'one_time',
+      solidgate_order_id: orderId, order_id: orderId, transaction_id: orderId,
+      solidgate_invoice_id: mapping?.solidgate_invoice_id ?? null,
+      solidgate_subscription_id: mapping?.solidgate_subscription_id ?? row?.solidgate_subscription_id,
+      chargeback_id: chargebackId, chargeback_status: chargebackStatus,
+      chargeback_amount_cents: chargebackAmount, currency: sourceCurrency.toUpperCase(),
+      reason_code: event.chargeback?.reason_code, reason: event.chargeback?.reason_description,
     },
   });
-
+  if (!reversed) {
+    if (row) await revokeInitialOrderEntitlement(db, { environment, orderId: row.id, reason: 'chargeback' });
+    else await revokeBySubscription(db, mapping!.solidgate_subscription_id, environment);
+  }
   await sendDisputeAlert(
-    `⚠️ Solidgate renewal chargeback ${event.chargeback?.type ?? ''} (${chargebackStatus})\norder: ${orderId}\namount: ${chargebackAmount} ${event.chargeback?.currency ?? mapping.currency}\nreason: ${event.chargeback?.reason_description ?? 'n/a'}`,
+    `⚠️ Solidgate ${mapping ? 'renewal ' : ''}chargeback ${event.chargeback?.type ?? ''} (${chargebackStatus})\norder: ${orderId}\namount: ${chargebackAmount} ${sourceCurrency}\nreason: ${event.chargeback?.reason_description ?? 'n/a'}`,
   );
 }
 
@@ -4460,8 +4388,7 @@ export async function handleEvent(
         'order.order_id',
         (payload as CardOrderEvent | null)?.order?.order_id,
       );
-      await withEntityOrdering(db, context, 'payment', orderId, () =>
-        handleOrderUpdated(db, payload as CardOrderEvent, context));
+      await handleOrderUpdated(db, payload as CardOrderEvent, context);
       return;
     }
     case 'subscription.updated.v2': {
@@ -4470,8 +4397,7 @@ export async function handleEvent(
         'subscription.id',
         (payload as SubscriptionEvent | null)?.subscription?.id,
       );
-      await withEntityOrdering(db, context, 'subscription', subscriptionId, () =>
-        handleSubscription(db, payload as SubscriptionEvent, context));
+      await handleSubscription(db, payload as SubscriptionEvent, context);
       return;
     }
     case 'card_gate.chargeback.received': {
@@ -4480,8 +4406,7 @@ export async function handleEvent(
         'order.order_id',
         (payload as ChargebackEvent | null)?.order?.order_id,
       );
-      await withEntityOrdering(db, context, 'payment', orderId, () =>
-        handleChargeback(db, payload as ChargebackEvent, context));
+      await handleChargeback(db, payload as ChargebackEvent, context);
       return;
     }
     case 'subscription.updated':
@@ -4493,10 +4418,76 @@ export async function handleEvent(
   }
 }
 
+/** Reprocess only signature-verified payloads already retained in our inbox. */
+export async function replayStoredWebhookEvents(
+  db: SupabaseClient,
+  options: { environment: PaymentEnvironment; limit?: number },
+): Promise<{ attempted: number; completed: number; failed: number; busy: number }> {
+  const limit = Math.max(1, Math.min(100, Math.floor(options.limit ?? 25)));
+  const leaseCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data: rows, error } = await db.from('solidgate_webhook_events')
+    .select('event_id,type,event_created_at,payload,status,processing_started_at')
+    .eq('environment', options.environment)
+    .or(`status.eq.failed,and(status.eq.processing,processing_started_at.lt.${leaseCutoff})`)
+    .order('updated_at', { ascending: true }).order('event_id', { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`webhook recovery inbox read failed: ${error.message}`);
+  const result = { attempted: 0, completed: 0, failed: 0, busy: 0 };
+  for (const row of rows ?? []) {
+    result.attempted++;
+    let claim: WebhookClaim | null = null;
+    try {
+      claim = await claimEvent(db, row.event_id, row.type, row.event_created_at, options.environment, row.payload);
+      if (claim.state === 'busy') { result.busy++; continue; }
+      if (claim.state === 'completed') { result.completed++; continue; }
+      await handleEvent(db, row.type, row.payload, {
+        eventId: row.event_id, eventCreatedAt: row.event_created_at, environment: options.environment,
+      });
+      await completeEvent(db, row.event_id, options.environment, claim);
+      result.completed++;
+    } catch (error) {
+      result.failed++;
+      if (claim?.state === 'claimed') {
+        await failEvent(db, row.event_id, options.environment, claim,
+          error instanceof Error ? error.message : String(error));
+      }
+    }
+  }
+  return result;
+}
+
 export async function serveRequest(
   req: Request,
   dbOverride?: SupabaseClient,
 ): Promise<Response> {
+  // Internal recovery accepts no caller-supplied provider event or environment.
+  // Its only input is the batch size; payloads are read from the verified inbox.
+  if (req.headers.has('x-solidgate-recovery')) {
+    if (req.method !== 'POST' || !runtime.fulfillmentWorkerSecret ||
+      req.headers.get('authorization') !== `Bearer ${runtime.fulfillmentWorkerSecret}`) {
+      return new Response('unauthorized', { status: 401 });
+    }
+    let body: { action?: unknown; limit?: unknown; expected_environment?: unknown };
+    try { body = await req.json(); } catch { return new Response('invalid json', { status: 400 }); }
+    if (body.expected_environment !== runtime.environment) {
+      return new Response('recovery environment mismatch', { status: 409 });
+    }
+    if (body.action !== 'recover' || (body.limit !== undefined &&
+      (!Number.isSafeInteger(body.limit) || Number(body.limit) < 1 || Number(body.limit) > 100))) {
+      return new Response('invalid recovery request', { status: 400 });
+    }
+    try {
+      const db = dbOverride ?? admin();
+      const result = await replayStoredWebhookEvents(db, {
+        environment: runtime.environment, limit: body.limit as number | undefined,
+      });
+      await drainAnalyticsOutbox(db);
+      return Response.json({ environment: runtime.environment, ...result });
+    } catch (error) {
+      console.error('[solidgate-webhooks] recovery failed', error);
+      return new Response('webhook recovery failed', { status: 500 });
+    }
+  }
   // The signature covers the RAW bytes: never JSON.parse before verifying.
   const rawBody = await req.text();
   const signature = req.headers.get('signature') ?? '';

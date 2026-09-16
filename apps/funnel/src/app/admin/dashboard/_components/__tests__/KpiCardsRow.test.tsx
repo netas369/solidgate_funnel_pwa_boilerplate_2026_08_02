@@ -21,7 +21,7 @@ describe('KpiCardsRow (D-12 three-bucket KPI row)', () => {
       countLeadsInRange: vi.fn().mockResolvedValue(3),
     }));
     vi.doMock('../../../_queries/revenue', () => ({
-      grossRevenueInEurInRange: vi.fn().mockResolvedValue(12345),
+      netRevenueInEurInRange: vi.fn().mockResolvedValue(12345),
     }));
 
     const { KpiCardsRow } = await import('../KpiCardsRow');
@@ -38,6 +38,6 @@ describe('KpiCardsRow (D-12 three-bucket KPI row)', () => {
     // KPI labels (one per card) must be present.
     expect(screen.getByText('Sessions')).toBeInTheDocument();
     expect(screen.getByText('Leads')).toBeInTheDocument();
-    expect(screen.getByText(/Revenue/)).toBeInTheDocument();
+    expect(screen.getByText(/Net collections/)).toBeInTheDocument();
   });
 });

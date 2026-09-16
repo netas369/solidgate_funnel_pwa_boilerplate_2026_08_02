@@ -98,6 +98,10 @@ export function PaywallSheet({
         grant();
         return;
       }
+      if (outcome.kind === "recovery_required") {
+        window.location.assign("/billing/update-payment");
+        return;
+      }
       if (outcome.kind === "needs_card") {
         if (orderToConfirm && outcome.orderId === orderToConfirm) {
           rememberPending(orderToConfirm);

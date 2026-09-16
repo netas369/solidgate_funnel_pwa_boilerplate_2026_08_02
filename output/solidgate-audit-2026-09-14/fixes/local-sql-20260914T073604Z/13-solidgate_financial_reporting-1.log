@@ -1,0 +1,11 @@
+You are now connected to database "solidgate_final_verify_20260914_073604_e6c770" as user "supabase_admin".
+BEGIN
+INSERT 0 1
+INSERT 0 1
+INSERT 0 4
+SET
+DO
+INSERT 0 1101
+DO
+ROLLBACK
+solidgate_financial_reporting PASSED

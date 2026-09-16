@@ -6,10 +6,9 @@
 // This row IGNORES the date-range picker added in Plan 06 — D-12 mandates
 // fixed Today/7d/30d buckets so the owner always sees baseline pulse.
 
-import { subDays, startOfDay, formatISO } from 'date-fns';
 import { countSessionsInRange } from '../../_queries/sessions';
 import { countLeadsInRange } from '../../_queries/leads';
-import { grossRevenueInEurInRange } from '../../_queries/revenue';
+import { netRevenueInEurInRange } from '../../_queries/revenue';
 import type { DateRange } from '../../_queries/_shared';
 import { KpiCard } from './KpiCard';
 
@@ -19,16 +18,17 @@ function buckets(): {
   thirtyD: DateRange;
 } {
   const now = new Date();
-  const startToday = startOfDay(now);
-  const nowIso = formatISO(now);
+  const startToday = new Date(now.toISOString().slice(0, 10));
+  const nowIso = now.toISOString();
   return {
-    today: { from: formatISO(startToday), to: nowIso },
-    sevenD: { from: formatISO(subDays(startToday, 7)), to: nowIso },
-    thirtyD: { from: formatISO(subDays(startToday, 30)), to: nowIso },
+    today: { from: startToday.toISOString(), to: nowIso },
+    sevenD: { from: new Date(startToday.getTime() - 7 * 86400000).toISOString(), to: nowIso },
+    thirtyD: { from: new Date(startToday.getTime() - 30 * 86400000).toISOString(), to: nowIso },
   };
 }
 
-function fmtEur(cents: number): string {
+function fmtEur(cents: number | null): string {
+  if (cents === null) return 'FX unavailable';
   return `€${(cents / 100).toLocaleString('en-IE', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
@@ -47,9 +47,9 @@ export async function KpiCardsRow() {
     countLeadsInRange(b.today),
     countLeadsInRange(b.sevenD),
     countLeadsInRange(b.thirtyD),
-    grossRevenueInEurInRange(b.today),
-    grossRevenueInEurInRange(b.sevenD),
-    grossRevenueInEurInRange(b.thirtyD),
+    netRevenueInEurInRange(b.today),
+    netRevenueInEurInRange(b.sevenD),
+    netRevenueInEurInRange(b.thirtyD),
   ]);
 
   return (
@@ -67,7 +67,7 @@ export async function KpiCardsRow() {
         thirtyD={String(mL)}
       />
       <KpiCard
-        label="Revenue (EUR)"
+        label="Net collections (EUR estimate)"
         today={fmtEur(tR)}
         sevenD={fmtEur(wR)}
         thirtyD={fmtEur(mR)}

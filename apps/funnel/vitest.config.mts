@@ -10,7 +10,7 @@ export default defineConfig({
     // Deno-style URL specifiers in supabase/functions/solidgate-webhooks/index.ts.
     // Vite can't resolve `npm:*` imports; rewrite to bare module names so vitest
     // can load the file. The test files themselves vi.mock these same
-    // specifiers to stub out Stripe/Supabase, so these aliases mostly exist
+    // specifiers to stub out Supabase/PostHog, so these aliases mostly exist
     // to satisfy static analysis before mocks are applied.
     //
     // posthog-node is not a funnel-app dependency (Edge-runtime only), so it

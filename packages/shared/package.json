@@ -36,13 +36,13 @@
     "./email/send-welcome-email": "./src/email/send-welcome-email.ts",
     "./solidgate/catalog": "./src/solidgate/catalog.ts",
     "./solidgate/decline-reason": "./src/solidgate/decline-reason.ts",
-    "./solidgate/descriptor": "./src/solidgate/descriptor.ts",
     "./solidgate/order-id": "./src/solidgate/order-id.ts",
     "./solidgate/catalog-ids.json": "./src/solidgate/catalog-ids.json",
     "./solidgate/session-vault": "./src/solidgate/session-vault.ts",
     "./solidgate/account-vault": "./src/solidgate/account-vault.ts",
     "./solidgate/subscription-token-sync": "./src/solidgate/subscription-token-sync.ts",
     "./solidgate/main-accepted-cookie": "./src/solidgate/main-accepted-cookie.ts",
-    "./locale-prefixes": "./src/locale-prefixes.ts"
+    "./locale-prefixes": "./src/locale-prefixes.ts",
+    "./solidgate/card-update-recovery": "./src/solidgate/card-update-recovery.ts"
   }
 }

@@ -1,0 +1,1152 @@
+
+ RUN  v3.2.4 /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel
+
+ ✓ src/features/quiz/hooks/__tests__/use-quiz-persistence.test.ts (7 tests) 1126ms
+   ✓ captureLeadRecord > returns { success: false } on non-ok response and logs to console  1017ms
+stderr | src/features/quiz/components/__tests__/quiz-page-fresh-start.test.tsx > QuizPage fresh-start bootstrap > QuizPage mints a fresh session with crypto.randomUUID and setSessionId when a cleared sessionId reaches /quiz
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/quiz/components/__tests__/quiz-page-fresh-start.test.tsx > QuizPage fresh-start bootstrap > QuizPage mints a fresh session with crypto.randomUUID and setSessionId when a cleared sessionId reaches /quiz
+[session] Create failed: TypeError: Failed to parse URL from /api/session/persist
+    at node:internal/deps/undici/undici:13510:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  [cause]: TypeError: Invalid URL: /api/session/persist
+      at new URLImpl (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/whatwg-url/lib/URL-impl.js:20:13)
+      at Object.exports.setup (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/whatwg-url/lib/URL.js:54:12)
+      at new URL (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/whatwg-url/lib/URL.js:115:22)
+      at new Request (node:internal/deps/undici/undici:9586:25)
+      at fetch (node:internal/deps/undici/undici:10315:25)
+      at fetch (node:internal/deps/undici/undici:13508:10)
+      at fetch (node:internal/bootstrap/web/exposed-window-or-worker:81:12)
+      at /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/features/quiz/components/quiz-page.tsx:156:5
+      at Object.react_stack_bottom_frame (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+      at runWithFiberInDEV (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+}
+
+stderr | src/app/admin/dashboard/_components/charts/__tests__/TimeSeriesLine.test.tsx > TimeSeriesLine (D-18 SSR-safety) > renders without throwing in jsdom with empty data
+The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+stderr | src/app/admin/dashboard/_components/charts/__tests__/TimeSeriesLine.test.tsx > TimeSeriesLine (D-18 SSR-safety) > renders without throwing in jsdom with sample data
+The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+ ✓ src/app/admin/dashboard/_components/charts/__tests__/TimeSeriesLine.test.tsx (2 tests) 1034ms
+   ✓ TimeSeriesLine (D-18 SSR-safety) > renders without throwing in jsdom with empty data  1029ms
+stderr | src/features/quiz/components/__tests__/quiz-page-fresh-start.test.tsx > QuizPage fresh-start bootstrap > QuizPage tracks quiz_started and persists session via /api/session/persist on mount
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/quiz/components/__tests__/quiz-page-fresh-start.test.tsx > QuizPage fresh-start bootstrap > drives the session-ready gate: resets it on mount, marks it ready after persist succeeds
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/quiz/components/__tests__/quiz-page-fresh-start.test.tsx > QuizPage fresh-start bootstrap > opens the session-ready gate even when /api/session/persist fails
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/quiz/components/__tests__/quiz-page-fresh-start.test.tsx > QuizPage fresh-start bootstrap > opens the session-ready gate even when /api/session/persist fails
+[session] Create failed: Server Error
+
+ ✓ src/features/quiz/components/__tests__/email-capture-consent.test.tsx (12 tests) 1097ms
+   ✓ Email Capture Consent UI > renders the data-processing consent checkbox checked by default (opt-out)  433ms
+stderr | src/features/quiz/components/__tests__/quiz-page-fresh-start.test.tsx > QuizPage fresh-start bootstrap > sends locale in first session/persist call (Phase 1025, Pitfall 3)
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/quiz/components/__tests__/quiz-page-fresh-start.test.tsx > QuizPage fresh-start bootstrap > sends en locale in first session/persist call by default
+Not implemented: Window's scrollTo() method
+
+ ✓ src/features/quiz/components/__tests__/quiz-page-fresh-start.test.tsx (6 tests) 1231ms
+   ✓ QuizPage fresh-start bootstrap > QuizPage mints a fresh session with crypto.randomUUID and setSessionId when a cleared sessionId reaches /quiz  1030ms
+stderr | src/app/api/session/persist/__tests__/route.test.ts > POST /api/session/persist > returns 500 on database error (update branch)
+[session/persist] update failed {
+  sessionId: '11111111-2222-3333-4444-555555555555',
+  update: {
+    updated_at: '2026-09-14T07:36:27.838Z',
+    current_step_id: 'q1',
+    quiz_answers: {}
+  },
+  error: { message: 'db fail' }
+}
+
+stderr | src/app/api/session/persist/__tests__/route.test.ts > POST /api/session/persist > updates email field when provided
+[activecampaign] addContactToEmailList failed: TypeError: Failed to parse URL from /api/3/contact/sync
+    at node:internal/deps/undici/undici:13510:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at acFetch (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/lib/activecampaign/client.ts:67:24)
+    at syncContact (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/lib/activecampaign/client.ts:106:20)
+    at addContactToEmailList (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/lib/activecampaign/client.ts:231:23) {
+  [cause]: TypeError: Invalid URL: /api/3/contact/sync
+      at new URLImpl (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/whatwg-url/lib/URL-impl.js:20:13)
+      at Object.exports.setup (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/whatwg-url/lib/URL.js:54:12)
+      at new URL (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/whatwg-url/lib/URL.js:115:22)
+      at new Request (node:internal/deps/undici/undici:9586:25)
+      at fetch (node:internal/deps/undici/undici:10315:25)
+      at fetch (node:internal/deps/undici/undici:13508:10)
+      at fetch (node:internal/bootstrap/web/exposed-window-or-worker:81:12)
+      at acFetch (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/lib/activecampaign/client.ts:67:30)
+      at syncContact (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/lib/activecampaign/client.ts:106:26)
+      at addContactToEmailList (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/lib/activecampaign/client.ts:231:29)
+}
+
+ ✓ src/app/api/session/persist/__tests__/route.test.ts (20 tests) 590ms
+stderr | src/components/checkout/__tests__/solidgate-checkout-grant.test.ts > SolidgateCheckout terminal retry > reconciles SDK fail and opens exactly one different N+1 order
+[solidgate/checkout] declined { code: '3.02', message: 'Declined' }
+[solidgate/checkout] declined { code: '3.02', message: 'Duplicate SDK fail' }
+
+ ✓ src/components/checkout/__tests__/solidgate-checkout-grant.test.ts (19 tests) 703ms
+ ✓ src/features/offer/components/__tests__/special-offer-email-gate.test.tsx (11 tests) 735ms
+ ✓ src/features/oto/components/__tests__/oto-template-i18n.test.tsx (8 tests) 486ms
+stderr | src/features/offer/components/__tests__/offer-details-sg-return.test.tsx > OfferDetailsPage — ?sg_order 3DS return > an indeterminate grant stays visible as pending and never reopens checkout
+[offer-details] solidgate grant failed: payment_pending
+
+stderr | src/features/offer/components/__tests__/offer-details-sg-return.test.tsx > OfferDetailsPage — ?sg_order 3DS return > retries the same return order after a bounded poll ends pending
+[offer-details] solidgate grant failed: payment_pending
+
+stderr | src/features/offer/components/__tests__/offer-details-sg-return.test.tsx > OfferDetailsPage — ?sg_order 3DS return > stops automatic return polling after the shared cap and keeps the same pending order
+[offer-details] solidgate grant failed: payment_pending
+
+stderr | src/features/offer/components/__tests__/offer-details-sg-return.test.tsx > OfferDetailsPage — ?sg_order 3DS return > stops automatic return polling after the shared cap and keeps the same pending order
+[offer-details] solidgate grant failed: payment_pending
+
+stderr | src/features/offer/components/__tests__/offer-details-sg-return.test.tsx > OfferDetailsPage — ?sg_order 3DS return > a failed grant on the main variant resumes the quiz redirect
+[offer-details] solidgate grant failed: void_ok
+
+ ✓ src/features/offer/components/__tests__/offer-details-sg-return.test.tsx (11 tests) 295ms
+ ✓ src/features/offer/components/__tests__/offer-checkout-modal-renewal.test.tsx (10 tests) 342ms
+ ✓ src/features/oto/components/__tests__/oto1-main-payment-recovery.test.tsx (4 tests) 355ms
+ ✓ src/features/auth/components/__tests__/auth-avatar.test.tsx (5 tests) 439ms
+ ✓ src/features/success/components/__tests__/dashboard-cta.test.tsx (2 tests) 172ms
+ ✓ src/features/offer/components/__tests__/offer-sales-body.test.tsx (3 tests) 302ms
+stderr | src/features/offer/__tests__/offer-page.test.tsx > OfferPage > renders the trial price picker when the quiz is complete
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/offer/__tests__/offer-page.test.tsx > OfferPage > fires oto_viewed analytics with product "main" on mount
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/offer/__tests__/offer-page.test.tsx > OfferPage > renders four selectable trial-price pills
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/offer/__tests__/offer-page.test.tsx > OfferPage > tracks tier_selected when a trial-price pill is clicked
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/offer/__tests__/offer-page.test.tsx > OfferPage > navigates to /offer/details with the selected tier when Continue is clicked
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/offer/__tests__/offer-page.test.tsx > OfferPage > does not mount a checkout, and creates no payment intent, on /offer
+Not implemented: Window's scrollTo() method
+
+stderr | src/features/offer/__tests__/offer-page.test.tsx > OfferPage > variant prop > does NOT render the SpecialOfferEmailGate for the default "main" variant
+Not implemented: Window's scrollTo() method
+
+ ✓ src/features/offer/__tests__/offer-page.test.tsx (12 tests) 310ms
+ ✓ src/app/api/auth/claim-purchase/__tests__/route.test.ts (14 tests) 206ms
+ ✓ src/features/oto/lib/__tests__/use-solidgate-oto-resume.test.tsx (7 tests) 204ms
+ ✓ src/features/quiz/components/__tests__/quiz-progress-header.test.tsx (12 tests) 158ms
+ ✓ src/features/quiz/components/__tests__/question-card.test.tsx (8 tests) 169ms
+stderr | src/app/api/auth/verify-otp/__tests__/route.test.ts > POST /api/auth/verify-otp > returns 400 when the token is invalid or expired
+[auth/verify-otp] verifyOtp failed: {
+  errorMessage: 'Token has expired or is invalid',
+  errorStatus: undefined,
+  email: 'buyer@example.com',
+  hasUser: false
+}
+
+stderr | src/app/api/auth/verify-otp/__tests__/route.test.ts > POST /api/auth/verify-otp > records a failure attempt when token verification fails
+[auth/verify-otp] verifyOtp failed: {
+  errorMessage: 'Token has expired or is invalid',
+  errorStatus: undefined,
+  email: 'buyer@example.com',
+  hasUser: false
+}
+
+ ✓ src/app/api/auth/verify-otp/__tests__/route.test.ts (13 tests) 62ms
+ ✓ src/features/results/__tests__/results-page.test.tsx (8 tests) 128ms
+stderr | src/app/admin/dashboard/_components/__tests__/report-refresh.test.tsx > admin report refresh failures > labels retained subscription values as the previous range when refresh fails
+[admin/subscriptions] refetch failed: Error: database unavailable
+    at /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/admin/dashboard/_components/__tests__/report-refresh.test.tsx:18:43
+    at file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runSuite (file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+
+stderr | src/app/admin/dashboard/_components/__tests__/report-refresh.test.tsx > admin report refresh failures > labels retained OTO values as the previous range when refresh fails
+[admin/otos] refetch failed: Error: database unavailable
+    at /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/admin/dashboard/_components/__tests__/report-refresh.test.tsx:30:34
+    at file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12)
+    at runSuite (file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runFiles (file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:1787:3)
+
+ ✓ src/app/admin/dashboard/_components/__tests__/report-refresh.test.tsx (2 tests) 150ms
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > keeps the anonymous buyer card out of an existing email owner account vault
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > promotes the current purchase card after a matching verified browser login
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > still grants access when the claim was superseded — the buyer already paid
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > still grants access when the claim was superseded — the buyer already paid
+[solidgate/grant] background enrichment drain failed: SOLIDGATE_API_PUBLIC_KEY / SOLIDGATE_API_SECRET_KEY env vars are not set
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > vaults the unique exact successful main authorization token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > uses signed order payment_method when Payment Form omits token provenance
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > vaults an operation-aligned Apple Pay token with provider provenance
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > vaults an operation-aligned Google Pay token with provider provenance
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > fails before entitlement/cookie success when the source watermark cannot persist
+[solidgate/grant] vault unavailable
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks a mapped key/id mismatch without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks conflicting direct and nested tokens without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks conflicting duplicate card data without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks conflicting direct and nested payment-method provenance without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks an operation/provenance mismatch without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks missing payment-method provenance without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks a malformed payment-method provenance value without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks a non-authorization operation without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks a different amount without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks a different currency without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants the captured main order and watermarks multiple distinct authorization tokens without a token
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > queues the per-purchase welcome even when the webhook already created the auth user
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > fails closed on an unrecognised consume result rather than guessing
+[solidgate/grant] unexpected intro consume result {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1',
+  result: 'something_new'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants an exact historical snapshot after live catalog price and UUIDs change
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-historical'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a local amount change during provider confirmation without mutation
+[solidgate/grant] local binding changed during confirmation { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched provider order id before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched original amount before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched currency before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched customer before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched product before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > rejects a mismatched subscription before any mutation
+[solidgate/grant] provider binding mismatch { orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1' }
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > deduplicates singular and mapped settle transactions for exact partial capture
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > sums distinct successful settle transactions for exact partial capture
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > keeps exact settlement proof when an unrelated auth has malformed provenance
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > grants special_free only after its exact reusable token persists in the session vault
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:special_free:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-free'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > accepts an exact webhook-completed special_free grant when pay/status omits transactions
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:special_free:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-free'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > recovers a card-ready special_free grant when the webhook failed before entitlement
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:special_free:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-free'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > accepts a DB-verified newer main-card source for an already granted special_free order
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:special_free:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-free'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > fails retryably without a cookie when the card-readiness helper errors
+[solidgate/grant] Failed to verify special_free reusable card: readiness unavailable
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > keeps token-backed special_free pending when the exact vault read-back is missing
+[solidgate/grant] special-free reusable card is not durably ready {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:special_free:1',
+  grantOrderId: 'db-order-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > accepts a zero-row finalizer only when an identical success webhook won
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > never downgrades an already webhook-finalized main order before repairing access
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > does not return a success cookie while the settled buyer has no resolved auth user
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+stderr | src/app/api/solidgate/__tests__/grant-intro-offer.test.ts > Solidgate funnel grant introductory-offer claim > fails closed when the atomic entitlement grant reports an authoritative block
+[solidgate/grant] duplicate intro subscription — granted, needs refund {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  subscriptionId: 'sub-1'
+}
+
+ ✓ src/app/api/solidgate/__tests__/grant-intro-offer.test.ts (65 tests) 129ms
+ ✓ src/app/admin/_queries/__tests__/subscriptions.test.ts (3 tests) 52ms
+ ✓ src/app/admin/dashboard/_components/__tests__/KpiCardsRow.test.tsx (1 test) 52ms
+ ✓ src/features/oto/components/__tests__/oto8-summary-page.test.tsx (1 test) 125ms
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fulfillment worker trigger routing > identifies the hardened handler on an unsigned deployment probe
+[solidgate-webhooks] bad signature { merchant: '', eventType: '' }
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'an unknown top-level event' after claiming it instead of completing the inbox
+[solidgate-webhooks] handler failed: unsupported Solidgate webhook event type: merchant.unknown {
+  eventType: 'merchant.unknown',
+  eventId: 'evt-contract-an-unknown-top-level-event'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'the legacy subscription.updated event' after claiming it instead of completing the inbox
+[solidgate-webhooks] handler failed: legacy Solidgate subscription.updated is unsupported; configure subscription.updated.v2 {
+  eventType: 'subscription.updated',
+  eventId: 'evt-contract-the-legacy-subscription.updated-event'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'card_gate.order.updated' when 'order.order_id' is 'missing' without claiming an entity
+[solidgate-webhooks] handler failed: card_gate.order.updated requires a non-empty string at order.order_id {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-card_gate-order-updated-missing'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'card_gate.order.updated' when 'order.order_id' is 'blank' without claiming an entity
+[solidgate-webhooks] handler failed: card_gate.order.updated requires a non-empty string at order.order_id {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-card_gate-order-updated-blank'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'card_gate.order.updated' when 'order.order_id' is 'padded' without claiming an entity
+[solidgate-webhooks] handler failed: card_gate.order.updated requires a non-empty string at order.order_id {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-card_gate-order-updated-padded'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'card_gate.order.updated' when 'order.order_id' is 'non-string' without claiming an entity
+[solidgate-webhooks] handler failed: card_gate.order.updated requires a non-empty string at order.order_id {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-card_gate-order-updated-non-string'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'alt_gate.order.updated' when 'order.order_id' is 'missing' without claiming an entity
+[solidgate-webhooks] handler failed: alt_gate.order.updated requires a non-empty string at order.order_id {
+  eventType: 'alt_gate.order.updated',
+  eventId: 'evt-alt_gate-order-updated-missing'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'alt_gate.order.updated' when 'order.order_id' is 'blank' without claiming an entity
+[solidgate-webhooks] handler failed: alt_gate.order.updated requires a non-empty string at order.order_id {
+  eventType: 'alt_gate.order.updated',
+  eventId: 'evt-alt_gate-order-updated-blank'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'alt_gate.order.updated' when 'order.order_id' is 'padded' without claiming an entity
+[solidgate-webhooks] handler failed: alt_gate.order.updated requires a non-empty string at order.order_id {
+  eventType: 'alt_gate.order.updated',
+  eventId: 'evt-alt_gate-order-updated-padded'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'alt_gate.order.updated' when 'order.order_id' is 'non-string' without claiming an entity
+[solidgate-webhooks] handler failed: alt_gate.order.updated requires a non-empty string at order.order_id {
+  eventType: 'alt_gate.order.updated',
+  eventId: 'evt-alt_gate-order-updated-non-string'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'subscription.updated.v2' when 'subscription.id' is 'missing' without claiming an entity
+[solidgate-webhooks] handler failed: subscription.updated.v2 requires a non-empty string at subscription.id {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-subscription-updated-v2-missing'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'subscription.updated.v2' when 'subscription.id' is 'blank' without claiming an entity
+[solidgate-webhooks] handler failed: subscription.updated.v2 requires a non-empty string at subscription.id {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-subscription-updated-v2-blank'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'subscription.updated.v2' when 'subscription.id' is 'padded' without claiming an entity
+[solidgate-webhooks] handler failed: subscription.updated.v2 requires a non-empty string at subscription.id {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-subscription-updated-v2-padded'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'subscription.updated.v2' when 'subscription.id' is 'non-string' without claiming an entity
+[solidgate-webhooks] handler failed: subscription.updated.v2 requires a non-empty string at subscription.id {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-subscription-updated-v2-non-string'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'card_gate.chargeback.received' when 'order.order_id' is 'missing' without claiming an entity
+[solidgate-webhooks] handler failed: card_gate.chargeback.received requires a non-empty string at order.order_id {
+  eventType: 'card_gate.chargeback.received',
+  eventId: 'evt-card_gate-chargeback-received-missing'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'card_gate.chargeback.received' when 'order.order_id' is 'blank' without claiming an entity
+[solidgate-webhooks] handler failed: card_gate.chargeback.received requires a non-empty string at order.order_id {
+  eventType: 'card_gate.chargeback.received',
+  eventId: 'evt-card_gate-chargeback-received-blank'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'card_gate.chargeback.received' when 'order.order_id' is 'padded' without claiming an entity
+[solidgate-webhooks] handler failed: card_gate.chargeback.received requires a non-empty string at order.order_id {
+  eventType: 'card_gate.chargeback.received',
+  eventId: 'evt-card_gate-chargeback-received-padded'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails 'card_gate.chargeback.received' when 'order.order_id' is 'non-string' without claiming an entity
+[solidgate-webhooks] handler failed: card_gate.chargeback.received requires a non-empty string at order.order_id {
+  eventType: 'card_gate.chargeback.received',
+  eventId: 'evt-card_gate-chargeback-received-non-string'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails a malformed 'card_gate.order.updated' payload safely before entity ordering
+[solidgate-webhooks] handler failed: card_gate.order.updated requires a non-empty string at order.order_id {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-card_gate-order-updated-malformed-payload'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails a malformed 'alt_gate.order.updated' payload safely before entity ordering
+[solidgate-webhooks] handler failed: alt_gate.order.updated requires a non-empty string at order.order_id {
+  eventType: 'alt_gate.order.updated',
+  eventId: 'evt-alt_gate-order-updated-malformed-payload'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails a malformed 'subscription.updated.v2' payload safely before entity ordering
+[solidgate-webhooks] handler failed: subscription.updated.v2 requires a non-empty string at subscription.id {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-subscription-updated-v2-malformed-payload'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails a malformed 'card_gate.chargeback.received' payload safely before entity ordering
+[solidgate-webhooks] handler failed: card_gate.chargeback.received requires a non-empty string at order.order_id {
+  eventType: 'card_gate.chargeback.received',
+  eventId: 'evt-card_gate-chargeback-received-malformed-payload'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails a locally owned subscription with a 'missing' callback_type before shared writes
+[solidgate-webhooks] handler failed: unsupported subscription callback_type: <missing or malformed> {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-owned-subscription-missing-callback'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > fails a locally owned subscription with a 'unknown' callback_type before shared writes
+[solidgate-webhooks] handler failed: unsupported subscription callback_type: future_subscription_state {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-owned-subscription-unknown-callback'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > does not bind an initially unbound local order for an unknown callback_type
+[solidgate-webhooks] handler failed: unsupported subscription callback_type: future_subscription_state {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-unbound-owned-subscription-unknown-callback'
+}
+
+ ✓ src/app/admin/_queries/__tests__/funnel.test.ts (3 tests) 77ms
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable webhook inbox claim states > cannot complete or fail the inbox after its token/generation fence is stale
+[solidgate-webhooks] inbox failure persist failed: webhook inbox failure persist failed: event evt-stale-owner claim is stale { eventType: 'card_gate.order.updated', eventId: 'evt-stale-owner' }
+[solidgate-webhooks] handler failed: webhook inbox completion failed: event evt-stale-owner claim is stale { eventType: 'card_gate.order.updated', eventId: 'evt-stale-owner' }
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fail-closed database boundaries > 'order ownership read' error returns 5xx, persists failure, and stops downstream effects
+[solidgate-webhooks] handler failed: order lookup failed: orders read unavailable {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-order-lookup-failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fail-closed database boundaries > 'initial settlement write' error returns 5xx, persists failure, and stops downstream effects
+[solidgate-webhooks] handler failed: atomic financial event failed: orders write unavailable {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-atomic-financial-event-failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fail-closed database boundaries > 'refund write' error returns 5xx, persists failure, and stops downstream effects
+[solidgate-webhooks] handler failed: atomic financial event failed: refund write unavailable {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-atomic-financial-event-failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fail-closed database boundaries > 'void entitlement revoke' error returns 5xx, persists failure, and stops downstream effects
+[solidgate-webhooks] handler failed: void entitlement revoke failed: revoke unavailable {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-void-entitlement-revoke-failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fail-closed database boundaries > 'decline write' error returns 5xx, persists failure, and stops downstream effects
+[solidgate-webhooks] handler failed: order decline update failed: decline write unavailable {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-order-decline-update-failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fail-closed database boundaries > 'recurring payment mapping read' error returns 5xx, persists failure, and stops downstream effects
+[solidgate-webhooks] handler failed: recurring order lookup failed: mapping read unavailable {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-recurring-order-lookup-failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fail-closed database boundaries > 'subscription lifecycle write' error returns 5xx, persists failure, and stops downstream effects
+[solidgate-webhooks] handler failed: subscription cancellation update failed: subscription write unavailable {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-subscription-cancellation-update-failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fail-closed database boundaries > 'subscription binding ownership read' error returns 5xx, persists failure, and stops downstream effects
+[solidgate-webhooks] handler failed: subscription session ownership lookup failed: session ownership unavailable {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-subscription-session-ownership-lookup-failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fail-closed database boundaries > 'chargeback write' error returns 5xx, persists failure, and stops downstream effects
+[solidgate-webhooks] handler failed: atomic financial event failed: chargeback write unavailable {
+  eventType: 'card_gate.chargeback.received',
+  eventId: 'evt-atomic-financial-event-failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > fail-closed database boundaries > 'renewal chargeback mapping read' error returns 5xx, persists failure, and stops downstream effects
+[solidgate-webhooks] handler failed: chargeback renewal mapping lookup failed: chargeback mapping unavailable {
+  eventType: 'card_gate.chargeback.received',
+  eventId: 'evt-chargeback-renewal-mapping-lookup-failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > rejects a 'canonical order identity' mismatch before any business mutation
+[solidgate-webhooks] handler failed: positive settlement canonical order binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-binding-canonical-order-identity'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > rejects a 'authorized amount' mismatch before any business mutation
+[solidgate-webhooks] handler failed: positive settlement amount binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-binding-authorized-amount'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > rejects a 'currency' mismatch before any business mutation
+[solidgate-webhooks] handler failed: positive settlement currency binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-binding-currency'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > rejects a 'customer account' mismatch before any business mutation
+[solidgate-webhooks] handler failed: positive settlement customer binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-binding-customer-account'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > rejects a 'customer email' mismatch before any business mutation
+[solidgate-webhooks] handler failed: positive settlement customer binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-binding-customer-email'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > rejects a 'catalog product' mismatch before any business mutation
+[solidgate-webhooks] handler failed: positive settlement product, price, or subscription binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-binding-catalog-product'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > rejects a 'catalog price' mismatch before any business mutation
+[solidgate-webhooks] handler failed: positive settlement metadata binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-binding-catalog-price'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > rejects a 'subscription' mismatch before any business mutation
+[solidgate-webhooks] handler failed: positive settlement product, price, or subscription binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-binding-subscription'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > rejects a 'tracking metadata' mismatch before any business mutation
+[solidgate-webhooks] handler failed: positive settlement metadata binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-binding-tracking-metadata'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > rejects a settle whose unclaimed order session belongs to a different account
+[solidgate-webhooks] handler failed: positive settlement customer ownership binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-foreign-session-owner'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > positive settlement binding > keeps the hard mismatch for a claimed order regardless of the buyer email lookup
+[solidgate-webhooks] handler failed: positive settlement customer ownership binding mismatch {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-claimed-order-session-mismatch'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > rejects tokenless special_free before order, account, or entitlement success
+[solidgate-webhooks] handler failed: special_free reusable card authorization is missing {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-tokenless'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > does not create a ghost special_free grant for a click-to-pay credential
+[solidgate-webhooks] handler failed: special_free reusable card authorization is missing {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-click-to-pay'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > does not create a ghost special_free grant for a operation/provenance-mismatched wallet credential
+[solidgate-webhooks] handler failed: special_free reusable card authorization is missing {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-operation/provenance-mismatched-wallet'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > does not create a ghost special_free grant for a malformed provenance credential
+[solidgate-webhooks] handler failed: special_free reusable card authorization is missing {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-malformed-provenance'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > keeps a durable tokenless special_free replay retryable when card proof is not ready
+[solidgate-webhooks] handler failed: special_free durable reusable card is not ready {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-durable-tokenless-unready'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > keeps tokenless special_free recovery retryable when late entitlement arbitration rejects the grant
+[solidgate-webhooks] handler failed: special_free tokenless recovery entitlement grant was rejected {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-durable-tokenless-late-conflict'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > keeps a durable tokenless special_free replay retryable when card readiness errors
+[solidgate-webhooks] handler failed: special_free durable card readiness check failed: readiness unavailable {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-durable-tokenless-readiness-error'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > keeps a card-ready durable tokenless replay retryable when atomic grant rejects a newer entitlement
+[solidgate-webhooks] handler failed: special_free tokenless recovery entitlement grant was rejected {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-durable-tokenless-conflict'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > does not create an account or grant special_free when durable vault persistence fails
+[solidgate-webhooks] handler failed: session vault source write failed: vault unavailable {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-vault-outage'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > keeps stale special_free retryable when no reusable-card source is ready
+[solidgate-webhooks] handler failed: special_free reusable card readiness check failed: false {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-stale-vault-unready'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > card_gate.order.updated > keeps stale special_free retryable when the reusable-card proof RPC errors
+[solidgate-webhooks] handler failed: special_free reusable card readiness check failed: readiness unavailable {
+  eventType: 'card_gate.order.updated',
+  eventId: 'evt-special-free-stale-vault-rpc-error'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > durable server-side lifecycle analytics outbox > marks analytics failed and throws so Solidgate redelivery retries without new traffic
+[solidgate-webhooks] analytics outbox delivery failed: temporary PostHog failure
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > subscription.updated.v2 > returns a retryable 5xx for cancel-before-card without acknowledging a business mutation
+[solidgate-webhooks] handler failed: subscription sub-cancel-before-card is waiting for card settlement finalization {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-cancel-before-card'
+}
+
+stdout | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > subscription.updated.v2 > ACKs metadata-less create after the exact initial card failure is durable
+[solidgate-webhooks] initial subscription callback ignored after terminal card failure {
+  subscriptionId: 'sub-metadata-less-failure',
+  callbackType: 'create',
+  providerOrderId: 'sess-1:trial4:1',
+  paymentStatus: 'auth_failed'
+}
+
+stdout | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > subscription.updated.v2 > ACKs metadata-less expire after the exact initial card failure is durable
+[solidgate-webhooks] initial subscription callback ignored after terminal card failure {
+  subscriptionId: 'sub-metadata-less-failure',
+  callbackType: 'expire',
+  providerOrderId: 'sess-1:trial4:1',
+  paymentStatus: 'auth_failed'
+}
+
+stderr | ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts > subscription.updated.v2 > keeps a metadata-less initial subscription callback retryable while the card result is pending
+[solidgate-webhooks] handler failed: initial subscription callback metadata is missing {
+  eventType: 'subscription.updated.v2',
+  eventId: 'evt-metadata-less-pending'
+}
+
+ ✓ ../../supabase/functions/solidgate-webhooks/__tests__/webhook.test.ts (248 tests) 187ms
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > atomically blocks a concurrent introductory checkout from another session/tier
+[solidgate/create-session] intro offer already reserved {
+  paymentEnvironment: 'sandbox',
+  sessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  tier: 'trial3'
+}
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > fails closed when the atomic introductory claim cannot be verified
+[solidgate/create-session] intro claim unavailable: database unavailable
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > fails closed when repeat-trial eligibility cannot be verified
+[solidgate/create-session] abuse-guard unavailable: Error: auth lookup failed: auth unavailable
+    at findAuthUserIdByEmail (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/create-session/route.ts:246:20)
+    at POST (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/create-session/route.ts:371:32)
+    at /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/__tests__/create-session.test.ts:479:17
+    at file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > fails closed: no intent is issued if the order binding cannot be written
+[solidgate/create-session] atomic order open failed: db down
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > does not collision-bump when atomic allocation reports a duplicate
+[solidgate/create-session] atomic order open failed: duplicate key value violates unique constraint
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > still fails closed on a non-duplicate atomic open error
+[solidgate/create-session] atomic order open failed: statement timeout
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > does not advance a locally failed order without terminal provider evidence
+[solidgate/create-session] atomic order open failed: failed order is not terminal
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > rejects an RPC product binding mismatch before form creation
+[solidgate/create-session] atomic order open failed: binding mismatch: product
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > rejects an RPC amount binding mismatch before form creation
+[solidgate/create-session] atomic order open failed: binding mismatch: amount
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > rejects an RPC currency binding mismatch before form creation
+[solidgate/create-session] atomic order open failed: binding mismatch: currency
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > rejects an RPC environment binding mismatch before form creation
+[solidgate/create-session] atomic order open failed: binding mismatch: environment
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > rejects an RPC order id binding mismatch before form creation
+[solidgate/create-session] atomic order open failed: binding mismatch: order_id
+
+stderr | src/app/api/solidgate/__tests__/create-session.test.ts > solidgate create-session gates > fails closed when checkout payload finalization cannot be persisted
+[solidgate/create-session] checkout payload finalization failed: write unavailable
+
+ ✓ src/app/api/solidgate/__tests__/create-session.test.ts (41 tests) 128ms
+ ✓ src/features/auth/components/__tests__/fresh-start-button.test.tsx (3 tests) 98ms
+ ✓ src/app/admin/dashboard/_actions/__tests__/refetch-customers.test.ts (2 tests) 59ms
+ ✓ src/features/auth/components/__tests__/claim-purchase-prompt.test.tsx (5 tests) 99ms
+ ✓ src/app/admin/_queries/__tests__/revenue.test.ts (4 tests) 53ms
+ ✓ src/features/success/components/__tests__/success-client.test.tsx (8 tests) 107ms
+ ✓ src/features/checkout/components/__tests__/order-summary.test.tsx (7 tests) 93ms
+ ✓ src/app/admin/dashboard/_actions/__tests__/refetch-sessions.test.ts (2 tests) 54ms
+ ✓ src/app/api/session/read/__tests__/route.test.ts (10 tests) 79ms
+ ✓ src/app/admin/dashboard/_components/__tests__/DateRangePicker.test.tsx (2 tests) 86ms
+ ✓ src/features/oto/lib/__tests__/use-oto-progress-recovery.test.tsx (3 tests) 69ms
+ ✓ src/app/admin/_queries/__tests__/otos.test.ts (1 test) 40ms
+ ✓ src/features/oto/lib/__tests__/advance-oto.test.ts (12 tests) 65ms
+stderr | src/app/api/auth/request-otp/__tests__/route.test.ts > POST /api/auth/request-otp > returns 429 with the retry-after seconds when Supabase rate-limits
+[auth/request-otp] signInWithOtp failed: {
+  errorMessage: 'For security purposes, you can only request this after 47 seconds.',
+  errorStatus: 429,
+  email: 'buyer@example.com'
+}
+
+stderr | src/app/api/auth/request-otp/__tests__/route.test.ts > POST /api/auth/request-otp > returns 500 on a generic (non-missing-user) OTP error
+[auth/request-otp] signInWithOtp failed: {
+  errorMessage: 'Internal Supabase failure',
+  errorStatus: 500,
+  email: 'buyer@example.com'
+}
+
+stderr | src/app/api/auth/request-otp/__tests__/route.test.ts > POST /api/auth/request-otp > self-heals a paid buyer with no auth user: creates the user, backfills, and returns generic 200
+[auth/request-otp] signInWithOtp failed: {
+  errorMessage: 'Signups not allowed for otp',
+  errorStatus: 422,
+  email: 'purchaser@example.com'
+}
+
+stderr | src/app/api/auth/request-otp/__tests__/route.test.ts > POST /api/auth/request-otp > returns generic 200 without self-healing when the missing-user email has no paid order
+[auth/request-otp] signInWithOtp failed: {
+  errorMessage: 'Signups not allowed for otp',
+  errorStatus: 400,
+  email: 'noorder@example.com'
+}
+
+ ✓ src/app/api/auth/request-otp/__tests__/route.test.ts (7 tests) 79ms
+ ✓ src/features/success/components/__tests__/order-summary-card.test.tsx (5 tests) 63ms
+stderr | src/app/api/solidgate/__tests__/charge-oto-attribution.test.ts > Solidgate OTO attribution metadata > keeps a timed-out /recurring submission on the same leased order
+[solidgate/charge-oto] provider submission is indeterminate {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:oto3_bundle_all:1',
+  error: 'TimeoutError: Solidgate request timed out'
+}
+
+stderr | src/app/api/solidgate/__tests__/charge-oto-attribution.test.ts > Solidgate OTO attribution metadata > rejects an immediate provider response bound to a different order identity
+[solidgate/charge-oto] immediate settled binding mismatch {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:oto3_bundle_all:1',
+  error: Error: Solidgate order identity, amount, currency, or product binding mismatch
+      at assertProviderBinding (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/charge-oto/route.ts:530:11)
+      at POST (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/charge-oto/route.ts:1593:7)
+      at processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/__tests__/charge-oto-attribution.test.ts:667:22
+      at file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+}
+
+stderr | src/app/api/solidgate/__tests__/charge-oto-attribution.test.ts > Solidgate OTO attribution metadata > refuses partial capture when transaction evidence is not the exact bound amount
+[solidgate/charge-oto] immediate settled binding mismatch {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:oto3_bundle_all:1',
+  error: Error: Solidgate captured amount binding mismatch
+      at assertProviderBinding (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/charge-oto/route.ts:542:13)
+      at POST (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/charge-oto/route.ts:1593:7)
+      at /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/__tests__/charge-oto-attribution.test.ts:1105:22
+      at file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+}
+
+ ✓ src/app/api/solidgate/__tests__/charge-oto-attribution.test.ts (25 tests) 50ms
+ ✓ src/proxy.test.ts (31 tests) 36ms
+stderr | src/app/api/orders/lifetime-poll/__tests__/route.test.ts > GET /api/orders/lifetime-poll > returns 500 when the DB query fails
+[orders/lifetime-poll] query error: db error
+
+ ✓ src/app/api/orders/lifetime-poll/__tests__/route.test.ts (6 tests) 53ms
+stderr | src/app/api/solidgate/__tests__/charge-oto-replay.test.ts > Solidgate OTO confirmation replay guard > does not re-grant a refunded OTO from its old 3DS confirmation URL
+[solidgate/charge-oto] blocked replay {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:oto3_bundle_all:1',
+  reason: 'order_status'
+}
+
+stderr | src/app/api/solidgate/__tests__/charge-oto-replay.test.ts > Solidgate OTO confirmation replay guard > fails closed before reading the provider when the bound row is not an OTO
+[solidgate/charge-oto] confirmation is not bound to an OTO {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:oto3_bundle_all:1',
+  productCode: 'BRAND_000000_SUB'
+}
+
+stderr | src/app/api/solidgate/__tests__/charge-oto-replay.test.ts > Solidgate OTO confirmation replay guard > does not retire the local order from terminal evidence for another customer
+[solidgate/charge-oto] observed binding mismatch {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:oto3_bundle_all:1',
+  error: Error: Solidgate order identity, amount, currency, or product binding mismatch
+      at assertProviderBinding (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/charge-oto/route.ts:530:11)
+      at handleObservedProviderOrder (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/charge-oto/route.ts:826:5)
+      at POST (/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/charge-oto/route.ts:1104:14)
+      at processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/apps/funnel/src/app/api/solidgate/__tests__/charge-oto-replay.test.ts:462:22
+      at file:///Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+}
+
+ ✓ src/app/api/solidgate/__tests__/charge-oto-replay.test.ts (15 tests) 43ms
+ ✓ src/features/success/components/__tests__/account-created-callout.test.tsx (4 tests) 46ms
+stderr | src/app/api/session/persist/__tests__/source-field.test.ts > Phase 1038 SO-08 + SO-09  -  /api/session/persist source field > accepts source: special-offer in body and writes it to the sessions row
+[duplicate-account-guard] unexpected error: admin.rpc is not a function { session_id: '11111111-2222-3333-4444-555555555555' }
+
+stderr | src/app/api/session/persist/__tests__/source-field.test.ts > Phase 1038 SO-08 + SO-09  -  /api/session/persist source field > does NOT call addContactToEmailList when source === special-offer
+[duplicate-account-guard] unexpected error: admin.rpc is not a function { session_id: '11111111-2222-3333-4444-555555555555' }
+
+stderr | src/app/api/session/persist/__tests__/source-field.test.ts > Phase 1038 SO-08 + SO-09  -  /api/session/persist source field > also accepts source: special-offer on INSERT branch (new session row)
+[duplicate-account-guard] unexpected error: admin.rpc is not a function { session_id: '11111111-2222-3333-4444-555555555555' }
+
+stderr | src/app/api/session/persist/__tests__/source-field.test.ts > Phase 1038 SO-08 + SO-09  -  /api/session/persist source field > also accepts source: special-offer on INSERT branch (new session row)
+[session/persist] hydration lookup failed: priorQuery.neq is not a function
+
+ ✓ src/app/api/session/persist/__tests__/source-field.test.ts (6 tests) 55ms
+ ✓ src/app/admin/dashboard/_actions/__tests__/refetch-funnel.test.ts (2 tests) 36ms
+ ✓ src/features/oto/lib/__tests__/charge-oto.test.ts (11 tests) 33ms
+ ✓ src/features/quiz/components/__tests__/step-transition.test.tsx (5 tests) 42ms
+ ✓ src/app/api/admin/auth/request-otp/__tests__/allowlist-filter.test.ts (3 tests) 33ms
+ ✓ src/app/api/device-reset/__tests__/route.test.ts (3 tests) 29ms
+ ✓ src/features/analytics/hooks/__tests__/use-analytics.test.ts (12 tests) 27ms
+ ✓ src/features/quiz/hooks/__tests__/use-quiz-navigation.test.ts (16 tests) 28ms
+ ✓ src/features/oto/lib/__tests__/use-accepted-oto-recovery.test.tsx (8 tests) 30ms
+ ✓ src/app/success/__tests__/page.test.tsx (3 tests) 21ms
+ ✓ src/app/admin/_queries/__tests__/sessions.test.ts (2 tests) 20ms
+ ✓ src/app/api/meta/capi/route.test.ts (10 tests) 20ms
+ ✓ src/features/quiz/lib/__tests__/templated-text.test.tsx (13 tests) 21ms
+ ✓ src/app/__tests__/sitemap.test.ts (4 tests) 17ms
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — low-level functions > resolveListId > GET /lists with filter and returns numeric ID
+[activecampaign] resolveListId: searching "EN_BRAND_000000_SUB_EMAIL", AC returned: ["EN_BRAND_000000_SUB_EMAIL"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — low-level functions > resolveListId > matches exact name when AC returns multiple partial matches
+[activecampaign] resolveListId: searching "EN_BRAND_000000_SUB", AC returned: ["EN_BRAND_000000_SUB_EMAIL","EN_BRAND_000000_SUB"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — low-level functions > resolveListId > throws if no matching list found
+[activecampaign] resolveListId: searching "NONEXISTENT", AC returned: []
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — low-level functions > resolveListId > throws if only partial (non-exact) matches are returned
+[activecampaign] resolveListId: searching "EN_BRAND_000000_SUB", AC returned: ["EN_BRAND_000000_SUB_EMAIL"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — low-level functions > resolveListId > caches resolved IDs
+[activecampaign] resolveListId: searching "EN_LIST", AC returned: ["EN_LIST"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — low-level functions > resolveTagId > GET /tags with search and returns ID for exact match
+[activecampaign] resolveTagId: searching "#EN_BRAND_000000_SUB", AC returned: ["#EN_BRAND_000000_SUB","#EN_BRAND_000000_SUB_OLD"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — low-level functions > resolveTagId > throws if no exact match found
+[activecampaign] resolveTagId: searching "EN_BUYERS", AC returned: ["OTHER"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — low-level functions > resolveTagId > caches resolved IDs
+[activecampaign] resolveTagId: searching "EN_TAG", AC returned: ["EN_TAG"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > addContactToEmailList > syncs contact, resolves email list, adds to list for locale en
+[activecampaign] resolveListId: searching "EN_BRAND_000000_SUB_EMAIL", AC returned: ["EN_BRAND_000000_SUB_EMAIL"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] tagBuyer: prefix=GR, email=buyer@test.com
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] tagBuyer: contactId=20
+[activecampaign] tagBuyer: resolving list="GR_BRAND_000000_SUB", emailList="GR_BRAND_000000_SUB_EMAIL", buyerTag="#GR_BRAND_000000_SUB", customerTag="#GR customers"
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] resolveListId: searching "GR_BRAND_000000_SUB", AC returned: ["GR_BRAND_000000_SUB"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] tagBuyer: subscribe to buyer list ok
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] resolveListId: searching "GR_BRAND_000000_SUB_EMAIL", AC returned: ["GR_BRAND_000000_SUB_EMAIL"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] tagBuyer: unsubscribe from email list ok
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] resolveTagId: searching "#GR_BRAND_000000_SUB", AC returned: ["#GR_BRAND_000000_SUB"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] tagBuyer: add buyer tag ok
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] resolveTagId: searching "#GR customers", AC returned: ["#GR customers"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] tagBuyer: add customer tag ok
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > syncs, resolves 4 IDs, adds subscriber list, removes email list, adds 2 tags for locale el (GR)
+[activecampaign] tagBuyer: done
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > propagates errors to caller for proper error handling
+[activecampaign] tagBuyer: prefix=GR, email=buyer@test.com
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > attempts later buyer steps but throws when one list mutation fails
+[activecampaign] tagBuyer: prefix=GR, email=buyer@test.com
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > attempts later buyer steps but throws when one list mutation fails
+[activecampaign] tagBuyer: contactId=20
+[activecampaign] tagBuyer: resolving list="GR_BRAND_000000_SUB", emailList="GR_BRAND_000000_SUB_EMAIL", buyerTag="#GR_BRAND_000000_SUB", customerTag="#GR customers"
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > attempts later buyer steps but throws when one list mutation fails
+[activecampaign] resolveListId: searching "GR_BRAND_000000_SUB", AC returned: ["GR_BRAND_000000_SUB"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > attempts later buyer steps but throws when one list mutation fails
+[activecampaign] resolveListId: searching "GR_BRAND_000000_SUB_EMAIL", AC returned: ["GR_BRAND_000000_SUB_EMAIL"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > attempts later buyer steps but throws when one list mutation fails
+[activecampaign] tagBuyer: unsubscribe from email list ok
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > attempts later buyer steps but throws when one list mutation fails
+[activecampaign] resolveTagId: searching "#GR_BRAND_000000_SUB", AC returned: ["#GR_BRAND_000000_SUB"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > attempts later buyer steps but throws when one list mutation fails
+[activecampaign] tagBuyer: add buyer tag ok
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > attempts later buyer steps but throws when one list mutation fails
+[activecampaign] resolveTagId: searching "#GR customers", AC returned: ["#GR customers"]
+
+stdout | src/lib/activecampaign/__tests__/client.test.ts > AC client — high-level orchestrators > tagBuyer > attempts later buyer steps but throws when one list mutation fails
+[activecampaign] tagBuyer: add customer tag ok
+
+ ✓ src/lib/activecampaign/__tests__/client.test.ts (19 tests) 11ms
+ ✓ src/features/analytics/lib/__tests__/attribution.test.ts (3 tests) 18ms
+ ✓ src/app/api/solidgate/advance-oto/__tests__/route.test.ts (13 tests) 13ms
+ ✓ src/features/quiz/lib/__tests__/gender-token-next-intl.test.ts (2 tests) 14ms
+ ✓ src/app/api/internal/solidgate-fulfillment/route.test.ts (10 tests) 17ms
+ ✓ src/lib/payment/__tests__/solidgate-access.test.ts (25 tests) 13ms
+ ✓ src/lib/payment/__tests__/solidgate-fulfillment.test.ts (16 tests) 12ms
+ ✓ src/app/admin/_queries/__tests__/_shared.test.ts (6 tests) 13ms
+ ✓ src/app/admin/_queries/__tests__/locales.test.ts (1 test) 8ms
+ ✓ src/app/api/admin/auth/verify-otp/__tests__/destination.test.ts (3 tests) 10ms
+ ✓ src/app/admin/_queries/__tests__/customers.test.ts (1 test) 13ms
+ ✓ src/app/admin/_queries/__tests__/leads.test.ts (1 test) 5ms
+stderr | src/app/api/solidgate/__tests__/grant-replay.test.ts > Solidgate funnel grant replay guard > does not replay a previously settled grant after subscription cancellation
+[solidgate/grant] blocked replay {
+  orderId: '3fa85f64-5717-4562-b3fc-2c963f66afa6:trial3:1',
+  reason: 'order_status'
+}
+
+ ✓ src/app/api/solidgate/__tests__/grant-replay.test.ts (1 test) 7ms
+ ✓ ../../supabase/functions/solidgate-webhooks/__tests__/welcome-email-copy.test.ts (6 tests) 6ms
+stderr | src/lib/payment/__tests__/provision-account.test.ts > purchase ownership never proves mailbox ownership > preserves purchase ownership if browser-session verification is unavailable
+[test] unable to verify the current browser session
+
+ ✓ src/lib/payment/__tests__/provision-account.test.ts (7 tests) 6ms
+ ✓ src/stores/__tests__/quiz-store.test.ts (18 tests) 4ms
+ ✓ src/features/quiz/config/__tests__/quiz-config.test.ts (15 tests) 5ms
+ ✓ src/features/quiz/components/__tests__/email-capture-flow.test.ts (6 tests) 6ms
+ ✓ src/features/results/__tests__/results-config.test.ts (23 tests) 5ms
+ ✓ src/app/admin/_queries/__tests__/fx.test.ts (3 tests) 5ms
+ ✓ src/features/oto/lib/__tests__/main-payment-recovery.test.ts (8 tests) 4ms
+stderr | src/lib/activecampaign/__tests__/constants.test.ts > getAcLocalePrefix > falls back to the default prefix for an unknown locale instead of throwing
+[activecampaign] unknown locale "xx", using default prefix
+
+ ✓ src/lib/activecampaign/__tests__/constants.test.ts (15 tests) 3ms
+ ✓ src/features/analytics/lib/__tests__/gtm.test.ts (3 tests) 3ms
+ ✓ src/features/analytics/lib/__tests__/hash-email.test.ts (3 tests) 3ms
+ ✓ src/stores/__tests__/analytics-store.test.ts (5 tests) 4ms
+ ✓ src/features/analytics/lib/__tests__/checkout-context.test.ts (5 tests) 3ms
+ ✓ src/stores/__tests__/funnel-store.test.ts (5 tests) 2ms
+ ✓ src/features/analytics/lib/__tests__/posthog-identity.test.ts (1 test) 1ms
+
+ Test Files  90 passed (90)
+      Tests  1032 passed (1032)
+   Start at  10:36:22
+   Duration  24.66s (transform 2.53s, setup 6.94s, collect 11.28s, tests 12.94s, environment 46.99s, prepare 5.63s)
+

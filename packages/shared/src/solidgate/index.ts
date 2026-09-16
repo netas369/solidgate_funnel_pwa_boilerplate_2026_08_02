@@ -37,10 +37,6 @@ export {
   type SolidgateVerifyUrlResolution,
 } from './oto';
 export {
-  SOLIDGATE_DESCRIPTOR_SUFFIXES,
-  solidgateDynamicDescriptor,
-} from './descriptor';
-export {
   SOLIDGATE_DECLINE_REASONS,
   solidgateDeclineReason,
   solidgateDeclineReasonFromStatusError,
@@ -78,3 +74,5 @@ export {
   type IntroOfferClaimResult,
   type IntroOfferConsumeResult,
 } from './intro-offer';
+
+export { persistSolidgatePartialCapture } from './partial-capture';

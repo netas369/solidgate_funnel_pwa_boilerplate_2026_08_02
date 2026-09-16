@@ -1,0 +1,32 @@
+{
+  "project": "theastrologist",
+  "project_ref": "fjgwukfouezaqmbmixwf",
+  "access": "read-only",
+  "deployed_webhook": {
+    "version": 25,
+    "updated_at": "2026-08-24T10:52:15.304Z"
+  },
+  "audit": {
+    "checked_at_utc": "2026-09-14T06:49:42.627681+00:00",
+    "orders_production": 1839,
+    "renewals_production": 260,
+    "duplicate_order_keys": 0,
+    "uncompleted_analytics": 0,
+    "duplicate_invoice_keys": 0,
+    "non_uuid_failed_events": 4484,
+    "uncompleted_fulfillment": 0,
+    "duplicate_entitlement_keys": 0,
+    "failed_subscription_events": 4501,
+    "initial_invoice_in_renewals": 0,
+    "pending_with_capture_status": 0,
+    "duplicate_intro_refund_queue": 0,
+    "non_uuid_failed_renew_events": 78,
+    "non_uuid_failed_subscriptions": 1390,
+    "duplicate_subscription_bindings": 0,
+    "non_uuid_failed_bound_subscriptions": 0,
+    "known_paid_invoice_raw_missing_ledger": 0,
+    "order_balance_mismatch_settled_refunded": 0,
+    "renewal_balance_mismatch_current_reducer": 0,
+    "duplicate_live_customer_product_subscriptions": 0
+  }
+}

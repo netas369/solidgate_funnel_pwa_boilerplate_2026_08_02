@@ -13,12 +13,14 @@ import type {
 } from '../../_queries/subscriptions';
 
 export type SubscriptionsPayload = {
+  legacyStarts?: number;
   cohort: { cohortSize: number; converted: number; ratePct: number };
   rolling: { numerator: number; denominator: number; ratePct: number };
   recurringOto: {
     activeCount: number;
-    estimatedMrrEurCents: number;
-    renewalRevenueEurCents: number;
+    estimatedMrrEurCents: number | null;
+    renewalRevenueEurCents: number | null;
+    unknownPriceCount?: number;
     sample?: Array<{
       user_id: string;
       expires_at: string | null;
@@ -36,7 +38,8 @@ function defaultDateStrings() {
   return { from, to };
 }
 
-function eur(cents: number) {
+function eur(cents: number | null) {
+  if (cents === null) return 'Unavailable';
   return `€${(cents / 100).toLocaleString('en-IE', { maximumFractionDigits: 0 })}`;
 }
 
@@ -47,14 +50,17 @@ export function SubscriptionsClient({
 }) {
   const [data, setData] = useState<SubscriptionsPayload>(initialData);
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const init = defaultDateStrings();
 
   const onApply = (range: { from: string; to: string }) => {
     startTransition(async () => {
+      setError(null);
       try {
         const fresh = await refetchSubscriptions(range);
         setData(fresh);
       } catch (e) {
+        setError('Report could not be refreshed. The previous range is still shown.');
         console.error('[admin/subscriptions] refetch failed:', e);
       }
     });
@@ -80,9 +86,11 @@ export function SubscriptionsClient({
         />
       </div>
 
+      {Boolean(data.legacyStarts) && <p className="text-sm text-amber-800">{data.legacyStarts} historical starts use checkout dates because provider start dates are unavailable.</p>}
       {/* Plain-language status snapshot of plan subscriptions started in range.
           Each subscription is one order row whose status the Solidgate webhook
           updates in place, so these counts are where each one stands now. */}
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <div className="rounded-lg border border-neutral-200 bg-white p-4">
         <div className="mb-3 flex items-baseline justify-between">
           <h3 className="text-sm font-medium text-neutral-700">
@@ -94,15 +102,15 @@ export function SubscriptionsClient({
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <StatusCard
-            label="In free trial"
+            label="In trial"
             value={sb.trialing}
-            hint="Not charged yet"
+            hint="May include a paid introduction"
             tone="neutral"
           />
           <StatusCard
             label="Active — paying"
             value={sb.active}
-            hint="Trial converted"
+            hint="Current provider status"
             tone="good"
           />
           <StatusCard
@@ -120,7 +128,7 @@ export function SubscriptionsClient({
         </div>
         {sb.other > 0 && (
           <div className="mt-2 text-xs text-neutral-400">
-            {sb.other} order(s) in another status (pending / failed / refunded).
+            {sb.other} subscription(s) in another status (refunded / disputed / paused).
           </div>
         )}
       </div>
@@ -174,16 +182,15 @@ export function SubscriptionsClient({
             {cohort.ratePct.toFixed(1)}%
           </div>
           <div className="mt-1 text-xs text-neutral-500">
-            {cohort.converted} of {cohort.cohortSize} trials converted (7d+ retention)
+            {cohort.converted} of {cohort.cohortSize} trials had a captured renewal
           </div>
           <div className="mt-2 text-xs text-neutral-400">
-            Share of trials started in range that stayed paid for 7+ days. Reads
-            0% until trials are old enough to have a confirmed renewal.
+            Share of trials started in range with a captured renewal before the range ends. Later cancellation or refund does not erase a conversion.
           </div>
         </div>
         <div className="rounded-lg border border-neutral-200 bg-white p-4">
           <h3 className="mb-2 text-xs font-medium text-neutral-700">
-            Rolling conversion
+            First renewals in range
           </h3>
           <div className="text-2xl font-semibold text-neutral-900">
             {rolling.ratePct.toFixed(1)}%
@@ -192,11 +199,12 @@ export function SubscriptionsClient({
             {rolling.numerator} / {rolling.denominator}
           </div>
           <div className="mt-2 text-xs text-neutral-400">
-            Active subscriptions ÷ all trials started in range.
+            First captured renewals ÷ subscriptions awaiting their first renewal during this range.
           </div>
         </div>
       </div>
       <div className="rounded-lg border border-neutral-200 bg-white p-4">
+        <p className="mb-2 text-xs text-neutral-500">Run rate uses each active subscription’s last observed paid period and amount. It is unavailable when a period, price or FX rate is missing.</p>
         <h3 className="mb-2 text-sm font-medium text-neutral-700">
           Recurring OTO subscriptions
         </h3>
@@ -207,7 +215,7 @@ export function SubscriptionsClient({
           </div>
           <div>
             <div className="text-xs uppercase text-neutral-500">
-              Estimated MRR (EUR)
+              Observed run rate (EUR estimate)
             </div>
             <div className="text-2xl font-semibold">
               {eur(recurringOto.estimatedMrrEurCents)}
@@ -215,7 +223,7 @@ export function SubscriptionsClient({
           </div>
           <div>
             <div className="text-xs uppercase text-neutral-500">
-              Renewals in window (EUR)
+              Renewal net (EUR estimate)
             </div>
             <div className="text-2xl font-semibold">
               {eur(recurringOto.renewalRevenueEurCents)}

@@ -1,0 +1,11 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS dblink WITH SCHEMA extensions;
+CREATE SCHEMA auth;
+CREATE TABLE auth.users (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT);
+CREATE TABLE auth.sessions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID);
+CREATE TABLE auth.refresh_tokens (id BIGSERIAL PRIMARY KEY, session_id UUID, revoked BOOLEAN DEFAULT false);
+CREATE FUNCTION auth.uid() RETURNS UUID LANGUAGE sql STABLE AS 'SELECT NULL::UUID';
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+GRANT USAGE ON SCHEMA public, auth, extensions TO anon, authenticated, service_role;
