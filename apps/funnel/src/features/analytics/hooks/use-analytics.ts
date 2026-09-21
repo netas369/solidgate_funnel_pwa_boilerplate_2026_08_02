@@ -6,42 +6,33 @@ import { useAnalyticsStore } from '@/stores/analytics-store';
 import { trackFunnelEvent } from '@/features/quiz/lib/track-funnel-event';
 import { capturePostHogEvent } from '../lib/posthog';
 import { pushDataLayerEvent } from '../lib/gtm';
-import { trackMetaEvent } from '../lib/meta-pixel';
+import { trackMetaCustomEvent, trackMetaEvent } from '../lib/meta-pixel';
 import { generateMetaEventId } from '../lib/meta-event-id';
+import { sendCapiFromBrowser } from '../lib/meta-capi-client';
+import { attributionEventProperties } from '../lib/attribution';
+import { purchaseEventValue } from '../lib/purchase-value';
 
 /**
- * Internal funnel event → Meta standard event.
+ * Internal funnel event → Meta event.
  *
- * Only mapped events reach the Pixel; everything else stays in PostHog / GTM /
- * the funnel_events mirror. checkout_completed → Purchase fires only when
- * value + currency are present (the offer page supplies them; an upsell whose
- * intro is €0 does not).
+ * Only mapped events reach Meta; everything else stays in PostHog / GTM / the
+ * funnel_events mirror. checkout_completed → Purchase fires only when
+ * value + currency are present. A verified zero-cost subscription becomes
+ * StartTrial instead.
  *
  * TODO(new product): the LEFT column is this funnel's own vocabulary — rename
- * it with your steps. The RIGHT column must stay a Meta standard event name.
+ * it with your steps. Keep standard Meta names standard; quiz-only events are
+ * explicitly sent as custom events.
  */
-const META_EVENT_MAP: Record<string, string> = {
-  lead_captured: 'Lead',
-  tier_selected: 'AddToCart',
-  checkout_opened: 'InitiateCheckout',
-  checkout_completed: 'Purchase',
+const META_EVENT_MAP: Record<string, { name: string; custom?: boolean }> = {
+  quiz_started: { name: 'ViewContent' },
+  step_completed: { name: 'QuizStepCompleted', custom: true },
+  quiz_completed: { name: 'QuizCompleted', custom: true },
+  lead_captured: { name: 'Lead' },
+  tier_selected: { name: 'AddToCart' },
+  checkout_opened: { name: 'InitiateCheckout' },
+  checkout_completed: { name: 'Purchase' },
 };
-
-// ─── Two business decisions, surfaced as flags rather than buried in code ────
-
-/**
- * When true, an upsell purchase (product_category === 'oto') is NOT reported to
- * Meta at all.
- *
- * Why it shipped true: ads optimize on the MAIN offer conversion. A buyer who
- * takes three upsells would otherwise count as four Purchases for one paid
- * funnel entry, inflating ROAS and poisoning attribution. PostHog, GTM and the
- * funnel_events mirror still receive every upsell event — only the Meta
- * emission is suppressed.
- *
- * TODO(new product): flip to false if you want upsell revenue in Meta.
- */
-const SUPPRESS_OTO_PURCHASES_FROM_META = true;
 
 /**
  * When true, a €0 checkout_completed that the SERVER confirmed opened a real
@@ -50,8 +41,42 @@ const SUPPRESS_OTO_PURCHASES_FROM_META = true;
  */
 const REPORT_ZERO_VALUE_TRIALS_AS_START_TRIAL = true;
 
+const META_PRIVATE_PROPERTY_KEYS = new Set([
+  'answers',
+  'quiz_answers',
+  'quiz_result',
+  'result',
+  'result_segment',
+  'email',
+  'capi_email',
+  'full_name',
+  'name',
+  'fbc',
+  'fbp',
+  'session_id',
+  'user_id',
+  'visitor_id',
+  'event_id',
+  'eventId',
+]);
+
+function metaSafeProperties(
+  event: string,
+  metadata: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const properties: Record<string, unknown> = {
+    ...attributionEventProperties(),
+    ...(metadata ?? {}),
+  };
+  for (const key of META_PRIVATE_PROPERTY_KEYS) delete properties[key];
+  // Stable step numbers are enough for optimization. A product's step key can
+  // disclose the meaning of a sensitive health/profile question.
+  if (event === 'step_completed') delete properties.step_id;
+  return properties;
+}
+
 type TrackMetadata = Record<string, unknown> & {
-  /** Optional plaintext email piped to CAPI for hashed server-side matching. Never sent to fbq or GTM directly. */
+  /** Legacy call-site field. Always stripped; CAPI reads email from the verified session. */
   capi_email?: string;
 };
 
@@ -78,13 +103,11 @@ function dbFunnelEventType(event: string): string | null {
  *   2. PostHog product analytics
  *   3. the GTM dataLayer (retargeting pixels)
  *   4. the funnel_events DB mirror (our own conversion data)
- *   5. the Meta Pixel (mapped subset only)
+ *   5. Meta Pixel + Conversions API (same event ID for deduplication)
  *
- * Server-side Meta CAPI runs on a SEPARATE durable path — the fulfillment
- * outbox's send_meta_capi_purchase effect — so a purchase is reported even if
- * the browser never comes back. The browser→server CAPI mirror that used to
- * live here is disabled; /api/meta/capi and lib/meta-capi-client.ts are intact
- * so re-enabling it is a one-line change (see the note further down).
+ * A second durable server path reports the main purchase from the fulfillment
+ * outbox, so payment conversion reporting survives redirects and closed tabs.
+ * The deterministic purchase event ID deduplicates all copies at Meta.
  */
 export function useAnalytics() {
   const trackEvent = useAnalyticsStore((s) => s.trackEvent);
@@ -97,10 +120,10 @@ export function useAnalytics() {
       // payload shape they did before CAPI was introduced.
       let sanitized: Record<string, unknown> | undefined;
       if (metadata) {
-        // capi_email stays stripped even with the CAPI mirror removed — raw
-        // PII must never leak into PostHog/GTM/fbq payloads.
-        const { capi_email: _capiEmail, ...rest } = metadata;
-        sanitized = rest;
+        // Raw PII must never leak into PostHog/GTM/fbq payloads. CAPI reads
+        // the email from the persisted session and hashes it server-side.
+        sanitized = { ...metadata };
+        delete sanitized.capi_email;
       }
 
       // 1. In-memory buffer (existing analytics store)
@@ -120,34 +143,42 @@ export function useAnalytics() {
           dbEventType === event ? sanitized : { ...sanitized, source_event: event };
         trackFunnelEvent(dbSessionId, dbEventType, undefined, dbMetadata as Json);
       }
-      // 4. Meta Pixel standard events (mapped subset only)
-      const metaEvent = META_EVENT_MAP[event];
-      if (metaEvent) {
-        const value = typeof sanitized?.value === 'number' ? sanitized.value : undefined;
-        const currency = typeof sanitized?.currency === 'string' ? sanitized.currency : undefined;
+      // 4. Meta Pixel + browser-to-server CAPI mirror (mapped subset only).
+      const metaConfig = META_EVENT_MAP[event];
+      if (metaConfig) {
+        const amountCents =
+          typeof sanitized?.amount_cents === 'number' ? sanitized.amount_cents : undefined;
+        const currency =
+          typeof sanitized?.currency === 'string'
+            ? sanitized.currency.toUpperCase()
+            : undefined;
+        const value =
+          typeof sanitized?.value === 'number'
+            ? sanitized.value
+            : amountCents !== undefined && currency
+              ? purchaseEventValue(amountCents, currency)
+              : undefined;
         const product =
           typeof sanitized?.product_id === 'string'
             ? sanitized.product_id
             : typeof sanitized?.product === 'string'
               ? sanitized.product
               : undefined;
+        const contentName =
+          typeof sanitized?.product_name === 'string'
+            ? sanitized.product_name
+            : undefined;
 
         // A €0 checkout_completed that opened a REAL subscription (server
         // confirmed via `authorized_trial`) is a free-trial start, not a
         // Purchase. See REPORT_ZERO_VALUE_TRIALS_AS_START_TRIAL.
         const isFreeTrialStart =
           REPORT_ZERO_VALUE_TRIALS_AS_START_TRIAL &&
-          metaEvent === 'Purchase' &&
-          !value &&
+          metaConfig.name === 'Purchase' &&
+          value === 0 &&
           sanitized?.authorized_trial === true &&
           !!currency;
-        const effectiveMetaEvent = isFreeTrialStart ? 'StartTrial' : metaEvent;
-
-        // See SUPPRESS_OTO_PURCHASES_FROM_META.
-        const isOtoPurchase =
-          SUPPRESS_OTO_PURCHASES_FROM_META &&
-          metaEvent === 'Purchase' &&
-          sanitized?.product_category === 'oto';
+        const effectiveMetaEvent = isFreeTrialStart ? 'StartTrial' : metaConfig.name;
 
         const suppliedEventId =
           typeof sanitized?.event_id === 'string'
@@ -156,19 +187,14 @@ export function useAnalytics() {
               ? sanitized.eventId
               : undefined;
 
-        // Delivery telemetry for the money events. KEEP THIS. Without the
-        // browser→server CAPI mirror a Purchase can vanish invisibly: a
-        // stub-state pixel (CDN failure, ad blocker) OR a payload that trips
-        // the value/currency guard. A real buyer's session replay showed
-        // exactly that — healthy PageViews, zero /tr?ev=Purchase, and no way
-        // to tell from the outside. Every skip and drop is reported with its
-        // reason so PostHog shows the TRUE Meta delivery rate.
+        // Delivery telemetry for money events. Browser Pixel failure is still
+        // useful to observe even though CAPI provides the server-side backstop.
         const reportDelivery = (
           pixelFired: boolean,
           skipReason: string | undefined,
           eventId: string | undefined,
         ) => {
-          if (metaEvent !== 'Purchase') return;
+          if (metaConfig.name !== 'Purchase') return;
           capturePostHogEvent('meta_pixel_delivery', {
             meta_event: effectiveMetaEvent,
             pixel_fired: pixelFired,
@@ -182,24 +208,61 @@ export function useAnalytics() {
 
         // Purchase requires value + currency — skip if missing, so a
         // zero-intro upsell cannot fire a $0 Purchase.
-        if (isOtoPurchase) {
-          // Intentionally skipped, with no telemetry either: this is the
-          // designed suppression, not a delivery failure.
-        } else if (metaEvent === 'Purchase' && !isFreeTrialStart && (!value || !currency)) {
+        if (
+          metaConfig.name === 'Purchase' &&
+          !isFreeTrialStart &&
+          (value === undefined || value <= 0 || !currency)
+        ) {
           reportDelivery(false, 'missing_value_or_currency', suppliedEventId);
         } else {
           // Generate one eventID and use it for BOTH the browser fbq event
           // and the server-side CAPI mirror. Meta dedupes on
-          // (event_name, event_id) within a 28-day window.
+          // (event_name, event_id).
           const eventId = suppliedEventId || generateMetaEventId();
-          const pixelFired = trackMetaEvent(effectiveMetaEvent, sanitized, { eventID: eventId });
-          // Browser→server CAPI mirror is OFF: browser-pixel only here, with
-          // the durable server-side Purchase coming from the fulfillment
-          // outbox instead. To re-enable, call sendCapiFromBrowser() from
-          // lib/meta-capi-client.ts with this same `eventId` — Meta dedupes on
-          // (event_name, event_id) within a 28-day window, which is exactly
-          // why the id is generated once, above.
-          reportDelivery(pixelFired === true, pixelFired === true ? undefined : 'pixel_not_loaded', eventId);
+          const metaProperties = metaSafeProperties(event, sanitized);
+          const pixelProperties = {
+            ...metaProperties,
+            ...(value !== undefined ? { value } : {}),
+            ...(currency ? { currency } : {}),
+            ...(product ? { content_ids: [product], content_type: 'product' } : {}),
+            ...(contentName ? { content_name: contentName } : {}),
+            ...(product ? { num_items: 1 } : {}),
+          };
+          const pixelFired = metaConfig.custom
+            ? trackMetaCustomEvent(effectiveMetaEvent, pixelProperties, { eventID: eventId })
+            : trackMetaEvent(effectiveMetaEvent, pixelProperties, { eventID: eventId });
+
+          // CAPI needs a persisted session to derive trusted email, fbp/fbc,
+          // IP, user agent and external_id on the server. Events before session
+          // creation still reach the browser Pixel and are never blocked.
+          const sessionId =
+            typeof sanitized?.session_id === 'string' ? sanitized.session_id : undefined;
+          if (sessionId) {
+            sendCapiFromBrowser({
+              eventName: effectiveMetaEvent,
+              eventId,
+              sessionId,
+              customData: {
+                ...(value !== undefined ? { value } : {}),
+                ...(currency ? { currency } : {}),
+                ...(product ? { content_ids: [product], content_type: 'product' } : {}),
+                ...(contentName ? { content_name: contentName } : {}),
+                ...(typeof sanitized?.step_number === 'number'
+                  ? { step_number: sanitized.step_number }
+                  : {}),
+                ...(event === 'quiz_started' ||
+                event === 'step_completed' ||
+                event === 'quiz_completed'
+                  ? { content_category: 'quiz' }
+                  : {}),
+              },
+            });
+          }
+          reportDelivery(
+            pixelFired,
+            pixelFired ? undefined : 'pixel_not_loaded',
+            eventId,
+          );
         }
       }
     },

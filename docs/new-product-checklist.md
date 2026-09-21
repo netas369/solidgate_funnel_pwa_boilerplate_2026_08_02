@@ -14,8 +14,14 @@ the PWA shell are the platform. Copy, prices, products, branding and assets are 
 | What | Where |
 |---|---|
 | Package name | `package.json` → `"name"` |
-| Supabase project ref | `supabase/config.toml` → `project_id` |
-| App names / ports | `apps/funnel/package.json`, `apps/pwa/package.json` (3205 / 3206) |
+| Supabase project ref | `supabase/config.toml` → `project_id` — **not optional**, see below |
+| App names / ports | `apps/funnel/package.json`, `apps/pwa/package.json`, `apps/cro/package.json` (3205 / 3206 / 3207) |
+
+**`project_id` must be unique across every repo on the machine.** The CLI names its
+local containers `supabase_db_<project_id>`, so two clones sharing a value share ONE
+local stack: whichever ran `supabase start` last owns it, and `supabase db reset` from
+either replaces the other's schema while both apps carry on pointing at it. Three repos
+inherited `funnel-boilerplate` before anyone noticed.
 
 ---
 
@@ -152,6 +158,75 @@ Available generic step types ship as a library — single/multi select, picture 
 select, chips, likert, slider, date and time wheels, input groups, email capture with
 consent, loader/interstitial screens, expert note, social wall, price step.
 
+**Every quiz change is a new version.** Bump `QUIZ_VARIANT` in
+`apps/funnel/src/features/quiz/server/quiz-definition.ts`, add an entry to
+`packages/shared/src/cro/segment-labels.ts` saying what changed, then publish the
+structure so the CRO board can label it:
+
+```sh
+npx tsx scripts/publish-quiz-definition.ts            # dry run
+npx tsx scripts/publish-quiz-definition.ts --apply
+```
+
+Publishing a changed config under an unchanged `QUIZ_VARIANT` fails loudly rather than
+blending two question sets under one name. Run it BEFORE the first session of a new
+version arrives, or its drop-off is recorded under step ids the board cannot label.
+
+---
+
+## 4b. CRO dashboard
+
+`apps/cro` (:3207) ships working — five tabs over this product's own data. What a new
+product has to do:
+
+**Who may read it is not decided here.** `cro_analysts` is seeded by the baseline
+with one row — the shared PMC Hub identity — and PMC Hub opens every board as that
+address. Which PEOPLE may do so is a PMC Hub role. There is no per-product list to
+maintain, and no INSERT to remember.
+
+- [ ] Its own Vercel project, root `apps/cro`, on a subdomain nobody links to publicly
+- [ ] `NEXT_PUBLIC_CRO_URL` set on **both** the CRO app and the funnel —
+  `/api/internal/cro-login-link` reads it to build the hand-through link
+- [ ] `CRO_LOGIN_LINK_SECRET` generated on the funnel, **independently** of
+  `INTERNAL_API_SECRET`, and that value pasted into this product's PMC Hub row. It is
+  the handoff's own credential: it opens the board as an address already on the list,
+  cannot mint for an arbitrary one, and works nowhere else. Never give PMC Hub
+  `INTERNAL_API_SECRET` — that one guards payment fulfilment and member provisioning,
+  and PMC Hub stores whatever it is given for the whole fleet. Setting the two equal
+  works perfectly and quietly undoes the separation.
+- [ ] Leave email signups **enabled** in Supabase Auth. Seeding `cro_analysts`
+  creates no auth user, so the first hand-through is what creates it. Disabling
+  signups breaks the very first click on a freshly deployed product and nothing
+  else, which reads as a broken link rather than a setting.
+- [ ] Supabase Auth email template checked — only if anyone will sign in **directly**
+  rather than through the hub. The board uses a **6-digit code**, and a stock
+  `confirmation` template mails a magic LINK instead, so the login dies with no error
+  at all. The template must contain `{{ .Token }}`.
+
+The board never holds a service-role key; a test fails the build if one is referenced.
+Everything it reads goes through `cro_*` functions gated on that table.
+
+**Two trade-offs this buys, both accepted deliberately:**
+
+- **No attribution.** Every visit arrives as the shared identity, so the board cannot
+  say who looked. Fine while boards are read-only aggregate counts — revisit if one
+  ever grows a write action.
+- **Revocation is immediate at the door, delayed inside.** Removing someone in PMC
+  Hub stops them minting a NEW session; a tab they already have open stays valid
+  until Supabase expires it.
+
+**And one thing to keep in mind:** the shared address is a real mailbox, and anyone
+who can read it can sign in to every product's board directly with an emailed code,
+without PMC Hub and without any secret. Guard it accordingly.
+
+Granting someone direct access, outside the hub, is still a second row:
+
+```sql
+INSERT INTO cro_analysts (email, note) VALUES ('you@example.com', 'direct access');
+```
+
+Full tour: [`docs/cro-dropoff.md`](cro-dropoff.md).
+
 ---
 
 ## 5. Offer, OTOs, success
@@ -241,7 +316,9 @@ npx supabase gen types typescript --linked > packages/shared/src/types/database.
 
 - [ ] `ADMIN_EMAILS` set — the admin dashboard is unreachable until it is
 - [ ] `RESEND_FROM_ADDRESS` set to a sender verified in Resend
-- [ ] `PAYMENT_COOKIE_SECRET` and `INTERNAL_API_SECRET` are fresh random values
+- [ ] `QUIZ_SESSION_COOKIE_SECRET`, `PAYMENT_COOKIE_SECRET`, `INTERNAL_API_SECRET`
+  and `CRO_LOGIN_LINK_SECRET` are fresh, independent random values — the last two
+  especially must differ
 - [ ] `SOLIDGATE_ENVIRONMENT=production` **only** in the Vercel Production scope
 - [ ] Solidgate catalog seeded against the **live** channel and `--verify` clean
 - [ ] Apple Pay domain association files in place for your domains
@@ -249,3 +326,8 @@ npx supabase gen types typescript --linked > packages/shared/src/types/database.
 - [ ] Legal pages reviewed by someone qualified
 - [ ] Consent approach decided
 - [ ] A real end-to-end purchase completed in sandbox, including a 3DS card
+- [ ] `supabase/config.toml` → `project_id` changed away from `project-template`
+- [ ] Quiz definition published (`publish-quiz-definition.ts --apply`), or the CRO
+  board renders raw step ids instead of questions
+- [ ] `cro_analysts` holds the shared PMC Hub row — the baseline seeds it, so this is
+  a check that the migration ran, not a step to perform

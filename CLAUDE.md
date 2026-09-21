@@ -43,14 +43,14 @@ Solidgate (`@solidgate/react-sdk`) · Serwist · Vitest · Turborepo
 
 ## Conventions
 
-- `apps/funnel` is `:3205`, `apps/pwa` is `:3206`.
+- `apps/funnel` is `:3205`, `apps/pwa` is `:3206`, `apps/cro` is `:3207`.
 - Feature code lives under `src/features/<feature>/{components,config,lib,hooks}`.
 - Content lives in `config/*.ts` + `packages/i18n/messages/en/*.json`, not inline in
   components. When adding content, extend the config — don't hardcode it in JSX.
 - The quiz is config-driven (`features/quiz/config/quiz-config.ts` against
   `quiz-schema.ts`). Add a new step *type* only when the interaction is genuinely new.
-- Quiz persistence uses one mutable `sessions` row containing the full
-  `quiz_answers` JSONB snapshot plus append-only `funnel_events`. Do not add one row per
+- Quiz persistence uses one mutable `sessions` row containing the complete
+  `quiz_answers` JSONB object plus append-only `funnel_events`. Do not add one row per
   answer. Read `docs/quiz-backend/README.md` before changing this contract.
 - All 8 OTO slots render one config-driven template from `features/oto/config/oto-config.ts`.
   Add an offer by editing config, not by writing a new page component.

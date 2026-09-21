@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   attributionEventProperties,
   captureAttributionParams,
+  captureFunnelSource,
   readStoredAttribution,
+  resolveFunnelSource,
   sanitizeAttributionSnapshot,
   selectFirstTouchUtm,
 } from '../attribution';
@@ -13,6 +15,47 @@ describe('funnel attribution', () => {
     window.history.replaceState({}, '', '/');
     document.cookie = '_fbc=; path=/; max-age=0';
     document.cookie = '_fbp=; path=/; max-age=0';
+  });
+
+  it('captures the explicit funnel entry source once per browser tab', () => {
+    window.history.replaceState({}, '', '/quiz?funnel_source=advertorial&utm_source=facebook');
+    expect(captureFunnelSource()).toBe('advertorial');
+
+    window.history.replaceState({}, '', '/quiz?funnel_source=main');
+    expect(captureFunnelSource()).toBe('advertorial');
+  });
+
+  it('keeps ad providers in attribution and rejects unknown funnel sources', () => {
+    window.history.replaceState({}, '', '/quiz?source=facebook&utm_source=facebook');
+    expect(captureFunnelSource()).toBe('quiz');
+    expect(captureAttributionParams()?.first_touch.utm_source).toBe('facebook');
+  });
+
+  it('derives internal source from the same-origin page that opened Quiz', () => {
+    expect(
+      resolveFunnelSource({
+        search: '',
+        pathname: '/lt/quiz',
+        referrer: 'https://funnel.example/lt',
+        origin: 'https://funnel.example',
+      }),
+    ).toBe('main');
+    expect(
+      resolveFunnelSource({
+        search: '',
+        pathname: '/quiz',
+        referrer: 'https://funnel.example/en/advertorial/story',
+        origin: 'https://funnel.example',
+      }),
+    ).toBe('advertorial');
+    expect(
+      resolveFunnelSource({
+        search: '',
+        pathname: '/quiz',
+        referrer: 'https://external.example/special-offer',
+        origin: 'https://funnel.example',
+      }),
+    ).toBe('quiz');
   });
 
   it('keeps first touch, ignores internal navigation and updates a new campaign last touch', () => {

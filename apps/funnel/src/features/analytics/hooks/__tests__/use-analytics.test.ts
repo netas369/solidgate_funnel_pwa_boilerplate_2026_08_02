@@ -11,7 +11,8 @@ vi.mock('../../lib/gtm', () => ({
 }));
 
 vi.mock('../../lib/meta-pixel', () => ({
-  trackMetaEvent: vi.fn(),
+  trackMetaEvent: vi.fn(() => true),
+  trackMetaCustomEvent: vi.fn(() => true),
 }));
 
 vi.mock('../../lib/meta-event-id', () => ({
@@ -30,7 +31,7 @@ import { useAnalytics } from '../use-analytics';
 import { trackFunnelEvent } from '@/features/quiz/lib/track-funnel-event';
 import { capturePostHogEvent } from '../../lib/posthog';
 import { pushDataLayerEvent } from '../../lib/gtm';
-import { trackMetaEvent } from '../../lib/meta-pixel';
+import { trackMetaCustomEvent, trackMetaEvent } from '../../lib/meta-pixel';
 import { sendCapiFromBrowser } from '../../lib/meta-capi-client';
 import { useAnalyticsStore } from '@/stores/analytics-store';
 
@@ -159,11 +160,25 @@ describe('useAnalytics', () => {
 
     expect(trackMetaEvent).toHaveBeenCalledWith(
       'Purchase',
-      expect.objectContaining({ event_id: 'purchase:order-123' }),
+      expect.objectContaining({
+        value: 13,
+        currency: 'EUR',
+        content_ids: ['solidgate-product-id'],
+      }),
       { eventID: 'purchase:order-123' },
     );
-    // CAPI mirror removed (2026-07-30): browser pixel is the only Meta channel.
-    expect(sendCapiFromBrowser).not.toHaveBeenCalled();
+    expect(sendCapiFromBrowser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'Purchase',
+        eventId: 'purchase:order-123',
+        sessionId: 'session-123',
+        customData: expect.objectContaining({
+          value: 13,
+          currency: 'EUR',
+          content_ids: ['solidgate-product-id'],
+        }),
+      }),
+    );
     // Delivery telemetry: every Purchase reports whether fbq actually fired.
     expect(capturePostHogEvent).toHaveBeenCalledWith(
       'meta_pixel_delivery',
@@ -194,13 +209,23 @@ describe('useAnalytics', () => {
 
     expect(trackMetaEvent).toHaveBeenCalledWith(
       'StartTrial',
-      expect.objectContaining({ event_id: 'purchase:order-free-1' }),
+      expect.objectContaining({
+        value: 0,
+        currency: 'EUR',
+        content_ids: ['solidgate-product-id'],
+      }),
       { eventID: 'purchase:order-free-1' },
     );
-    expect(sendCapiFromBrowser).not.toHaveBeenCalled();
+    expect(sendCapiFromBrowser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'StartTrial',
+        eventId: 'purchase:order-free-1',
+        sessionId: 'session-123',
+      }),
+    );
   });
 
-  it('never emits an OTO checkout_completed to Meta, even with full value/currency', () => {
+  it('emits a genuine OTO checkout_completed to Pixel and CAPI as Purchase', () => {
     const { result } = renderHook(() => useAnalytics());
     act(() => {
       result.current.track('checkout_completed', {
@@ -213,8 +238,22 @@ describe('useAnalytics', () => {
       });
     });
 
-    expect(trackMetaEvent).not.toHaveBeenCalled();
-    expect(sendCapiFromBrowser).not.toHaveBeenCalled();
+    expect(trackMetaEvent).toHaveBeenCalledWith(
+      'Purchase',
+      expect.objectContaining({
+        value: 59,
+        currency: 'EUR',
+        content_ids: ['solidgate-product-id'],
+      }),
+      { eventID: 'purchase:oto-order-1' },
+    );
+    expect(sendCapiFromBrowser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'Purchase',
+        eventId: 'purchase:oto-order-1',
+        sessionId: 'session-123',
+      }),
+    );
     // Internal analytics keep receiving the OTO purchase unchanged.
     expect(capturePostHogEvent).toHaveBeenCalledWith(
       'checkout_completed',
@@ -263,6 +302,40 @@ describe('useAnalytics', () => {
         skip_reason: 'missing_value_or_currency',
         event_id: 'purchase:order-nocur',
         product_category: 'main',
+      }),
+    );
+  });
+
+  it('sends quiz milestones without answers, result segments, or raw session identifiers', () => {
+    const { result } = renderHook(() => useAnalytics());
+    act(() => {
+      result.current.track('step_completed', {
+        session_id: 'session-123',
+        step_id: 'sensitive-health-question',
+        step_number: 4,
+        answers: { health: 'private' },
+        result_segment: 'private-profile',
+      });
+    });
+
+    expect(trackMetaCustomEvent).toHaveBeenCalledWith(
+      'QuizStepCompleted',
+      expect.objectContaining({ step_number: 4 }),
+      { eventID: 'random-fallback' },
+    );
+    const pixelProperties = vi.mocked(trackMetaCustomEvent).mock.calls[0]?.[1];
+    expect(pixelProperties).not.toHaveProperty('answers');
+    expect(pixelProperties).not.toHaveProperty('result_segment');
+    expect(pixelProperties).not.toHaveProperty('step_id');
+    expect(pixelProperties).not.toHaveProperty('session_id');
+    expect(sendCapiFromBrowser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'QuizStepCompleted',
+        sessionId: 'session-123',
+        customData: expect.objectContaining({
+          step_number: 4,
+          content_category: 'quiz',
+        }),
       }),
     );
   });

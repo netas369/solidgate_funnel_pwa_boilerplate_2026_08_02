@@ -1,0 +1,4 @@
+# Never create apps/cro/.env.local in the repo — the root .gitignore covers
+# .env*, and both reference apps have theirs committed by accident.
+.next/
+next-env.d.ts

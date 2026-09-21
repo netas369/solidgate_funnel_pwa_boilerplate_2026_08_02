@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
  * Safari ITP, ad blockers, and intermittent fbevents.js load failures.
  * Mirroring critical events (Lead, Purchase) server-side recovers most of
  * that loss. Meta dedupes the server event against the client event by
- * matching (event_name, event_id) within 28 days.
+ * matching (event_name, event_id).
  *
  * Reference: https://developers.facebook.com/docs/marketing-api/conversions-api/get-started
  */
@@ -29,9 +29,13 @@ type MetaUserData = {
   client_ip_address?: string;
   /** User-Agent header, unhashed. */
   client_user_agent?: string;
+  /** SHA-256 of a stable first-party visitor identifier (session fallback). */
+  external_id?: string;
+  /** SHA-256 hashed ISO 3166-1 alpha-2 country code. */
+  country?: string;
 };
 
-type MetaCustomData = {
+export type MetaCustomData = {
   /** Numeric value of the conversion (Purchase requires this). */
   value?: number;
   /** ISO-4217 currency code (Purchase requires this). */
@@ -40,6 +44,25 @@ type MetaCustomData = {
   content_ids?: string[];
   /** Product type. Common: "product", "product_group". */
   content_type?: string;
+  content_name?: string;
+  contents?: Array<{ id: string; quantity: number; item_price?: number }>;
+  num_items?: number;
+  order_id?: string;
+  /** Safe funnel context; never include answers or result segments. */
+  quiz_variant?: string;
+  funnel_variant?: string;
+  locale?: string;
+  source?: string;
+  step_number?: number;
+  content_category?: string;
+  device_type?: string;
+  browser?: string;
+  platform?: string;
+  browser_language?: string;
+  country?: string;
+  region?: string;
+  city?: string;
+  timezone?: string;
 };
 
 export type SendMetaCapiEventInput = {
@@ -62,6 +85,17 @@ function sha256Hex(input: string): string {
 /** SHA-256 a normalized email (lowercased + trimmed). */
 export function hashMetaEmail(email: string): string {
   return sha256Hex(email.trim().toLowerCase());
+}
+
+/** Hash a stable first-party identifier before using it for Meta matching. */
+export function hashMetaExternalId(id: string): string {
+  return sha256Hex(id.trim());
+}
+
+/** Normalize and hash a two-letter country code for Meta Advanced Matching. */
+export function hashMetaCountry(country: string): string | undefined {
+  const normalized = country.trim().toLowerCase();
+  return /^[a-z]{2}$/.test(normalized) ? sha256Hex(normalized) : undefined;
 }
 
 /**

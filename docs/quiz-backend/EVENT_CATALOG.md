@@ -17,12 +17,14 @@ Database events are durable business milestones. Frontend analytics tools remain
 
 The server verifies session ownership, supplies `created_at`, bounds client-supplied `occurred_at`, and rejects unknown event names.
 
+Quiz-screen milestones use the session transaction that owns the matching state change: create writes `quiz_started`, save writes `step_completed` or `lead_captured`, and completion writes `quiz_completed`. The quiz browser does not insert these rows directly.
+
 ## Canonical events
 
 | Event | Emitted when | Owner | Idempotency |
 |---|---|---|---|
-| `quiz_started` | First quiz screen becomes active | Client request, backend validated | Once per session |
-| `step_completed` | A valid step snapshot is committed | Persist transaction | Unique `event_id`; normally once per session/step |
+| `quiz_started` | First quiz screen becomes active for a non-crawler visitor, before any click is required | Client request, backend validated | Once per session |
+| `step_completed` | Valid step progress is saved | Save transaction | Unique `event_id`; normally once per session/step |
 | `lead_captured` | Valid email/consent state is committed | Backend | Once per session |
 | `quiz_completed` | Result and completed session are committed | Completion transaction | Exactly once per session |
 | `results_viewed` | Results are first displayed | Client request, backend validated | Normally once per session |
@@ -41,6 +43,15 @@ Existing implementations may use `oto_viewed`, `oto_accepted`, and `oto_declined
 - Do not include email, full answers, result payloads, IP addresses, auth/session credentials, payment card data, or message content.
 - Add a new event only when it represents a durable business fact used by recovery, operations, or reporting.
 - Update this catalog, runtime allowlist, database constraint, reporting queries, and tests together.
+- Known Meta crawlers are filtered before session creation, so they cannot create `quiz_started` or later Quiz milestones. Do not filter on `fbclid`, Meta referrers, `FBAN`, `FBAV`, or `Instagram`; those signals also belong to real visitors.
+
+## Step activity is NOT an event
+
+Per-step viewed/answered/skipped state lives in `sessions.step_activity`, a bounded JSONB
+object on the session row. It must never become `funnel_events` rows: that would be one
+row per screen per visitor, which is the unbounded clickstream this table exists to stay
+out of — and the partial unique indexes would reject it anyway. See
+[CRO_TRACKING.md](CRO_TRACKING.md).
 
 ## Keep these in product analytics instead
 
@@ -50,3 +61,7 @@ Existing implementations may use `oto_viewed`, `oto_accepted`, and `oto_declined
 - frontend performance timings;
 - raw device fingerprints;
 - debug logs.
+
+## Meta analytics mirror
+
+Selected browser analytics events are also mirrored to Meta Pixel and CAPI with one shared event ID. `quiz_started` becomes `ViewContent`; step and completion milestones become the custom `QuizStepCompleted` and `QuizCompleted` events; lead, tier, checkout, Purchase, and StartTrial use Meta standard events. This analytics mirror does not create extra database answer rows. See [Meta tracking contract](META_TRACKING.md) for the exact fields, order verification, bot filtering, and privacy boundary.

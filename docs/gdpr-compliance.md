@@ -15,7 +15,7 @@
 >
 > The predecessor's owner decided to ship **without a cookie-consent banner**:
 > analytics/marketing consent was treated as granted by default and all
-> trackers (PostHog, GTM, Meta Pixel, Vercel Analytics) load unconditionally.
+> trackers (PostHog, GTM, Meta Pixel/CAPI, Vercel Analytics) load unconditionally.
 > **The boilerplate still behaves that way.**
 >
 > That was one company's risk decision for one product, taken with their own
@@ -48,7 +48,7 @@
 
 | Data Category | Data Fields | Collection Point | Storage Location | Retention | Legal Basis Needed |
 |---------------|-------------|-----------------|------------------|-----------|-------------------|
-| **Email address** | `email` | Quiz email capture step (`apps/funnel/src/features/quiz/components/steps/email-capture-step.tsx`) | Supabase `sessions.email`, localStorage `funnel_pending_leads` | Indefinite (no policy) | Consent (Art. 6(1)(a)) |
+| **Email address** | `email` | Quiz email capture step (`apps/funnel/src/features/quiz/components/steps/email-capture-step.tsx`) | Supabase `sessions.email`; may also be part of the seven-day `quiz-store` recovery state | Indefinite on the server until a product retention policy is configured | Consent (Art. 6(1)(a)) |
 | **Health-related quiz answers** | `quiz_answers` (JSONB) | Quiz step selections (`apps/funnel/src/stores/quiz-store.ts`) | Supabase `sessions.quiz_answers`, localStorage `quiz-store` | Indefinite (no policy) | Explicit consent (Art. 9(2)(a))  -  special category |
 | **Behavioral segment** | `result_segment` | Quiz completion | Supabase `sessions.result_segment` | Indefinite (no policy) | Legitimate interest or consent |
 | **Payment identifiers** | `solidgate_order_id`, `solidgate_subscription_id`, `solidgate_customer_email`, saved-card tokens (`solidgate_session_vault`, `solidgate_account_vault`), `solidgate_webhook_events.payload` | Solidgate hosted form + webhooks | Supabase `orders`, `entitlements`, `renewal_events`, `solidgate_*` tables | Indefinite (no policy) | Contract (Art. 6(1)(b)) |
@@ -63,10 +63,11 @@
 | Identifier | Type | Data Stored | Duration | Essential? | Consent Required? |
 |------------|------|-------------|----------|------------|-------------------|
 | `payment_access` | HTTP cookie (HttpOnly, Secure, SameSite=Lax) | HMAC-signed `paymentIntentId:sessionId` | 90 minutes | Yes  -  payment flow | No (strictly necessary) |
+| `funnel_visitor_id` | HTTP cookie (HttpOnly, Secure in production, SameSite=Lax) | Anonymous UUID for stable funnel A/B assignment | 1 year | Product decision | Usually yes when used for analytics/experiments |
 | Supabase auth cookies | HTTP cookie | Auth session token | Session | Yes  -  authentication | No (strictly necessary) |
 | PostHog cookies | JS cookie | Analytics identifiers, session replay | Varies (up to 1 year) | No  -  analytics | **Yes** |
-| `quiz-store` | localStorage | Full quiz answers, session ID, step history | Permanent | Debatable  -  UX recovery | **Yes** (contains PII + health data) |
-| `funnel_pending_leads` | localStorage | Email, quiz answers, session ID, timestamp | Permanent | No  -  retry mechanism | **Yes** (contains PII) |
+| `_fbp`, `_fbc` | JS cookie | Meta browser identifier and ad-click attribution | Up to 90 days in this template | No - marketing attribution | **Yes** |
+| `quiz-store` | localStorage | Full quiz answers, session ID, step history | 7 days from the latest persisted change | Debatable  -  UX recovery | **Yes** (contains PII + health data) |
 | `solidgate_main_recovery_v1` | localStorage | Payment recovery handle | Until cleared | Yes  -  payment recovery | No (no PII) |
 
 > The predecessor also stored a product-specific onboarding flag here. Re-run
@@ -383,7 +384,6 @@ Keeping abandoned quiz data from 2 years ago serves no purpose and creates unnec
 | User progress | Duration of account + 30 days after deletion | Service delivery |
 | Orders (financial records) | 7 years (anonymized after account deletion) | Tax/accounting legal obligation |
 | Entitlements | Duration of account | Service delivery |
-| localStorage (`funnel_pending_leads`) | 24 hours (auto-clear via JS) | Retry mechanism doesn't need permanent storage |
 | localStorage (`quiz-store`) | 7 days (auto-clear via JS) | Session recovery; permanent storage is excessive |
 
 **What to implement:**
@@ -393,20 +393,13 @@ Keeping abandoned quiz data from 2 years ago serves no purpose and creates unnec
    - Delete `otp_attempts` older than 30 days
    - Delete `funnel_events` older than 90 days where session has no purchase
 
-2. **localStorage TTL**  -  Add expiry timestamps to stored data and check on read:
-   ```typescript
-   const stored = JSON.parse(localStorage.getItem('funnel_pending_leads'));
-   if (stored && Date.now() - stored.timestamp > 24 * 60 * 60 * 1000) {
-     localStorage.removeItem('funnel_pending_leads');
-   }
-   ```
+2. **Review the implemented `quiz-store` seven-day TTL** for each product and shorten it if the quiz collects especially sensitive data.
 
 3. **Document retention periods** in the privacy policy.
 
 **Files to create/modify:**
 - New: `supabase/functions/data-cleanup/index.ts`  -  scheduled cleanup function
-- `apps/funnel/src/features/quiz/hooks/use-quiz-persistence.ts`  -  add TTL check
-- `apps/funnel/src/stores/quiz-store.ts`  -  add TTL to persisted state
+- `apps/funnel/src/stores/quiz-store.ts`  -  adjust the implemented TTL if the product requires a shorter recovery window
 
 ---
 
@@ -432,14 +425,14 @@ The EU Consumer Rights Directive (Article 8(7)) requires that the trader provide
 ### 3.5 Unencrypted PII in localStorage
 
 **What's wrong:**
-`apps/funnel/src/features/quiz/hooks/use-quiz-persistence.ts` stores email addresses and quiz answers in plaintext in localStorage under the key `funnel_pending_leads`. Anyone with physical or remote access to the browser can read this data. The quiz store (`apps/funnel/src/stores/quiz-store.ts`) also persists answers to localStorage.
+The redundant `funnel_pending_leads` copy has been removed. The Quiz store (`apps/funnel/src/stores/quiz-store.ts`) still persists answers for interrupted-session recovery, but now rejects state older than seven days. Anyone with physical or remote access to the browser during that period may still read this data.
 
 **Why it matters:**
 GDPR Article 32 requires "appropriate technical and organisational measures" to ensure data security. Storing health-related data and email addresses in plaintext client-side storage is not appropriate. While localStorage is same-origin, it's accessible to any JavaScript running on the page (including injected scripts from GTM tags or browser extensions).
 
 **What to implement:**
-- **Option A (preferred):** Don't store PII in localStorage at all. Use server-side session storage via the existing `/api/session/persist` endpoint. Only store the session UUID in localStorage.
-- **Option B:** If client-side caching is necessary for offline/retry, encrypt the data using the Web Crypto API with a key derived from the session ID. Add a TTL and clear on successful server persist.
+- **Option A (highest privacy):** Don't store answers in localStorage. Use the Quiz-owned `/api/quiz/session/save` endpoint and retain only the session UUID locally. The tradeoff is losing an answer typed while the visitor is offline and reloads before it can be saved.
+- **Option B (current boilerplate):** Keep the short-lived recovery cache, enforce the seven-day TTL, and shorten the period for products that collect especially sensitive answers.
 
 ---
 

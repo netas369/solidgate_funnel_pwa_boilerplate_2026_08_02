@@ -29,6 +29,8 @@ declare global {
   }
 }
 
+let pendingHashedEmail: string | undefined;
+
 /**
  * Verify the real fbevents.js library executed, not just the inline stub queue.
  * The stub queues calls forever if `callMethod` is missing (e.g. CDN returns
@@ -59,8 +61,13 @@ export function setMetaUserData(hashedEmail: string): void {
   if (typeof window === 'undefined') return;
   const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
   if (!pixelId) return;
+  if (!/^[a-f0-9]{64}$/i.test(hashedEmail)) return;
+  // Keep the value if email capture wins the race against fbevents.js. The
+  // later initMetaPixel call will initialize with the same advanced-matching
+  // data rather than permanently losing it.
+  pendingHashedEmail = hashedEmail.toLowerCase();
   if (!isPixelLibraryLoaded()) return;
-  window.fbq?.('init', pixelId, { em: hashedEmail });
+  window.fbq?.('init', pixelId, { em: pendingHashedEmail });
 }
 
 /**
@@ -77,7 +84,11 @@ export function initMetaPixel(): void {
     );
     return;
   }
-  window.fbq?.('init', pixelId);
+  window.fbq?.(
+    'init',
+    pixelId,
+    pendingHashedEmail ? { em: pendingHashedEmail } : undefined,
+  );
   window.fbq?.('track', 'PageView');
 }
 
@@ -106,8 +117,9 @@ export function trackMetaCustomEvent(
   event: string,
   params?: Record<string, unknown>,
   options?: FbqOptions,
-): void {
-  if (typeof window === 'undefined') return;
-  if (!isPixelLibraryLoaded()) return;
+): boolean {
+  if (typeof window === 'undefined') return false;
+  if (!isPixelLibraryLoaded()) return false;
   window.fbq?.('trackCustom', event, params, options);
+  return true;
 }

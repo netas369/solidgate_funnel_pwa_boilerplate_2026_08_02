@@ -179,8 +179,9 @@ const config = {
     },
 
     // ─── Step 6 — Lead-capture gate ─────────────────────────────────────────
-    // Submitting fires captureLeadRecord + the hash-email → Meta userData →
-    // PostHog identify → GTM chain in quiz-page.handleEmailSubmit.
+    // Submitting commits the complete answer state + lead milestone through the
+    // hardened API, then runs the hash-email → Meta userData → PostHog
+    // identify → GTM chain in quiz-page.handleEmailSubmit.
     {
       stepId: 'step6',
       phase: 'phases.account',
@@ -191,9 +192,9 @@ const config = {
     },
 
     // ─── Step 7 — Terminal loader ───────────────────────────────────────────
-    // onComplete → finalizeAndNavigate('/offer'): fires quiz_completed and does
-    // the final answers → sessions.quiz_answers sync before routing. Keep a
-    // terminal step of this type (or trial_price) as the last step.
+    // onComplete → finalizeAndNavigate('/offer'): awaits the final save and
+    // server-owned completion before routing. Keep a terminal step of this type
+    // (or trial_price) as the last step.
     {
       stepId: 'step7',
       phase: 'phases.account',

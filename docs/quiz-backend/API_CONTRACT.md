@@ -8,9 +8,14 @@ Route paths may be adapted to the host framework, but the behavior below is the 
 - Server timestamps are ISO-8601 UTC.
 - The server derives `user_id`, timestamps, completion state, and result values.
 - Anonymous reads and writes require a signed, expiring session credential.
+- The Quiz credential is signed only with `QUIZ_SESSION_COOKIE_SECRET`, which must contain at least 32 characters and must not be reused as `PAYMENT_COOKIE_SECRET`.
+- A Payment cookie does not grant access to Quiz sessions.
 - Every update to current state supplies `expectedRevision`.
 - A stale revision returns `409 STALE_SESSION_REVISION`; it never silently overwrites newer data.
 - Size and quiz-definition validation run before a database write.
+- Event metadata containing answer/result payloads, email, IP, credentials, or card/payment-secret fields is rejected before a database write.
+- Session creation remains tied to Quiz screen activation, not the first click, so visitors who leave without interacting remain measurable.
+- Known Meta crawler User-Agent tokens are rejected before cookie signing and database access. `fbclid`, Meta referrers, and Facebook/Instagram in-app browser tokens are not bot signals.
 
 Standard error:
 
@@ -18,13 +23,15 @@ Standard error:
 {
   "error": {
     "code": "INVALID_QUIZ_ANSWERS",
-    "message": "The answer snapshot is invalid.",
-    "fields": {"height_cm": "OUT_OF_RANGE"}
+    "message": "The saved answers are invalid.",
+    "fields": { "primaryGoal": "INVALID_OPTION" }
   }
 }
 ```
 
-## `POST /api/session/create`
+The reference quiz frontend persists the returned `revision`, serializes saves per session, requires a successful lead save before leaving the email screen, and waits for the final save plus completion before leaving the quiz. It never writes quiz milestones directly to `funnel_events`.
+
+## `POST /api/quiz/session/create`
 
 Creates exactly one session row.
 
@@ -32,15 +39,27 @@ Request:
 
 ```json
 {
-  "visitorId": "web_6f9938c8d8e94a6a",
-  "quizVariant": "example-v1",
-  "funnelVariant": "main-a",
+  "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
   "locale": "en",
   "source": "quiz",
   "attribution": {
-    "utm_source": "meta",
-    "utm_medium": "paid_social",
-    "utm_campaign": "example_launch"
+    "first_touch": {
+      "utm_source": "meta",
+      "utm_medium": "paid_social",
+      "utm_campaign": "example_launch",
+      "fbclid": "example_click_id",
+      "landing_url": "https://example.com/en/quiz?utm_source=meta",
+      "captured_at": "2026-09-11T08:00:00.000Z"
+    },
+    "last_touch": {
+      "utm_source": "meta",
+      "utm_medium": "paid_social",
+      "utm_campaign": "example_launch",
+      "fbclid": "example_click_id",
+      "captured_at": "2026-09-11T08:00:00.000Z"
+    },
+    "fbc": "fb.1.1789113600000.example_click_id",
+    "fbp": "fb.1.1789113600000.123456789"
   }
 }
 ```
@@ -54,17 +73,33 @@ Response `201`:
     "status": "active",
     "currentStepId": null,
     "answers": {},
-    "revision": 0
+    "revision": 0,
+    "quizVariant": "boilerplate-v1",
+    "funnelVariant": "main-v1",
+    "source": "quiz"
   },
-  "sessionToken": "signed-expiring-token"
+  "persisted": {
+    "id": "0198d633-48df-7ca8-b728-c4339d29db47",
+    "status": "active",
+    "revision": 0,
+    "current_step_id": null
+  }
 }
 ```
 
-The server validates known variants, captures bounded client context, and makes create idempotent for the supplied session identity.
+`sessionId` is optional; the server generates it when omitted. The caller cannot supply `visitorId`: the server creates or reuses the one-year HTTP-only `funnel_visitor_id` cookie. A successful response also sets the signed, HTTP-only `quiz_session_access` cookie. Reusing a session ID returns `409 SESSION_ALREADY_EXISTS` rather than taking ownership of the existing session.
 
-## `POST /api/session/persist`
+`quizVariant` remains the server-owned immutable Quiz definition. `funnelVariant` is assigned server-side using the visitor cookie and optional `FUNNEL_VARIANT_WEIGHTS`; the caller cannot select either variant. The returned values are the source of truth for rendering and analytics.
 
-Updates the existing row with the complete current answer snapshot.
+`source` describes the internal page that sent the visitor into Quiz and is separate from external `utm_source`. The supported values are `quiz`, `main`, `advertorial`, `special-offer`, and `special-offer-free`.
+
+The server also stores request-derived context in `client_context`: device type, browser, platform, browser language, country/region/city/timezone headers, public request IP and User-Agent. These values are not trusted authorization data and are not returned by the read endpoint.
+
+Known Meta crawler response `204` has no body, sets no cookie, and creates neither a `sessions` row nor a `quiz_started` event. The frontend treats it as a non-persistent public render and emits no Quiz analytics. A real visitor using the Facebook or Instagram in-app browser still receives the normal `201` response and is tracked even if they leave before clicking.
+
+## `POST /api/quiz/session/save`
+
+Updates the existing row with the complete current answer object. Despite the full object being sent, this remains one row in `sessions`.
 
 Request:
 
@@ -72,17 +107,17 @@ Request:
 {
   "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
   "expectedRevision": 2,
-  "currentStepId": "activity_level",
+  "currentStepId": "step4",
   "answers": {
     "gender": "female",
-    "diet_familiarity": "beginner",
-    "activity_level": "light"
+    "primaryGoal": "a",
+    "challenges": ["o1", "o2"]
   },
   "event": {
     "eventId": "0198d633-0000-7000-8000-000000000002",
     "type": "step_completed",
     "stepNumber": 3,
-    "metadata": {"step_id": "activity_level"}
+    "metadata": { "step_id": "step3" }
   }
 }
 ```
@@ -92,25 +127,46 @@ Successful backend flow:
 1. Authenticate or verify the signed session credential.
 2. Load the session and require `status = active`.
 3. Compare `expectedRevision` with `sessions.revision`.
-4. Validate the entire snapshot against `sessions.quiz_variant`.
-5. Update `quiz_answers`, `current_step_id`, `updated_at`, and `revision = revision + 1`.
-6. Insert the optional allowed event using its unique `event_id`.
-7. Commit the state and event together.
+4. Validate all submitted answers against `sessions.quiz_variant`.
+5. Reject a normal save that removes a previously saved answer key.
+6. Update `quiz_answers`, `current_step_id`, `updated_at`, and `revision = revision + 1`.
+7. Insert the optional allowed event using its unique `event_id`.
+8. Commit the state and event together.
 
 Response `200`:
 
 ```json
 {
   "ok": true,
-  "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
   "revision": 3,
-  "currentStepId": "activity_level"
+  "currentStepId": "step4",
+  "status": "active"
 }
 ```
 
-If `expectedRevision` is stale, response `409` includes the current safe state so the client can reconcile. The client should normally serialize saves, making this conflict exceptional rather than routine.
+If `expectedRevision` is stale, response `409` includes `currentRevision`. The client can then perform an authorized read and reconcile. The client should normally serialize saves, making this conflict exceptional rather than routine.
 
-## `GET /api/session/read?sessionId=:sessionId`
+### Optional `stepActivity` on save
+
+```json
+{
+  "stepActivity": {
+    "activityId": "0198d633-0000-7000-8000-00000000000a",
+    "viewed": ["step3"],
+    "answered": ["step2"],
+    "skipped": []
+  }
+}
+```
+
+Step IDS ONLY — there is deliberately no timestamp field, so a client clock cannot move
+`viewed_at` or `answered_at`. `viewed` keeps duplicates (they are the view counter);
+`answered` and `skipped` are deduped. Arrays are capped at 200 and an over-length array is
+a `400`. Unknown step ids are **dropped with a warning and the save still succeeds** — a
+stale tab must never be locked out of persisting the visitor's answers. `activityId` makes
+a retried save idempotent for the merge.
+
+## `GET /api/quiz/session/read?sessionId=:sessionId`
 
 Requires authenticated ownership or the signed session credential.
 
@@ -120,24 +176,25 @@ Response `200`:
 {
   "id": "0198d633-48df-7ca8-b728-c4339d29db47",
   "status": "active",
-  "currentStepId": "activity_level",
-  "answers": {
+  "current_step_id": "step4",
+  "quiz_answers": {
     "gender": "female",
-    "diet_familiarity": "beginner",
-    "activity_level": "light"
+    "primaryGoal": "a",
+    "challenges": ["o1", "o2"]
   },
-  "result": null,
-  "resultSegment": null,
-  "quizVariant": "example-v1",
-  "funnelVariant": "main-a",
+  "quiz_result": null,
+  "result_segment": null,
+  "quiz_variant": "boilerplate-v1",
+  "funnel_variant": "main-v1",
   "locale": "en",
+  "source": "quiz",
   "revision": 3
 }
 ```
 
 Do not return event history by default. It is not required to resume the quiz.
 
-## `POST /api/session/complete`
+## `POST /api/quiz/session/complete`
 
 Request:
 
@@ -153,11 +210,11 @@ The backend authorizes the caller, validates every required reachable answer, ca
 ```json
 {
   "quiz_result": {
-    "score_version": "example-v1",
-    "profile": "balanced",
-    "scores": {"consistency": 72, "readiness": 64}
+    "score_version": "boilerplate-v1",
+    "profile": "a",
+    "answered_questions": 5
   },
-  "result_segment": "balanced",
+  "result_segment": "a",
   "status": "completed",
   "current_step_id": "results",
   "completed_at": "2026-09-09T10:20:00Z",
@@ -174,24 +231,24 @@ Response `200`:
   "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47",
   "status": "completed",
   "revision": 8,
-  "resultSegment": "balanced",
+  "resultSegment": "a",
   "result": {
-    "score_version": "example-v1",
-    "profile": "balanced",
-    "scores": {"consistency": 72, "readiness": 64}
+    "score_version": "boilerplate-v1",
+    "profile": "a",
+    "answered_questions": 5
   },
   "completedAt": "2026-09-09T10:20:00Z"
 }
 ```
 
-## `POST /api/session/link-user`
+## `POST /api/quiz/session/link-user`
 
 Requires authentication. The server reads the user from the trusted authentication context; the request cannot provide a different user ID.
 
 Request:
 
 ```json
-{"sessionId": "0198d633-48df-7ca8-b728-c4339d29db47"}
+{ "sessionId": "0198d633-48df-7ca8-b728-c4339d29db47" }
 ```
 
 The operation is idempotent for the same user. If a different user already owns the session, return `409 SESSION_OWNERSHIP_MISMATCH`.
@@ -212,16 +269,16 @@ Request:
 }
 ```
 
-The backend validates authorization, event name, metadata, and size. Reusing the same `eventId` returns success without inserting another row. Clients cannot emit server-owned events such as `quiz_completed` or payment-confirmed events.
+The backend validates authorization, event name, metadata, size, and any client timestamp. Client timestamps may be at most seven days old or five minutes in the future. Reusing the same `eventId` returns success without inserting another row. Clients cannot emit server-owned events such as `quiz_completed` or `checkout_completed`.
 
 ## Recommended limits
 
-| Item | Limit |
-|---|---:|
-| Complete `quiz_answers` snapshot | 64 KiB |
-| Complete `quiz_result` | 64 KiB |
-| Event metadata | 8 KiB |
-| Email | 320 characters |
-| Locale | 35 characters |
-| Variant/source/step key | 100 characters |
-| One attribution string | 255 characters |
+| Item                             |          Limit |
+| -------------------------------- | -------------: |
+| Complete `quiz_answers` object   |         64 KiB |
+| Complete `quiz_result`           |         64 KiB |
+| Event metadata                   |          8 KiB |
+| Email                            | 320 characters |
+| Locale                           |  35 characters |
+| Variant/source/step key          | 100 characters |
+| One attribution string           | 500 characters |

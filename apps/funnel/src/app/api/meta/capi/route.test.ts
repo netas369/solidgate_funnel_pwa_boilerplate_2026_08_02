@@ -2,9 +2,40 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
-  session: { id: '3fa85f64-5717-4562-b3fc-2c963f66afa6', email: 'buyer@example.com' } as {
+  session: {
+    id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+    email: 'buyer@example.com',
+    visitor_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+    quiz_variant: 'boilerplate-v1',
+    funnel_variant: 'main-v1',
+    locale: 'en',
+    source: 'advertorial',
+    client_context: {
+      device_type: 'mobile',
+      browser: 'Safari',
+      platform: 'iOS',
+      browser_language: 'lt-LT',
+      country: 'LT',
+      region: 'VL',
+      city: 'Vilnius',
+      timezone: 'Europe/Vilnius',
+    },
+    attribution: {
+      first_touch: { utm_source: 'facebook', utm_campaign: 'summer' },
+      last_touch: { utm_source: 'facebook', utm_campaign: 'retargeting' },
+      fbc: 'fb.1.1789113600000.click-1',
+      fbp: 'fb.1.1789113600000.browser-1',
+    },
+  } as {
     id: string;
     email: string | null;
+    visitor_id?: string | null;
+    quiz_variant: string | null;
+    funnel_variant: string | null;
+    locale: string | null;
+    source?: string | null;
+    attribution: Record<string, unknown> | null;
+    client_context?: Record<string, unknown> | null;
   } | null,
   sessionError: null as { message: string } | null,
   order: {
@@ -29,6 +60,8 @@ const mocks = vi.hoisted(() => ({
   verifyPaymentCookie: vi.fn(),
   sendMetaCapiEvent: vi.fn(),
   hashMetaEmail: vi.fn((email: string) => `hashed:${email}`),
+  hashMetaExternalId: vi.fn((id: string) => `hashed-id:${id}`),
+  hashMetaCountry: vi.fn((country: string) => `hashed-country:${country}`),
 }));
 
 vi.mock('@repo/shared/supabase/admin', () => ({
@@ -68,6 +101,8 @@ vi.mock('@repo/shared/payment-cookie', () => ({
 vi.mock('@/features/analytics/lib/meta-capi', () => ({
   sendMetaCapiEvent: mocks.sendMetaCapiEvent,
   hashMetaEmail: mocks.hashMetaEmail,
+  hashMetaExternalId: mocks.hashMetaExternalId,
+  hashMetaCountry: mocks.hashMetaCountry,
 }));
 
 import { POST } from './route';
@@ -109,7 +144,33 @@ describe('Meta CAPI ingress guard', () => {
     process.env.PAYMENT_COOKIE_SECRET = 'test-secret';
     process.env.VERCEL_ENV = 'production';
     process.env.NEXT_PUBLIC_FUNNEL_URL = 'https://funnel.example';
-    mocks.session = { id: SESSION_ID, email: 'buyer@example.com' };
+    process.env.META_CAPI_ACCESS_TOKEN = 'test-token';
+    process.env.META_PIXEL_ID = 'test-pixel';
+    mocks.session = {
+      id: SESSION_ID,
+      email: 'buyer@example.com',
+      visitor_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      quiz_variant: 'boilerplate-v1',
+      funnel_variant: 'main-v1',
+      locale: 'en',
+      source: 'advertorial',
+      client_context: {
+        device_type: 'mobile',
+        browser: 'Safari',
+        platform: 'iOS',
+        browser_language: 'lt-LT',
+        country: 'LT',
+        region: 'VL',
+        city: 'Vilnius',
+        timezone: 'Europe/Vilnius',
+      },
+      attribution: {
+        first_touch: { utm_source: 'facebook', utm_campaign: 'summer' },
+        last_touch: { utm_source: 'facebook', utm_campaign: 'retargeting' },
+        fbc: 'fb.1.1789113600000.click-1',
+        fbp: 'fb.1.1789113600000.browser-1',
+      },
+    };
     mocks.sessionError = null;
     mocks.order = {
       session_id: SESSION_ID,
@@ -129,6 +190,20 @@ describe('Meta CAPI ingress guard', () => {
   it('rejects a cross-origin browser call', async () => {
     const response = await POST(makeRequest(leadBody(), { origin: 'https://attacker.example' }));
     expect(response.status).toBe(403);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('is a quiet no-op when the copied boilerplate has no Meta credentials', async () => {
+    delete process.env.META_CAPI_ACCESS_TOKEN;
+    delete process.env.META_PIXEL_ID;
+    const response = await POST(makeRequest(leadBody()));
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      accepted: false,
+      configured: false,
+    });
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
@@ -152,7 +227,90 @@ describe('Meta CAPI ingress guard', () => {
     );
     expect(mocks.hashMetaEmail).toHaveBeenCalledWith('buyer@example.com');
     expect(mocks.sendMetaCapiEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ eventName: 'Lead', userData: expect.objectContaining({ em: 'hashed:buyer@example.com' }) }),
+      expect.objectContaining({
+        eventName: 'Lead',
+        userData: expect.objectContaining({
+          em: 'hashed:buyer@example.com',
+          external_id: 'hashed-id:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+          fbc: 'fb.1.1789113600000.click-1',
+          fbp: 'fb.1.1789113600000.browser-1',
+          country: 'hashed-country:LT',
+        }),
+        customData: expect.objectContaining({
+          quiz_variant: 'boilerplate-v1',
+          funnel_variant: 'main-v1',
+          locale: 'en',
+          source: 'advertorial',
+          utm_source: 'facebook',
+          utm_campaign: 'summer',
+          last_touch_utm_campaign: 'retargeting',
+          device_type: 'mobile',
+          browser: 'Safari',
+          platform: 'iOS',
+          browser_language: 'lt-LT',
+          country: 'LT',
+          city: 'Vilnius',
+        }),
+      }),
+    );
+  });
+
+  it('accepts safe quiz progress context and drops arbitrary answer data', async () => {
+    const response = await POST(
+      makeRequest({
+        eventName: 'QuizStepCompleted',
+        eventId: 'quiz-step:12345678',
+        sessionId: SESSION_ID,
+        customData: {
+          step_number: 4,
+          content_category: 'quiz',
+          answers: { health: 'private' },
+          result_segment: 'private-profile',
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const sent = mocks.sendMetaCapiEvent.mock.calls[0]?.[0];
+    expect(sent.customData).toMatchObject({
+      step_number: 4,
+      content_category: 'quiz',
+      quiz_variant: 'boilerplate-v1',
+      funnel_variant: 'main-v1',
+      locale: 'en',
+    });
+    expect(sent.customData).not.toHaveProperty('answers');
+    expect(sent.customData).not.toHaveProperty('result_segment');
+  });
+
+  it('strips sensitive URL parameters and does not forward malformed Meta cookies', async () => {
+    mocks.session = {
+      id: SESSION_ID,
+      email: 'buyer@example.com',
+      quiz_variant: 'boilerplate-v1',
+      funnel_variant: 'main-v1',
+      locale: 'en',
+      attribution: {
+        first_touch: { utm_source: 'facebook' },
+        last_touch: { utm_source: 'facebook' },
+        fbc: 'malformed-click-cookie',
+        fbp: 'malformed-browser-cookie',
+      },
+    };
+    const response = await POST(
+      makeRequest({
+        ...leadBody(),
+        eventSourceUrl:
+          'https://funnel.example/en/quiz?utm_campaign=summer&sg_order=secret-order&token=secret-token',
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.sendMetaCapiEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventSourceUrl: 'https://funnel.example/en/quiz?utm_campaign=summer',
+        userData: expect.objectContaining({ fbc: undefined, fbp: undefined }),
+      }),
     );
   });
 
@@ -173,12 +331,12 @@ describe('Meta CAPI ingress guard', () => {
     expect(response.status).toBe(200);
     expect(mocks.sendMetaCapiEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        customData: {
+        customData: expect.objectContaining({
           value: 13,
           currency: 'EUR',
           content_ids: ['trial3'],
           content_type: 'product',
-        },
+        }),
       }),
     );
   });
@@ -208,12 +366,12 @@ describe('Meta CAPI ingress guard', () => {
     expect(response.status).toBe(200);
     expect(mocks.sendMetaCapiEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        customData: {
+        customData: expect.objectContaining({
           value: 18335,
           currency: 'JPY',
           content_ids: ['oto1_lifetime'],
           content_type: 'product',
-        },
+        }),
       }),
     );
   });
@@ -245,12 +403,12 @@ describe('Meta CAPI ingress guard', () => {
     expect(mocks.sendMetaCapiEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'StartTrial',
-        customData: {
+        customData: expect.objectContaining({
           value: 0,
           currency: 'EUR',
           content_ids: ['special_free'],
           content_type: 'product',
-        },
+        }),
       }),
     );
   });

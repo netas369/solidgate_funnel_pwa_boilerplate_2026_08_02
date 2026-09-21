@@ -10,7 +10,11 @@ import {
   captureUTMParams,
   registerLocaleGroup,
 } from '@/features/analytics/lib/posthog';
-import { captureFbclidToCookie } from '@/features/analytics/lib/fb-cookies';
+import {
+  captureFbclidToCookie,
+  ensureFbpCookie,
+} from '@/features/analytics/lib/fb-cookies';
+import { captureAttributionParams } from '@/features/analytics/lib/attribution';
 
 export function Providers({
   children,
@@ -23,9 +27,16 @@ export function Providers({
 
   useEffect(() => {
     if (initialized.current) return;
+    initialized.current = true;
+
+    // Campaign/click attribution belongs to the funnel, not to PostHog. Keep
+    // capturing it when a copied product enables Meta but leaves PostHog off.
+    captureFbclidToCookie();
+    ensureFbpCookie();
+    captureAttributionParams();
+
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
     if (!key) return;
-    initialized.current = true;
     posthog.init(key, {
       api_host:
         process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
@@ -44,7 +55,6 @@ export function Providers({
       LOCALE_CURRENCY_MAP[locale as keyof typeof LOCALE_CURRENCY_MAP] ?? 'eur';
     setPostHogSuperProperties(locale, currency);
     captureUTMParams();
-    captureFbclidToCookie();
     registerLocaleGroup(locale);
   }, [locale]);
 

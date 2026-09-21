@@ -21,6 +21,9 @@ export const BOILERPLATE_BRAND = {
   supportEmail: 'support@example.com',
   funnelUrl: 'https://funnel.example.com',
   pwaUrl: 'https://app.example.com',
+  // The CRO dashboard. noindex'd and analyst-gated, but the value is still read
+  // for metadataBase so a pasted link unfurls with the right name.
+  croUrl: 'https://cro.example.com',
   ogLocale: 'en_US',
   twitterHandle: '',
 } as const;

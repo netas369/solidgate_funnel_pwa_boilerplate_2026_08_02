@@ -39,7 +39,17 @@ export interface AttributionSnapshot {
   fbp?: string;
 }
 
+export const FUNNEL_SOURCES = [
+  'quiz',
+  'main',
+  'advertorial',
+  'special-offer',
+  'special-offer-free',
+] as const;
+export type FunnelSource = (typeof FUNNEL_SOURCES)[number];
+
 const ATTRIBUTION_STORAGE_KEY = 'funnel_attribution_v1';
+const FUNNEL_SOURCE_STORAGE_KEY = 'funnel_entry_source_v1';
 const LEGACY_UTM_STORAGE_KEY = 'funnel_utm';
 const MAX_VALUE_LENGTH = 380;
 const FBC_COOKIE = '_fbc';
@@ -57,6 +67,67 @@ function cleanValue(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed ? trimmed.slice(0, MAX_VALUE_LENGTH) : undefined;
+}
+
+function isFunnelSource(value: string | null): value is FunnelSource {
+  return FUNNEL_SOURCES.includes(value as FunnelSource);
+}
+
+function sourceFromPath(pathname: string): FunnelSource | null {
+  const path = pathname.toLowerCase();
+  if (path.includes('special-offer-free')) return 'special-offer-free';
+  if (path.includes('special-offer')) return 'special-offer';
+  if (path.includes('advertorial')) return 'advertorial';
+  // The standard main landing is `/` or a single locale segment such as `/lt`.
+  if (/^\/(?:[a-z]{2}(?:-[a-z]{2})?)?\/?$/.test(path)) return 'main';
+  return null;
+}
+
+export function resolveFunnelSource(input: {
+  search: string;
+  pathname: string;
+  referrer?: string;
+  origin: string;
+}): FunnelSource {
+  const params = new URLSearchParams(input.search);
+  const explicit = params.get('funnel_source') ?? params.get('source');
+  if (isFunnelSource(explicit)) return explicit;
+
+  const currentPathSource = sourceFromPath(input.pathname);
+  if (currentPathSource && currentPathSource !== 'main') return currentPathSource;
+  if (input.referrer) {
+    try {
+      const referrer = new URL(input.referrer);
+      if (referrer.origin === input.origin) return sourceFromPath(referrer.pathname) ?? 'quiz';
+    } catch {
+      // Fall through to the direct-quiz default.
+    }
+  }
+  return 'quiz';
+}
+
+/**
+ * Resolve and retain the first internal entry route for this browser tab.
+ * Campaign providers remain in UTM fields; `source` describes which funnel
+ * surface sent the visitor into the quiz.
+ */
+export function captureFunnelSource(): FunnelSource {
+  if (typeof window === 'undefined') return 'quiz';
+  try {
+    const stored = window.sessionStorage.getItem(FUNNEL_SOURCE_STORAGE_KEY);
+    if (isFunnelSource(stored)) return stored;
+
+    const source = resolveFunnelSource({
+      search: window.location.search,
+      pathname: window.location.pathname,
+      referrer: typeof document !== 'undefined' ? document.referrer : undefined,
+      origin: window.location.origin,
+    });
+    window.sessionStorage.setItem(FUNNEL_SOURCE_STORAGE_KEY, source);
+    return source;
+  } catch {
+    return 'quiz';
+  }
 }
 
 function sanitizeTouch(input: unknown): AttributionTouch {

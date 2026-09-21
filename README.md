@@ -26,6 +26,7 @@ runs end to end on a fresh clone, not because it is worth keeping.
 apps/
   funnel/     quiz -> offer -> checkout -> 8 OTO slots -> success        (:3205)
   pwa/        gated member area, Serwist PWA shell                       (:3206)
+  cro/        quiz drop-off dashboard, analyst-gated                     (:3207)
 packages/
   shared/     Solidgate client + catalog, price map, entitlements, auth, emails, DB types
   i18n/       next-intl routing + message packs (ships `en`; infra supports 15 locales)
@@ -55,14 +56,21 @@ npm install
 
 cp apps/funnel/.env.example apps/funnel/.env.local    # then fill in
 cp apps/pwa/.env.example    apps/pwa/.env.local
+cp apps/cro/.env.example    apps/cro/.env.local
 
 npx supabase start                                    # local stack
 npx supabase db reset                                 # applies 00001_baseline.sql
 
-npm run dev            # both apps
+npm run dev            # every app
 npm run dev:funnel     # funnel only  -> http://localhost:3205
 npm run dev:pwa        # PWA only     -> http://localhost:3206
+npm run dev:cro        # CRO board    -> http://localhost:3207
 ```
+
+The CRO board is opened from PMC Hub, which holds the access roles; the migration
+seeds the one shared identity it signs in as. Signing in directly with your own
+address needs a row in `cro_analysts` —
+see [docs/cro-dropoff.md](docs/cro-dropoff.md).
 
 `.env.example` at the repo root is the master reference: every variable, which app reads
 it, and whether it is required.

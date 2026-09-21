@@ -28,6 +28,7 @@ const translations: Record<string, string> = {
     "I'd like to receive tips and offers by email. I can unsubscribe at any time.",
   'ui.dataSecure': 'Your data is encrypted and secure.',
   'ui.submitting': 'Submitting...',
+  'ui.saveFailed': "We couldn't save your progress. Check your connection and try again.",
 };
 
 const mockT = Object.assign(
@@ -190,6 +191,22 @@ describe('Email Capture Consent UI', () => {
 
     await waitFor(() => expect(mockOnSubmit).toHaveBeenCalledTimes(1));
     expect(mockOnSubmit.mock.calls[0][0].email).toBe('test@example.com');
+  });
+
+  it('shows a retryable error when the backend does not save the lead', async () => {
+    mockOnSubmit.mockResolvedValue(false);
+    render(<EmailCaptureStep step={mockStep} t={mockT} onSubmit={mockOnSubmit} />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: 'test@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /see my results/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toMatch(/couldn't save your progress/i);
+    });
+    expect((screen.getByRole('button', { name: /see my results/i }) as HTMLButtonElement).disabled)
+      .toBe(false);
   });
 
   it('re-checking consent re-enables the submit button', () => {

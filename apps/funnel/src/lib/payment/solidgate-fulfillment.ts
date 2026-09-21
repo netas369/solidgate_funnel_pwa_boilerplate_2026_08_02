@@ -15,7 +15,11 @@ import {
   sendPreparedWelcomeEmailDetailed,
   type PreparedWelcomeEmail,
 } from '@repo/shared/email/send-welcome-email';
-import { sendMetaCapiEvent, hashMetaEmail } from '@/features/analytics/lib/meta-capi';
+import {
+  sendMetaCapiEvent,
+  hashMetaEmail,
+  hashMetaExternalId,
+} from '@/features/analytics/lib/meta-capi';
 import { purchaseEventValue } from '@/features/analytics/lib/purchase-value';
 import { purchaseEventId } from '@/features/analytics/lib/checkout-context';
 import { enrichPurchasedAccount, type SessionRow } from './provision-account';
@@ -723,6 +727,7 @@ async function processEffect(
           : undefined,
         userData: {
           em: hashMetaEmail(source.customerEmail),
+          external_id: hashMetaExternalId(source.sessionId),
           ...(typeof payload.fbp === 'string' ? { fbp: payload.fbp } : {}),
           ...(typeof payload.fbc === 'string' ? { fbc: payload.fbc } : {}),
           ...(typeof payload.client_ip_address === 'string'
@@ -735,7 +740,16 @@ async function processEffect(
         customData: {
           value: purchaseEventValue(source.amountCents, source.currency),
           currency: source.currency.toUpperCase(),
+          content_ids: [SOLIDGATE_PRODUCT_CODES.main],
           content_type: 'product',
+          content_name: SOLIDGATE_PRODUCT_CODES.main,
+          contents: [{
+            id: SOLIDGATE_PRODUCT_CODES.main,
+            quantity: 1,
+            item_price: purchaseEventValue(source.amountCents, source.currency),
+          }],
+          num_items: 1,
+          order_id: row.solidgate_order_id,
         },
       });
       if (!delivered) {

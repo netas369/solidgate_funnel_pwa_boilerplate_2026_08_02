@@ -3,23 +3,54 @@ import { render, waitFor } from '@testing-library/react';
 
 const {
   mockUseQuizStore,
+  mockQuizStoreState,
   mockUseAnalytics,
   mockUseQuizHydration,
   mockUseRouter,
   mockTrack,
   mockSetSessionId,
+  mockRestoreSession,
   mockUseLocale,
+  mockCreateQuizSession,
+  mockReadQuizSession,
+  MockQuizSessionApiError,
 } = vi.hoisted(() => {
-  const mockUseQuizStore = Object.assign(vi.fn(), { getState: vi.fn() });
+  class MockQuizSessionApiError extends Error {
+    constructor(public status: number) {
+      super('Quiz session API error');
+    }
+  }
+  const mockSetSessionId = vi.fn();
+  const mockRestoreSession = vi.fn();
+  const mockQuizStoreState = {
+    isComplete: false,
+    sessionId: null as string | null,
+    revision: 0,
+    hasUnsavedProgress: false,
+    currentStepId: 'step1',
+    setSessionId: mockSetSessionId,
+    restoreSession: mockRestoreSession,
+    completeQuiz: vi.fn(),
+    answers: {} as Record<string, string | string[] | number>,
+    reset: vi.fn(),
+  };
+  const mockUseQuizStore = Object.assign(vi.fn(), {
+    getState: vi.fn(() => mockQuizStoreState),
+  });
 
   return {
     mockUseQuizStore,
+    mockQuizStoreState,
     mockUseAnalytics: vi.fn(),
     mockUseQuizHydration: vi.fn(),
     mockUseRouter: vi.fn(),
     mockTrack: vi.fn(),
-    mockSetSessionId: vi.fn(),
+    mockSetSessionId,
+    mockRestoreSession,
     mockUseLocale: vi.fn(() => 'en'),
+    mockCreateQuizSession: vi.fn(),
+    mockReadQuizSession: vi.fn(),
+    MockQuizSessionApiError,
   };
 });
 
@@ -28,34 +59,19 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-vi.mock('@repo/i18n/navigation', () => ({
-  useRouter: mockUseRouter,
-}));
+vi.mock('@repo/i18n/navigation', () => ({ useRouter: mockUseRouter }));
 
 vi.mock('next-intl', () => ({
   useLocale: () => mockUseLocale(),
   useTranslations: () => Object.assign((key: string) => key, { raw: (key: string) => key }),
 }));
 
-vi.mock('@/stores/quiz-store', () => ({
-  useQuizStore: mockUseQuizStore,
-}));
-
+vi.mock('@/stores/quiz-store', () => ({ useQuizStore: mockUseQuizStore }));
 vi.mock('@/features/quiz/hooks/use-quiz-hydration', () => ({
   useQuizHydration: mockUseQuizHydration,
 }));
-
 vi.mock('@/features/analytics/hooks/use-analytics', () => ({
   useAnalytics: mockUseAnalytics,
-}));
-
-// QuizPage no longer touches the Supabase client directly — persistence and
-// funnel events go through mocked lib modules. This stub is a safety net so any
-// transitive import resolves without a real network client.
-vi.mock('@repo/shared/supabase/client', () => ({
-  createClient: () => {
-    throw new Error('QuizPage should not call createClient directly');
-  },
 }));
 
 vi.mock('@/features/quiz/hooks/use-quiz-navigation', () => ({
@@ -63,7 +79,7 @@ vi.mock('@/features/quiz/hooks/use-quiz-navigation', () => ({
     currentStep: { stepId: 'step1', type: 'radio', phase: 'phases.start', storeAs: 'goal' },
     stepPosition: 1,
     totalSteps: 7,
-    direction: 1,
+    direction: 'forward',
     canGoBack: false,
     goToStep: vi.fn(),
     goToStepReplace: vi.fn(),
@@ -75,29 +91,14 @@ vi.mock('@/features/quiz/hooks/use-quiz-navigation', () => ({
   }),
 }));
 
-vi.mock('@/features/quiz/hooks/use-image-prefetch', () => ({
-  useImagePrefetch: vi.fn(),
-}));
-
+vi.mock('@/features/quiz/hooks/use-image-prefetch', () => ({ useImagePrefetch: vi.fn() }));
 vi.mock('@/features/quiz/config/quiz-config', () => ({
-  quizConfig: {
-    totalSteps: 7,
-    stepPositions: { step1: 1, step2: 2, step3: 3 },
-  },
+  quizConfig: { totalSteps: 7, stepPositions: { step1: 1 } },
   quizStepMap: {},
   FIRST_STEP_ID: 'step1',
   TERMINAL_STEP_TYPES: new Set(['loading_screen', 'trial_price']),
 }));
 
-// trackFunnelEvent now lives in its own lib module; QuizPage calls it after the
-// session-persist fetch settles. Stub it so the test can assert it directly.
-const mockTrackFunnelEvent = vi.fn();
-vi.mock('@/features/quiz/lib/track-funnel-event', () => ({
-  trackFunnelEvent: mockTrackFunnelEvent,
-}));
-
-// QuizPage opens/closes a module-level session-ready gate around session
-// creation. Stub it to assert the gate is driven, without the real promise.
 const mockResetSessionGate = vi.fn();
 const mockMarkSessionReady = vi.fn();
 vi.mock('@/features/quiz/lib/session-ready', () => ({
@@ -109,84 +110,65 @@ vi.mock('@/features/quiz/lib/session-ready', () => ({
 vi.mock('../quiz-progress-header', () => ({
   QuizProgressHeader: () => <div data-testid="quiz-progress-header" />,
 }));
-
 vi.mock('../step-transition', () => ({
   StepTransition: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+vi.mock('../steps/radio-step', () => ({ RadioStep: () => <div data-testid="radio-step" /> }));
+vi.mock('../steps/multi-select-step', () => ({ MultiSelectStep: () => <div /> }));
+vi.mock('../steps/input-group-step', () => ({ InputGroupStep: () => <div /> }));
+vi.mock('../steps/loading-screen-step', () => ({ LoadingScreenStep: () => <div /> }));
+vi.mock('../steps/email-capture-step', () => ({ EmailCaptureStep: () => <div /> }));
 
-vi.mock('../steps/radio-step', () => ({
-  RadioStep: () => <div data-testid="radio-step" />,
-}));
-
-vi.mock('../steps/multi-select-step', () => ({
-  MultiSelectStep: () => <div />,
-}));
-
-vi.mock('../steps/input-group-step', () => ({
-  InputGroupStep: () => <div />,
-}));
-
-vi.mock('../steps/loading-screen-step', () => ({
-  LoadingScreenStep: () => <div />,
-}));
-
-vi.mock('../steps/email-capture-step', () => ({
-  EmailCaptureStep: () => <div />,
-}));
-
-vi.mock('@/features/quiz/hooks/use-quiz-persistence', () => ({
-  captureLeadRecord: vi.fn(),
-  persistSessionSnapshot: vi.fn(),
-}));
+vi.mock('@/features/quiz/hooks/use-quiz-persistence', () => {
+  return {
+    QuizSessionApiError: MockQuizSessionApiError,
+    captureLeadRecord: vi.fn(),
+    completeQuizSession: vi.fn(),
+    createQuizSession: mockCreateQuizSession,
+    saveQuizProgress: vi.fn(() => Promise.resolve({ ok: true, revision: 1 })),
+    readQuizSession: mockReadQuizSession,
+  };
+});
 
 vi.mock('@/features/analytics/lib/posthog', () => ({
   identifyPostHogUser: vi.fn(),
   capturePostHogEvent: vi.fn(),
 }));
-
-vi.mock('@/features/analytics/lib/hash-email', () => ({
-  hashEmail: vi.fn(),
-}));
-
-vi.mock('@/features/analytics/lib/gtm', () => ({
-  pushDataLayerEvent: vi.fn(),
-}));
-
+vi.mock('@/features/analytics/lib/hash-email', () => ({ hashEmail: vi.fn() }));
+vi.mock('@/features/analytics/lib/gtm', () => ({ pushDataLayerEvent: vi.fn() }));
 vi.mock('@/stores/funnel-store', () => ({
   useFunnelStore: (selector: (store: { setStage: ReturnType<typeof vi.fn> }) => unknown) =>
     selector({ setStage: vi.fn() }),
 }));
 
-describe('QuizPage fresh-start bootstrap', () => {
+describe('QuizPage session bootstrap', () => {
   const originalCrypto = globalThis.crypto;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseLocale.mockReturnValue('en');
-
-    const quizStore = {
-      isComplete: false,
-      sessionId: null as string | null,
-      setSessionId: mockSetSessionId,
-      completeQuiz: vi.fn(),
-      answers: {},
-      reset: vi.fn(),
-    };
-
-    mockUseQuizStore.mockImplementation((selector: (store: typeof quizStore) => unknown) =>
-      selector(quizStore),
-    );
-    mockUseQuizStore.getState.mockReturnValue(quizStore);
-
+    mockQuizStoreState.isComplete = false;
+    mockQuizStoreState.sessionId = null;
+    mockQuizStoreState.revision = 0;
+    mockQuizStoreState.hasUnsavedProgress = false;
+    mockQuizStoreState.currentStepId = 'step1';
+    mockQuizStoreState.answers = {};
+    mockUseQuizStore.mockImplementation((selector) => selector(mockQuizStoreState));
     mockUseQuizHydration.mockReturnValue(true);
     mockUseAnalytics.mockReturnValue({ track: mockTrack });
     mockUseRouter.mockReturnValue({ replace: vi.fn(), push: vi.fn() });
+    mockCreateQuizSession.mockResolvedValue({
+      id: 'fresh-session-id',
+      revision: 0,
+      currentStepId: null,
+      quizVariant: 'boilerplate-v1',
+      funnelVariant: 'main-v1',
+      source: 'quiz',
+    });
 
     Object.defineProperty(globalThis, 'crypto', {
       configurable: true,
-      value: {
-        randomUUID: vi.fn(() => 'fresh-session-id'),
-      },
+      value: { randomUUID: vi.fn(() => 'fresh-session-id') },
     });
   });
 
@@ -197,115 +179,163 @@ describe('QuizPage fresh-start bootstrap', () => {
     });
   });
 
-  it('QuizPage mints a fresh session with crypto.randomUUID and setSessionId when a cleared sessionId reaches /quiz', async () => {
+  it('creates a fresh authorized backend session when no local session exists', async () => {
     const { QuizPage } = await import('../quiz-page');
-
     render(<QuizPage />);
 
     await waitFor(() => {
-      expect(globalThis.crypto.randomUUID).toHaveBeenCalledTimes(1);
       expect(mockSetSessionId).toHaveBeenCalledWith('fresh-session-id');
+      expect(mockCreateQuizSession).toHaveBeenCalledWith({
+        sessionId: 'fresh-session-id',
+        locale: 'en',
+      });
+      expect(mockRestoreSession).toHaveBeenCalledWith({
+        id: 'fresh-session-id',
+        currentStepId: null,
+        answers: {},
+        revision: 0,
+        isComplete: false,
+        hasUnsavedProgress: false,
+        quizVariant: 'boilerplate-v1',
+        funnelVariant: 'main-v1',
+        source: 'quiz',
+      });
     });
   });
 
-  it('QuizPage tracks quiz_started and persists session via /api/session/persist on mount', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
-    vi.stubGlobal('fetch', mockFetch);
-
+  it('tracks quiz_started only after the backend creates the session', async () => {
     const { QuizPage } = await import('../quiz-page');
-
     render(<QuizPage />);
 
     await waitFor(() => {
-      expect(mockTrack).toHaveBeenCalledWith('quiz_started', { session_id: 'fresh-session-id' });
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/session/persist',
+      expect(mockTrack).toHaveBeenCalledWith('quiz_started', {
+        session_id: 'fresh-session-id',
+        quiz_variant: 'boilerplate-v1',
+        funnel_variant: 'main-v1',
+        source: 'quiz',
+      });
+    });
+  });
+
+  it('renders without persisting or tracking when a known Meta crawler is filtered', async () => {
+    mockCreateQuizSession.mockResolvedValue(null);
+    const { QuizPage } = await import('../quiz-page');
+    const { findByTestId } = render(<QuizPage />);
+
+    expect(await findByTestId('radio-step')).toBeInTheDocument();
+    expect(mockQuizStoreState.reset).toHaveBeenCalled();
+    expect(mockRestoreSession).not.toHaveBeenCalled();
+    expect(mockTrack).not.toHaveBeenCalledWith('quiz_started', expect.anything());
+  });
+
+  it('resumes an existing session through the authorized read endpoint', async () => {
+    mockQuizStoreState.sessionId = 'existing-session-id';
+    mockReadQuizSession.mockResolvedValue({
+      id: 'existing-session-id',
+      status: 'active',
+      current_step_id: 'step2',
+      quiz_answers: { gender: 'female' },
+      quiz_result: null,
+      result_segment: null,
+      quiz_variant: 'boilerplate-v1',
+      funnel_variant: 'main-v1',
+      locale: 'en',
+      source: 'quiz',
+      revision: 2,
+      completed_at: null,
+    });
+
+    const { QuizPage } = await import('../quiz-page');
+    render(<QuizPage />);
+
+    await waitFor(() => {
+      expect(mockReadQuizSession).toHaveBeenCalledWith('existing-session-id');
+      expect(mockCreateQuizSession).not.toHaveBeenCalled();
+      expect(mockRestoreSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          id: 'existing-session-id',
+          currentStepId: 'step2',
+          answers: { gender: 'female' },
+          revision: 2,
         }),
       );
-      // funnel_events insert is now routed through the shared trackFunnelEvent lib.
-      expect(mockTrackFunnelEvent).toHaveBeenCalledWith('fresh-session-id', 'quiz_started');
     });
-
-    vi.unstubAllGlobals();
   });
 
-  it('drives the session-ready gate: resets it on mount, marks it ready after persist succeeds', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
-    vi.stubGlobal('fetch', mockFetch);
+  it('recreates a missing locally-minted session with the same id', async () => {
+    mockQuizStoreState.sessionId = 'missing-session-id';
+    mockReadQuizSession.mockRejectedValue(new MockQuizSessionApiError(404));
+    mockCreateQuizSession.mockResolvedValue({
+      id: 'missing-session-id',
+      revision: 0,
+      currentStepId: null,
+      quizVariant: 'boilerplate-v1',
+      funnelVariant: 'main-v1',
+      source: 'quiz',
+    });
 
     const { QuizPage } = await import('../quiz-page');
     render(<QuizPage />);
 
-    // The gate is closed synchronously in the mount effect, before session creation.
+    await waitFor(() => {
+      expect(mockCreateQuizSession).toHaveBeenCalledWith({
+        sessionId: 'missing-session-id',
+        locale: 'en',
+      });
+      expect(mockRestoreSession).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'missing-session-id', revision: 0 }),
+      );
+    });
+  });
+
+  it('does not take over an inaccessible session id', async () => {
+    mockQuizStoreState.sessionId = 'other-browser-session-id';
+    mockReadQuizSession.mockRejectedValue(new MockQuizSessionApiError(403));
+
+    const { QuizPage } = await import('../quiz-page');
+    render(<QuizPage />);
+
+    await waitFor(() => {
+      expect(mockQuizStoreState.reset).toHaveBeenCalled();
+      expect(mockCreateQuizSession).toHaveBeenCalledWith({
+        sessionId: 'fresh-session-id',
+        locale: 'en',
+      });
+      expect(mockCreateQuizSession).not.toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: 'other-browser-session-id' }),
+      );
+    });
+  });
+
+  it('opens the session-ready gate after initialization settles', async () => {
+    const { QuizPage } = await import('../quiz-page');
+    render(<QuizPage />);
+
     expect(mockResetSessionGate).toHaveBeenCalledTimes(1);
-
-    // Once /api/session/persist resolves OK, the gate is opened so funnel
-    // events can flush.
-    await waitFor(() => {
-      expect(mockMarkSessionReady).toHaveBeenCalledTimes(1);
-    });
-
-    vi.unstubAllGlobals();
+    await waitFor(() => expect(mockMarkSessionReady).toHaveBeenCalledTimes(1));
   });
 
-  it('opens the session-ready gate even when /api/session/persist fails', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: false, statusText: 'Server Error' });
-    vi.stubGlobal('fetch', mockFetch);
-
+  it('does not track quiz_started when backend creation fails', async () => {
+    mockCreateQuizSession.mockRejectedValue(new Error('offline'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { QuizPage } = await import('../quiz-page');
     render(<QuizPage />);
 
-    // Failure path still calls markSessionReady so funnel events degrade to
-    // best-effort instead of hanging forever — but no quiz_started funnel event.
-    await waitFor(() => {
-      expect(mockMarkSessionReady).toHaveBeenCalled();
-    });
-    expect(mockTrackFunnelEvent).not.toHaveBeenCalled();
-
-    vi.unstubAllGlobals();
+    await waitFor(() => expect(mockMarkSessionReady).toHaveBeenCalled());
+    expect(mockTrack).not.toHaveBeenCalledWith('quiz_started', expect.anything());
+    consoleSpy.mockRestore();
   });
 
-  it('sends locale in first session/persist call (Phase 1025, Pitfall 3)', async () => {
+  it('passes the current locale to session creation', async () => {
     mockUseLocale.mockReturnValue('cs');
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
-    vi.stubGlobal('fetch', mockFetch);
-
     const { QuizPage } = await import('../quiz-page');
     render(<QuizPage />);
 
     await waitFor(() => {
-      const persistCall = mockFetch.mock.calls.find(
-        ([url]) => typeof url === 'string' && url.includes('/api/session/persist'),
-      );
-      expect(persistCall).toBeDefined();
-      const body = JSON.parse((persistCall![1] as RequestInit).body as string);
-      expect(body).toMatchObject({ locale: 'cs' });
-      expect(typeof body.sessionId).toBe('string');
+      expect(mockCreateQuizSession).toHaveBeenCalledWith({
+        sessionId: 'fresh-session-id',
+        locale: 'cs',
+      });
     });
-
-    vi.unstubAllGlobals();
-  });
-
-  it('sends en locale in first session/persist call by default', async () => {
-    mockUseLocale.mockReturnValue('en');
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
-    vi.stubGlobal('fetch', mockFetch);
-
-    const { QuizPage } = await import('../quiz-page');
-    render(<QuizPage />);
-
-    await waitFor(() => {
-      const persistCall = mockFetch.mock.calls.find(
-        ([url]) => typeof url === 'string' && url.includes('/api/session/persist'),
-      );
-      expect(persistCall).toBeDefined();
-      const body = JSON.parse((persistCall![1] as RequestInit).body as string);
-      expect(body).toMatchObject({ locale: 'en' });
-    });
-
-    vi.unstubAllGlobals();
   });
 });

@@ -40,9 +40,14 @@ docker exec sgtest psql -U postgres -v ON_ERROR_STOP=1 -c "
   -- default. Reproduce that BEFORE the schema is created, so the baseline's
   -- explicit REVOKEs are the thing under test rather than an artefact of a
   -- bare Postgres.
-  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
-  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
   GRANT USAGE ON SCHEMA public, auth, extensions TO anon, authenticated, service_role;
+  -- The CRO read API gates on the caller's email claim. Without this stub every
+  -- cro_* function fails to CREATE, because is_cro_analyst() is LANGUAGE sql and
+  -- is parsed at creation time.
+  CREATE FUNCTION auth.jwt() RETURNS JSONB LANGUAGE sql STABLE AS
+    'SELECT COALESCE(NULLIF(current_setting(''request.jwt.claims'', true), '''')::JSONB, ''{}''::JSONB)';
 "
 
 docker exec -i sgtest psql -U postgres -v ON_ERROR_STOP=1 -q \
@@ -72,6 +77,15 @@ Four details in that setup are load-bearing and easy to get wrong:
   the baseline runs re-grants the tables the baseline deliberately revoked
   (`solidgate_card_update_attempts`,
   `solidgate_subscription_token_sync_jobs`), and the ACL assertions fail.
+- **Default-grant to all THREE roles, not just `service_role`.** This block used
+  to grant only `service_role` while its own comment claimed to reproduce
+  Supabase's defaults. Under-granting makes every "this role cannot read X"
+  assertion pass for the wrong reason — the role could not read *anything*, so
+  the baseline's explicit REVOKEs were never the thing under test. With the
+  defaults correct, `authenticated` reaches `sessions` and gets zero rows from
+  RLS, while `quiz_definition_steps` and `cro_analysts` are denied outright.
+- **`auth.jwt()` must exist.** Supabase provides it; a bare Postgres does not,
+  and `is_cro_analyst()` will not CREATE without it.
 - **`supabase_admin`.** Supabase owns `auth.users`; some scripts reconnect as
   that role to insert fixture users rather than granting the application roles
   write access to the auth directory.
@@ -96,6 +110,35 @@ chain. Extend the relevant script here
 pin is not visible from the application layer, and a regression surfaces as a
 buyer being charged twice, not as a failing unit test.
 
+## `cro_dashboard.sql`
+
+The CRO read API: authorization and aggregate behaviour. A separate script from
+`quiz_backend.sql` because it needs a *population* rather than one narrative
+session — two locales, two devices, a session with empty `step_activity`, and
+one inside the settle window.
+
+The authorization half is the whole security boundary, not a nicety: `apps/cro`
+holds the anon key and no service-role key, so these functions are the only way
+it reads anything. It pins that a non-analyst gets **42501** specifically (the
+app branches on the SQLSTATE), that a JWT with no `email` claim is refused, that
+an empty address cannot be stored, and — the premise everything rests on — that
+`authenticated` cannot reach `quiz_definition_steps` or `cro_analysts` at all
+and sees zero rows of `sessions`.
+
+Two assertions are worth more than the rest. A loop over every `cro_*` function
+asserts EXECUTE is granted to `authenticated` and denied to `anon`, so a
+function added later without its REVOKE fails a test instead of shipping open.
+And `cro_answer_distribution` is asserted **positively** to return
+`value_kind = 'freeform'` with a NULL value for the email step, whose fixture
+session really does carry an address — `email` and `fullName` are declared
+answer keys, so a naive distribution would publish them.
+
+## `quiz_backend.sql`
+
+Covers the two-table quiz contract: session creation, one-row JSONB snapshots,
+optimistic revision conflicts, event idempotency, and immutable completion.
+It rolls back all fixtures.
+
 ---
 
 ## `solidgate_intro_claims.sql`
@@ -115,7 +158,7 @@ Non-obvious invariants the assertions pin down:
 - a **pending** order never blocks a re-claim — every checkout is written as
   `pending` before the intent is issued, so blocking on it would make the whole
   recovery path unreachable;
-- a `pending` order whose payment actually *started* (`auth_ok`, `3ds_verify`,
+- a `pending` order whose payment actually _started_ (`auth_ok`, `3ds_verify`,
   `processing`, `settle_ok`, `partial_settled`) **does** block: the card is
   charged or about to be, and re-keying would mint a second payable intent for
   the same email during the settle window;

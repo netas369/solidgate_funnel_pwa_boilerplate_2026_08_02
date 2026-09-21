@@ -107,8 +107,8 @@ const loadingScreenStepSchema = baseStep.extend({
   nextStepId: z.string(),
 });
 
-// The lead-capture gate: email + GDPR processing consent. Submitting fires
-// captureLeadRecord + the analytics identify chain (see quiz-page).
+// The lead-capture gate: email + GDPR processing consent. Submitting commits
+// the complete answer save + lead event before analytics identification (see quiz-page).
 const emailCaptureStepSchema = baseStep.extend({
   type: z.literal('email_capture'),
   storeAs: z.string(),

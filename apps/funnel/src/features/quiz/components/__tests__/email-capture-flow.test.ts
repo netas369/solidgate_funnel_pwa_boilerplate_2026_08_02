@@ -10,7 +10,7 @@ vi.mock('@/features/analytics/hooks/use-analytics', () => ({
 const mockCaptureLeadRecord = vi.fn();
 vi.mock('@/features/quiz/hooks/use-quiz-persistence', () => ({
   captureLeadRecord: (...args: unknown[]) => mockCaptureLeadRecord(...args),
-  persistSessionSnapshot: vi.fn(),
+  saveQuizProgress: vi.fn(),
 }));
 
 const mockIdentifyPostHogUser = vi.fn();
@@ -121,22 +121,21 @@ describe('Email Capture Flow', () => {
     expect(mockTrack).not.toHaveBeenCalledWith('lead_capture_error', expect.anything());
   });
 
-  it('on captureLeadRecord failure, track is called with lead_capture_error AND flow continues', async () => {
+  it('on captureLeadRecord failure, records the error and does not complete the flow', async () => {
     mockCaptureLeadRecord.mockResolvedValue({ success: false });
 
     const result = await mockCaptureLeadRecord(TEST_SESSION_ID, 'user@test.com', TEST_ANSWERS);
 
     if (!result.success) {
       mockTrack('lead_capture_error', { session_id: TEST_SESSION_ID });
+    } else {
+      mockTrack('lead_captured', { session_id: TEST_SESSION_ID });
+      mockCompleteQuiz();
     }
-    // Flow continues: lead_captured still fires
-    mockTrack('lead_captured', { session_id: TEST_SESSION_ID });
-    // Complete quiz still called (flow not blocked)
-    mockCompleteQuiz();
 
     expect(mockTrack).toHaveBeenCalledWith('lead_capture_error', { session_id: TEST_SESSION_ID });
-    expect(mockTrack).toHaveBeenCalledWith('lead_captured', { session_id: TEST_SESSION_ID });
-    expect(mockCompleteQuiz).toHaveBeenCalled();
+    expect(mockTrack).not.toHaveBeenCalledWith('lead_captured', expect.anything());
+    expect(mockCompleteQuiz).not.toHaveBeenCalled();
   });
 
   it('identifyPostHogUser is called with (sessionId, email)', () => {

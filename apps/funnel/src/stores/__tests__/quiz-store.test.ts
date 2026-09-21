@@ -15,7 +15,31 @@ describe('useQuizStore', () => {
       answerLabels: {},
       isComplete: false,
       sessionId: null,
+      quizVariant: null,
+      funnelVariant: null,
+      source: null,
+      revision: 0,
+      hasUnsavedProgress: false,
       authorizedViaPurchase: false,
+    });
+  });
+
+  it('keeps the persisted server assignment and entry source with the session', () => {
+    useQuizStore.getState().restoreSession({
+      id: 'session-1',
+      currentStepId: 'step2',
+      answers: {},
+      revision: 1,
+      isComplete: false,
+      quizVariant: 'boilerplate-v1',
+      funnelVariant: 'treatment-v1',
+      source: 'advertorial',
+    });
+
+    expect(useQuizStore.getState()).toMatchObject({
+      quizVariant: 'boilerplate-v1',
+      funnelVariant: 'treatment-v1',
+      source: 'advertorial',
     });
   });
 
@@ -27,6 +51,8 @@ describe('useQuizStore', () => {
     expect(state.answerLabels).toEqual({});
     expect(state.isComplete).toBe(false);
     expect(state.sessionId).toBeNull();
+    expect(state.revision).toBe(0);
+    expect(state.hasUnsavedProgress).toBe(false);
   });
 
   it('goToStep updates currentStepId and pushes previous to history', () => {
@@ -62,6 +88,7 @@ describe('useQuizStore', () => {
   it('setStepAnswer stores answer by storeAs key', () => {
     useQuizStore.getState().setStepAnswer('motivation', 'patterns');
     expect(useQuizStore.getState().answers.motivation).toBe('patterns');
+    expect(useQuizStore.getState().hasUnsavedProgress).toBe(true);
   });
 
   it('setStepAnswer stores array answers for multi-select', () => {
@@ -116,6 +143,79 @@ describe('useQuizStore', () => {
     expect(useQuizStore.getState().isComplete).toBe(true);
   });
 
+  it('marks progress saved only when the saved values still match local state', () => {
+    useQuizStore.getState().setSessionId('session-1');
+    useQuizStore.getState().setStepAnswer('motivation', 'patterns');
+
+    useQuizStore.getState().markProgressSaved({
+      sessionId: 'session-1',
+      currentStepId: INITIAL_STEP_ID,
+      answers: { motivation: 'patterns' },
+      revision: 1,
+    });
+
+    expect(useQuizStore.getState().revision).toBe(1);
+    expect(useQuizStore.getState().hasUnsavedProgress).toBe(false);
+  });
+
+  it('keeps the unsaved marker when local answers changed during a request', () => {
+    useQuizStore.getState().setSessionId('session-1');
+    useQuizStore.getState().setStepAnswer('motivation', 'patterns');
+    useQuizStore.getState().setStepAnswer('focusAreas', ['career']);
+
+    useQuizStore.getState().markProgressSaved({
+      sessionId: 'session-1',
+      currentStepId: INITIAL_STEP_ID,
+      answers: { motivation: 'patterns' },
+      revision: 1,
+    });
+
+    expect(useQuizStore.getState().revision).toBe(1);
+    expect(useQuizStore.getState().hasUnsavedProgress).toBe(true);
+  });
+
+  it('migrates the old pending-save field without losing local progress', async () => {
+    const migrate = useQuizStore.persist.getOptions().migrate;
+    expect(migrate).toBeDefined();
+
+    const migrated = await migrate?.(
+      {
+        sessionId: 'session-1',
+        hasPendingSnapshot: true,
+      },
+      0,
+    );
+
+    expect(migrated).toMatchObject({
+      sessionId: 'session-1',
+      hasUnsavedProgress: true,
+      persistedAt: expect.any(Number),
+    });
+    expect(migrated).not.toHaveProperty('hasPendingSnapshot');
+  });
+
+  it('discards locally persisted Quiz data after seven days', () => {
+    const merge = useQuizStore.persist.getOptions().merge;
+    expect(merge).toBeDefined();
+
+    const current = useQuizStore.getState();
+    const merged = merge?.(
+      {
+        sessionId: 'expired-session',
+        answers: { sensitiveAnswer: 'expired' },
+        currentStepId: 'step2',
+        persistedAt: Date.now() - 8 * 24 * 60 * 60 * 1000,
+      },
+      current,
+    );
+
+    expect(merged).toMatchObject({
+      sessionId: null,
+      answers: {},
+      currentStepId: INITIAL_STEP_ID,
+    });
+  });
+
   it('setAuthLinked sets the auth-linked tri-state', () => {
     expect(useQuizStore.getState().authLinked).toBeNull();
     useQuizStore.getState().setAuthLinked(false);
@@ -154,5 +254,96 @@ describe('useQuizStore  -  authorizedViaPurchase (post-purchase OTO gate)', () =
     useQuizStore.getState().completeQuiz();
     expect(useQuizStore.getState().authorizedViaPurchase).toBe(false);
     expect(useQuizStore.getState().isComplete).toBe(true);
+  });
+});
+
+describe('useQuizStore — CRO step activity buffer', () => {
+  beforeEach(() => {
+    useQuizStore.getState().reset();
+    useQuizStore.getState().setSessionId('sess-1');
+  });
+
+  it('starts empty', () => {
+    useQuizStore.getState().reset();
+    expect(useQuizStore.getState().pendingStepActivity).toEqual({
+      viewed: [],
+      answered: [],
+      skipped: [],
+    });
+  });
+
+  it('keeps duplicate views — they ARE the view counter — but dedupes the sets', () => {
+    const { recordStepActivity } = useQuizStore.getState();
+    recordStepActivity({ viewed: ['step2'], answered: ['step1'] });
+    recordStepActivity({ viewed: ['step2'], answered: ['step1'], skipped: ['step3'] });
+    recordStepActivity({ skipped: ['step3'] });
+    const buffer = useQuizStore.getState().pendingStepActivity;
+    expect(buffer.viewed).toEqual(['step2', 'step2']);
+    expect(buffer.answered).toEqual(['step1']);
+    expect(buffer.skipped).toEqual(['step3']);
+  });
+
+  it('does not trip the unsaved-progress guard — this is telemetry, not answers', () => {
+    useQuizStore.getState().recordStepActivity({ viewed: ['step2'] });
+    expect(useQuizStore.getState().hasUnsavedProgress).toBe(false);
+  });
+
+  it('caps the view log by dropping the OLDEST entries', () => {
+    const { recordStepActivity } = useQuizStore.getState();
+    for (let i = 0; i < 205; i += 1) recordStepActivity({ viewed: [`step-${i}`] });
+    const { viewed } = useQuizStore.getState().pendingStepActivity;
+    expect(viewed).toHaveLength(200);
+    expect(viewed[0]).toBe('step-5');
+    expect(viewed.at(-1)).toBe('step-204');
+  });
+
+  it('subtracts exactly what was sent, keeping activity buffered mid-request', () => {
+    const store = useQuizStore.getState();
+    store.recordStepActivity({ viewed: ['step2'], answered: ['step1'] });
+    const sent = { ...useQuizStore.getState().pendingStepActivity };
+
+    // Recorded WHILE the request is in flight.
+    store.recordStepActivity({ viewed: ['step3'], answered: ['step2'] });
+
+    useQuizStore.getState().markProgressSaved({
+      sessionId: 'sess-1',
+      currentStepId: null,
+      answers: {},
+      revision: 1,
+      stepActivitySent: sent,
+    });
+
+    const buffer = useQuizStore.getState().pendingStepActivity;
+    expect(buffer.viewed).toEqual(['step3']);
+    expect(buffer.answered).toEqual(['step2']);
+  });
+
+  it('leaves the buffer untouched when the session changed under it', () => {
+    useQuizStore.getState().recordStepActivity({ viewed: ['step2'] });
+    useQuizStore.getState().markProgressSaved({
+      sessionId: 'a-different-session',
+      currentStepId: null,
+      answers: {},
+      revision: 9,
+      stepActivitySent: { viewed: ['step2'], answered: [], skipped: [] },
+    });
+    expect(useQuizStore.getState().pendingStepActivity.viewed).toEqual(['step2']);
+  });
+
+  it('keeps the buffer when a save omits stepActivitySent (a failed or empty flush)', () => {
+    useQuizStore.getState().recordStepActivity({ viewed: ['step2'] });
+    useQuizStore.getState().markProgressSaved({
+      sessionId: 'sess-1',
+      currentStepId: null,
+      answers: {},
+      revision: 1,
+    });
+    expect(useQuizStore.getState().pendingStepActivity.viewed).toEqual(['step2']);
+  });
+
+  it('reset() clears it', () => {
+    useQuizStore.getState().recordStepActivity({ viewed: ['step2'] });
+    useQuizStore.getState().reset();
+    expect(useQuizStore.getState().pendingStepActivity.viewed).toEqual([]);
   });
 });

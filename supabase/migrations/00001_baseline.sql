@@ -243,11 +243,24 @@ $$;
 CREATE TABLE IF NOT EXISTS public.sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT,
+  visitor_id TEXT,
   quiz_answers JSONB NOT NULL DEFAULT '{}'::JSONB,
+  quiz_result JSONB,
   result_segment TEXT,
   current_step_id TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  revision INTEGER NOT NULL DEFAULT 0,
+  quiz_variant TEXT NOT NULL DEFAULT 'boilerplate-v1',
+  funnel_variant TEXT NOT NULL DEFAULT 'main-v1',
   locale TEXT NOT NULL,
   source TEXT NOT NULL DEFAULT 'quiz',
+  attribution JSONB NOT NULL DEFAULT '{}'::JSONB,
+  client_context JSONB NOT NULL DEFAULT '{}'::JSONB,
+  -- Per-step CRO telemetry: {"<step_id>": {viewed_at, answered_at, skipped, views}}.
+  -- Timestamps are stamped server-side by quiz_merge_step_activity(); the client
+  -- only ever sends step ids. NOT answers — quiz_answers remains the sole home
+  -- for those, and nothing here is per-answer or per-row.
+  step_activity JSONB NOT NULL DEFAULT '{}'::JSONB,
 
   -- Auth linking (post-checkout OTP)
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -267,22 +280,131 @@ CREATE TABLE IF NOT EXISTS public.sessions (
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ,
 
   CONSTRAINT sessions_solidgate_oto_environment_check CHECK (
     solidgate_oto_environment IS NULL
     OR solidgate_oto_environment IN ('production', 'sandbox')
+  ),
+  CONSTRAINT sessions_status_check CHECK (
+    status IN ('active', 'completed', 'abandoned', 'expired')
+  ),
+  CONSTRAINT sessions_revision_check CHECK (revision >= 0),
+  CONSTRAINT sessions_quiz_answers_object_check CHECK (
+    jsonb_typeof(quiz_answers) = 'object'
+  ),
+  CONSTRAINT sessions_quiz_result_object_check CHECK (
+    quiz_result IS NULL OR jsonb_typeof(quiz_result) = 'object'
+  ),
+  CONSTRAINT sessions_attribution_object_check CHECK (
+    jsonb_typeof(attribution) = 'object'
+  ),
+  CONSTRAINT sessions_client_context_object_check CHECK (
+    jsonb_typeof(client_context) = 'object'
+  ),
+  CONSTRAINT sessions_step_activity_object_check CHECK (
+    jsonb_typeof(step_activity) = 'object'
+  ),
+  CONSTRAINT sessions_completion_check CHECK (
+    (status = 'completed') = (completed_at IS NOT NULL)
   )
 );
+
+-- Keep the baseline idempotent when it is re-run against an older local
+-- boilerplate database instead of a completely fresh reset.
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS visitor_id TEXT;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS quiz_result JSONB;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS revision INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS quiz_variant TEXT NOT NULL DEFAULT 'boilerplate-v1';
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS funnel_variant TEXT NOT NULL DEFAULT 'main-v1';
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS attribution JSONB NOT NULL DEFAULT '{}'::JSONB;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS client_context JSONB NOT NULL DEFAULT '{}'::JSONB;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS step_activity JSONB NOT NULL DEFAULT '{}'::JSONB;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_status_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_status_check
+      CHECK (status IN ('active', 'completed', 'abandoned', 'expired'));
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_revision_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_revision_check CHECK (revision >= 0);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_quiz_answers_object_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_quiz_answers_object_check
+      CHECK (jsonb_typeof(quiz_answers) = 'object');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_quiz_result_object_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_quiz_result_object_check
+      CHECK (quiz_result IS NULL OR jsonb_typeof(quiz_result) = 'object');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_attribution_object_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_attribution_object_check
+      CHECK (jsonb_typeof(attribution) = 'object');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_client_context_object_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_client_context_object_check
+      CHECK (jsonb_typeof(client_context) = 'object');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_step_activity_object_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_step_activity_object_check
+      CHECK (jsonb_typeof(step_activity) = 'object');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'sessions_completion_check' AND conrelid = 'public.sessions'::regclass
+  ) THEN
+    ALTER TABLE public.sessions
+      ADD CONSTRAINT sessions_completion_check
+      CHECK ((status = 'completed') = (completed_at IS NOT NULL));
+  END IF;
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_sessions_email ON public.sessions (email);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON public.sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_current_step ON public.sessions (current_step_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_visitor_id ON public.sessions (visitor_id)
+  WHERE visitor_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sessions_quiz_reporting
+  ON public.sessions (created_at, funnel_variant, quiz_variant, source, status);
 
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Anyone can create a session" ON public.sessions;
-CREATE POLICY "Anyone can create a session"
-  ON public.sessions FOR INSERT TO anon WITH CHECK (true);
+-- Quiz session creation goes through /api/quiz/session/create so the server can pin the
+-- quiz version, mint the signed access cookie and create quiz_started in the
+-- same transaction. There is intentionally no direct anonymous INSERT policy.
 
 DROP POLICY IF EXISTS "Authenticated users can read their own sessions" ON public.sessions;
 CREATE POLICY "Authenticated users can read their own sessions"
@@ -299,32 +421,2022 @@ CREATE POLICY "Authenticated users can update their own sessions"
 -- ── funnel_events ───────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.funnel_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
   event_type TEXT NOT NULL CHECK (event_type IN (
     'quiz_started', 'step_completed', 'lead_captured', 'quiz_completed',
+    'results_viewed', 'offer_viewed', 'offer_accepted', 'offer_declined',
     'oto_viewed', 'oto_accepted', 'oto_declined', 'checkout_completed'
   )),
   step_number INTEGER,
-  metadata JSONB DEFAULT '{}'::JSONB,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.funnel_events
+  ADD COLUMN IF NOT EXISTS event_id UUID NOT NULL DEFAULT gen_random_uuid();
+ALTER TABLE public.funnel_events
+  ADD COLUMN IF NOT EXISTS occurred_at TIMESTAMPTZ NOT NULL DEFAULT now();
+UPDATE public.funnel_events SET metadata = '{}'::JSONB WHERE metadata IS NULL;
+ALTER TABLE public.funnel_events ALTER COLUMN metadata SET NOT NULL;
+ALTER TABLE public.funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check;
+ALTER TABLE public.funnel_events
+  ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+    'quiz_started', 'step_completed', 'lead_captured', 'quiz_completed',
+    'results_viewed', 'offer_viewed', 'offer_accepted', 'offer_declined',
+    'oto_viewed', 'oto_accepted', 'oto_declined', 'checkout_completed'
+  ));
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_events_event_id
+  ON public.funnel_events (event_id);
 CREATE INDEX IF NOT EXISTS idx_funnel_events_session_id ON public.funnel_events (session_id);
 CREATE INDEX IF NOT EXISTS idx_funnel_events_event_type ON public.funnel_events (event_type);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_events_one_session_milestone
+  ON public.funnel_events (session_id, event_type)
+  WHERE event_type IN ('quiz_started', 'lead_captured', 'quiz_completed');
+CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_events_one_step_completion
+  ON public.funnel_events (session_id, event_type, step_number)
+  WHERE event_type = 'step_completed';
 
 ALTER TABLE public.funnel_events ENABLE ROW LEVEL SECURITY;
 
+-- The hardened funnel-event path uses authenticated backend routes. Direct
+-- browser writes remain temporarily available for the existing frontend; the
+-- backend-only quiz branch adds /api/funnel-events but does not switch callers.
+-- Remove these policies when the frontend migration is explicitly in scope.
 DROP POLICY IF EXISTS "Anyone can insert funnel events" ON public.funnel_events;
 CREATE POLICY "Anyone can insert funnel events"
   ON public.funnel_events FOR INSERT TO anon WITH CHECK (true);
-
--- Without this second policy every post-checkout OTO event is rejected: the
--- visitor is authenticated by then, and `TO anon` does not cover them.
 DROP POLICY IF EXISTS "Authenticated can insert funnel events" ON public.funnel_events;
 CREATE POLICY "Authenticated can insert funnel events"
   ON public.funnel_events FOR INSERT TO authenticated WITH CHECK (true);
 
+-- ── quiz definition catalog ─────────────────────────────────────────────────
+-- Publishes the TypeScript quiz graph (apps/funnel/src/features/quiz/config/
+-- quiz-config.ts) into Postgres so an EXTERNAL CRO dashboard can label steps
+-- and tell a BRANCH from a DROP.
+--
+-- WHY THIS EXISTS. funnel_events records only step_number, and
+-- idx_funnel_events_one_step_completion is unique on
+-- (session_id, event_type, step_number) — while branch arms SHARE a position
+-- (step3 and step3b are both position 3). So one session can record at most
+-- one arm, the step id survives only inside metadata.step_id, and per-step
+-- counts dip at every branch even when nobody dropped. See the comment in
+-- apps/funnel/src/app/admin/_queries/funnel.ts that concedes exactly this.
+-- These tables are the only thing that can separate the two cases; do not
+-- "simplify" them back into funnel_events.
+--
+-- THESE TABLES HOLD NO USER DATA. They describe the quiz's own structure, one
+-- set of rows per quiz_variant, shared by every session — roughly 18 rows for
+-- an 8-step quiz, and they do not grow with traffic. Answers live in
+-- sessions.quiz_answers and nowhere else; there is no per-answer, per-session
+-- or per-view row anywhere in this catalog.
+--
+-- KEYED ON quiz_variant ALONE. quiz_variant is the immutable question set;
+-- funnel_variant is the INDEPENDENT per-visitor presentation/offer A/B bucket
+-- assigned by assign_funnel_variant in the app. One definition serves many
+-- funnel_variants. funnel_key below is a descriptive family label, NOT part of
+-- the key — sessions carries no funnel-family column to join on.
+--
+-- DELIBERATELY NOT REFERENCED BY sessions. There is no FK from
+-- sessions.quiz_variant to quiz_definitions.quiz_variant and there must never
+-- be one: session creation is on the revenue path and must not fail because a
+-- deploy forgot to seed the catalog. The join is a LEFT JOIN; an unseeded
+-- variant shows up in cro_step_funnel() as in_catalog = false, which is how
+-- you find out.
+--
+-- APPEND-ONLY AND IMMUTABLE. There is no is_active flag by design: changing
+-- the quiz means bumping QUIZ_VARIANT in
+-- apps/funnel/src/features/quiz/server/quiz-definition.ts, and old versions
+-- stop receiving sessions on their own. Several versions being live at once is
+-- therefore the normal case, not a state anyone toggles.
+CREATE TABLE IF NOT EXISTS public.quiz_definitions (
+  quiz_variant   TEXT PRIMARY KEY,
+  app_key        TEXT NOT NULL,
+  funnel_key     TEXT NOT NULL,
+  first_step_id  TEXT NOT NULL,
+  total_steps    INTEGER NOT NULL,
+  -- sha256 over the STRUCTURE of the step graph (ids, positions, types,
+  -- storeAs, option values, successor edges) — never over i18n copy keys.
+  -- Copy edits are the most common CRO change; if they forced a variant bump
+  -- someone would disable this guard within two months.
+  config_hash    TEXT NOT NULL,
+  published_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT quiz_definitions_variant_len
+    CHECK (char_length(quiz_variant) BETWEEN 1 AND 100),
+  CONSTRAINT quiz_definitions_app_key_len
+    CHECK (char_length(app_key) BETWEEN 1 AND 100),
+  CONSTRAINT quiz_definitions_funnel_key_len
+    CHECK (char_length(funnel_key) BETWEEN 1 AND 100),
+  CONSTRAINT quiz_definitions_first_step_len
+    CHECK (char_length(first_step_id) BETWEEN 1 AND 100),
+  CONSTRAINT quiz_definitions_total_steps_check
+    CHECK (total_steps BETWEEN 1 AND 500),
+  CONSTRAINT quiz_definitions_config_hash_check
+    CHECK (config_hash ~ '^[0-9a-f]{64}$')
+);
 
+CREATE INDEX IF NOT EXISTS idx_quiz_definitions_family
+  ON public.quiz_definitions (app_key, funnel_key, published_at DESC);
+
+ALTER TABLE public.quiz_definitions ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.quiz_definitions FROM PUBLIC, anon, authenticated;
+-- No DELETE: removing a definition orphans the step labels of every historical
+-- session that ran it.
+GRANT SELECT, INSERT ON TABLE public.quiz_definitions TO service_role;
+
+COMMENT ON TABLE public.quiz_definitions IS
+  'Published immutable quiz question-set versions. Soft-referenced by sessions.quiz_variant; never FK-enforced. Contains no user data.';
+
+
+-- ── quiz_definition_steps ───────────────────────────────────────────────────
+-- BRANCH ALTERNATIVES SHARE A POSITION. step3 and step3b are both position 3
+-- (STEP_POSITIONS in quiz-config.ts). There is intentionally NO unique index
+-- on (quiz_variant, position) — adding one makes every branching quiz
+-- unpublishable. The stable per-step key is step_id; sort_index carries the
+-- config's declaration order.
+CREATE TABLE IF NOT EXISTS public.quiz_definition_steps (
+  quiz_variant  TEXT NOT NULL
+    REFERENCES public.quiz_definitions(quiz_variant) ON DELETE CASCADE,
+  step_id       TEXT NOT NULL,
+  position      INTEGER NOT NULL,
+  sort_index    INTEGER NOT NULL,
+  step_type     TEXT NOT NULL,
+  phase_key     TEXT,
+  store_as      TEXT,
+  -- allowedKeysForStep(step).length > 0 in
+  -- apps/funnel/src/features/quiz/config/step-answer-keys.ts. This is the only
+  -- reliable question-vs-screen signal: step_completed fires for auto-advancing
+  -- screens too, so the event alone cannot distinguish them.
+  is_question   BOOLEAN NOT NULL,
+  is_terminal   BOOLEAN NOT NULL DEFAULT false,
+  answer_keys   JSONB NOT NULL DEFAULT '[]'::JSONB,
+  -- The declared answer CODES for this step, in config order ("o1", "female").
+  -- Not copy — the labels beside them in quiz-config.ts are i18n keys.
+  --
+  -- Two jobs. It is part of the config hash, so changing a step's option
+  -- vocabulary now forces a QUIZ_VARIANT bump rather than silently letting one
+  -- variant hold two vocabularies. And it lets an answer distribution say
+  -- "no longer an option" instead of rendering a bare code for an answer whose
+  -- option was later removed.
+  option_values JSONB NOT NULL DEFAULT '[]'::JSONB,
+  -- Resolved English copy for those codes, as {"o1": "Lose weight", ...}.
+  --
+  -- SEPARATE FROM option_values, and deliberately NOT part of the config hash,
+  -- for the same reason `label` is not: every string in quiz-config.ts is an
+  -- i18n key, copy edits are the most common CRO change there is, and if they
+  -- forced a QUIZ_VARIANT bump someone would disable the guard within two
+  -- months. The CODES are structure and are hashed; the words beside them are
+  -- not.
+  --
+  -- An object rather than a parallel array so the `?` membership test on
+  -- option_values keeps working unchanged, and so a missing entry is simply a
+  -- NULL lookup rather than an index that has to line up.
+  option_labels JSONB NOT NULL DEFAULT '{}'::JSONB,
+  -- The i18n key the label came from, kept so a dashboard can be localised
+  -- later without republishing.
+  label_key     TEXT,
+  -- Resolved English text. EVERY string in quiz-config.ts is an i18n key, not a
+  -- sentence -- that is what makes the quiz translatable -- so publishing the
+  -- config faithfully yields 'steps.step1.question', which is no more readable
+  -- in a dashboard than 'step1'. The publisher resolves it against the message
+  -- pack before it gets here.
+  label         TEXT,
+  -- True when EVERY route from the first step to a terminal passes through this
+  -- step. Decided by deleting the step and asking whether any terminal is still
+  -- reachable -- NOT by whether it shares a position. That heuristic is wrong in
+  -- both directions and is the single reason a branch gets reported as a drop.
+  --
+  -- Consumers split a position's screens on this: `true` screens are on the
+  -- spine and their drop is real; `false` screens were only shown to some
+  -- visitors, so their drop must be measured against their OWN views.
+  is_unconditional BOOLEAN NOT NULL DEFAULT true,
+  -- True when an entry condition can route a visitor PAST this step entirely,
+  -- which is what makes a "never saw this question" count meaningful rather than
+  -- a drop. The boilerplate schema has no skipIf concept, so it is always false
+  -- here; products that have one populate it.
+  entry_skippable  BOOLEAN NOT NULL DEFAULT false,
+  PRIMARY KEY (quiz_variant, step_id),
+  CONSTRAINT quiz_definition_steps_step_id_len
+    CHECK (char_length(step_id) BETWEEN 1 AND 100),
+  CONSTRAINT quiz_definition_steps_position_check
+    CHECK (position BETWEEN 1 AND 500),
+  CONSTRAINT quiz_definition_steps_type_len
+    CHECK (char_length(step_type) BETWEEN 1 AND 50),
+  CONSTRAINT quiz_definition_steps_answer_keys_array_check
+    CHECK (jsonb_typeof(answer_keys) = 'array'),
+  CONSTRAINT quiz_definition_steps_option_values_array_check
+    CHECK (jsonb_typeof(option_values) = 'array'),
+  CONSTRAINT quiz_definition_steps_option_labels_object_check
+    CHECK (jsonb_typeof(option_labels) = 'object')
+);
+
+ALTER TABLE public.quiz_definition_steps
+  ADD COLUMN IF NOT EXISTS option_values JSONB NOT NULL DEFAULT '[]'::JSONB;
+ALTER TABLE public.quiz_definition_steps
+  ADD COLUMN IF NOT EXISTS option_labels JSONB NOT NULL DEFAULT '{}'::JSONB;
+ALTER TABLE public.quiz_definition_steps ADD COLUMN IF NOT EXISTS label_key TEXT;
+ALTER TABLE public.quiz_definition_steps ADD COLUMN IF NOT EXISTS label TEXT;
+ALTER TABLE public.quiz_definition_steps
+  ADD COLUMN IF NOT EXISTS is_unconditional BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.quiz_definition_steps
+  ADD COLUMN IF NOT EXISTS entry_skippable BOOLEAN NOT NULL DEFAULT false;
+
+CREATE INDEX IF NOT EXISTS idx_quiz_definition_steps_position
+  ON public.quiz_definition_steps (quiz_variant, position, step_id);
+
+ALTER TABLE public.quiz_definition_steps ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.quiz_definition_steps FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT ON TABLE public.quiz_definition_steps TO service_role;
+
+
+-- ── quiz_definition_step_edges ──────────────────────────────────────────────
+-- Explicit successor ids. This is what makes reachability computable, and it
+-- is what separates a BRANCH from a DROP: "step S was viewed and NONE of S's
+-- successors was viewed" is a real exit; "step T was never viewed because the
+-- visitor took the other arm out of S" is not.
+--
+-- Terminal steps (loading_screen, trial_price) emit NO edges. quiz-config.ts
+-- gives step7 nextStepId = 'step7' as an unused placeholder; the no-self-edge
+-- CHECK below rejects it on purpose, so the publisher must filter terminals
+-- out. Without that, every terminal step becomes a phantom cycle in the
+-- dashboard's graph.
+CREATE TABLE IF NOT EXISTS public.quiz_definition_step_edges (
+  quiz_variant  TEXT NOT NULL,
+  from_step_id  TEXT NOT NULL,
+  to_step_id    TEXT NOT NULL,
+  edge_index    INTEGER NOT NULL DEFAULT 0,
+  -- The option value that selects this edge, or NULL for a step-level
+  -- nextStepId. multi_select / likert / slider / input_group cannot branch.
+  on_value      TEXT,
+  PRIMARY KEY (quiz_variant, from_step_id, to_step_id, edge_index),
+  FOREIGN KEY (quiz_variant, from_step_id)
+    REFERENCES public.quiz_definition_steps (quiz_variant, step_id) ON DELETE CASCADE,
+  FOREIGN KEY (quiz_variant, to_step_id)
+    REFERENCES public.quiz_definition_steps (quiz_variant, step_id) ON DELETE CASCADE,
+  CONSTRAINT quiz_definition_step_edges_no_self
+    CHECK (from_step_id <> to_step_id),
+  CONSTRAINT quiz_definition_step_edges_on_value_len
+    CHECK (on_value IS NULL OR char_length(on_value) BETWEEN 1 AND 200),
+  CONSTRAINT quiz_definition_step_edges_index_check
+    CHECK (edge_index BETWEEN 0 AND 200)
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_definition_step_edges_from
+  ON public.quiz_definition_step_edges (quiz_variant, from_step_id, to_step_id);
+
+ALTER TABLE public.quiz_definition_step_edges ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.quiz_definition_step_edges FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT ON TABLE public.quiz_definition_step_edges TO service_role;
+
+
+-- A published definition is FROZEN. Historical sessions' step_number and
+-- step_activity keys are interpreted against it, so mutating it silently
+-- rewrites the meaning of data already collected. Re-publishing an unchanged
+-- config is a no-op; re-publishing a CHANGED one is an error telling the
+-- operator to bump QUIZ_VARIANT.
+CREATE OR REPLACE FUNCTION public.guard_quiz_definition_immutable()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RAISE EXCEPTION USING
+    ERRCODE = 'P0001',
+    MESSAGE = 'QUIZ_DEFINITION_IMMUTABLE:' || TG_TABLE_NAME;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS guard_quiz_definitions_immutable_trigger
+  ON public.quiz_definitions;
+CREATE TRIGGER guard_quiz_definitions_immutable_trigger
+  BEFORE UPDATE OR DELETE ON public.quiz_definitions
+  FOR EACH ROW EXECUTE FUNCTION public.guard_quiz_definition_immutable();
+
+DROP TRIGGER IF EXISTS guard_quiz_definition_steps_immutable_trigger
+  ON public.quiz_definition_steps;
+CREATE TRIGGER guard_quiz_definition_steps_immutable_trigger
+  BEFORE UPDATE OR DELETE ON public.quiz_definition_steps
+  FOR EACH ROW EXECUTE FUNCTION public.guard_quiz_definition_immutable();
+
+DROP TRIGGER IF EXISTS guard_quiz_definition_step_edges_immutable_trigger
+  ON public.quiz_definition_step_edges;
+CREATE TRIGGER guard_quiz_definition_step_edges_immutable_trigger
+  BEFORE UPDATE OR DELETE ON public.quiz_definition_step_edges
+  FOR EACH ROW EXECUTE FUNCTION public.guard_quiz_definition_immutable();
+
+
+-- Idempotent publish, called by scripts/publish-quiz-definition.ts.
+--
+--   same variant + same hash  -> {"result":"unchanged"}, ZERO writes
+--   same variant + diff hash  -> QUIZ_DEFINITION_DRIFT, the publish fails loud
+--   new variant               -> header + steps + edges inserted
+--
+-- The "zero writes" path is load-bearing: the immutability trigger would
+-- reject a re-publish UPDATE outright, so this must short-circuit BEFORE it
+-- writes rather than rely on the write failing.
+CREATE OR REPLACE FUNCTION public.publish_quiz_definition(
+  p_quiz_variant  TEXT,
+  p_app_key       TEXT,
+  p_funnel_key    TEXT,
+  p_first_step_id TEXT,
+  p_total_steps   INTEGER,
+  p_config_hash   TEXT,
+  -- [{step_id, position, sort_index, step_type, phase_key, store_as,
+  --   is_question, is_terminal, answer_keys:[], next:[{to_step_id, on_value}]}]
+  p_steps         JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_existing public.quiz_definitions%ROWTYPE;
+  v_step     JSONB;
+  v_next     JSONB;
+  v_index    INTEGER;
+BEGIN
+  IF jsonb_typeof(p_steps) <> 'array' OR jsonb_array_length(p_steps) = 0 THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0001', MESSAGE = 'QUIZ_DEFINITION_STEPS_INVALID';
+  END IF;
+
+  SELECT * INTO v_existing
+  FROM public.quiz_definitions
+  WHERE quiz_variant = p_quiz_variant;
+
+  IF FOUND THEN
+    IF v_existing.config_hash = p_config_hash THEN
+      RETURN jsonb_build_object(
+        'result', 'unchanged',
+        'quiz_variant', v_existing.quiz_variant,
+        'config_hash', v_existing.config_hash
+      );
+    END IF;
+    -- The workflow this enforces: every quiz change gets a NEW quiz_variant.
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0001',
+      MESSAGE = 'QUIZ_DEFINITION_DRIFT:' || v_existing.config_hash;
+  END IF;
+
+  INSERT INTO public.quiz_definitions (
+    quiz_variant, app_key, funnel_key, first_step_id, total_steps, config_hash
+  ) VALUES (
+    p_quiz_variant, p_app_key, p_funnel_key, p_first_step_id,
+    p_total_steps, p_config_hash
+  );
+
+  -- Steps first: the edge table FKs both endpoints back to them, which is also
+  -- what rejects an edge pointing at a step id the config does not define.
+  FOR v_step IN SELECT * FROM jsonb_array_elements(p_steps)
+  LOOP
+    INSERT INTO public.quiz_definition_steps (
+      quiz_variant, step_id, position, sort_index, step_type,
+      phase_key, store_as, is_question, is_terminal, answer_keys, option_values,
+      option_labels, label_key, label, is_unconditional, entry_skippable
+    ) VALUES (
+      p_quiz_variant,
+      v_step ->> 'step_id',
+      (v_step ->> 'position')::INTEGER,
+      (v_step ->> 'sort_index')::INTEGER,
+      v_step ->> 'step_type',
+      v_step ->> 'phase_key',
+      v_step ->> 'store_as',
+      COALESCE((v_step ->> 'is_question')::BOOLEAN, false),
+      COALESCE((v_step ->> 'is_terminal')::BOOLEAN, false),
+      COALESCE(v_step -> 'answer_keys', '[]'::JSONB),
+      COALESCE(v_step -> 'option_values', '[]'::JSONB),
+      COALESCE(v_step -> 'option_labels', '{}'::JSONB),
+      v_step ->> 'label_key',
+      v_step ->> 'label',
+      COALESCE((v_step ->> 'is_unconditional')::BOOLEAN, true),
+      COALESCE((v_step ->> 'entry_skippable')::BOOLEAN, false)
+    );
+  END LOOP;
+
+  FOR v_step IN SELECT * FROM jsonb_array_elements(p_steps)
+  LOOP
+    v_index := 0;
+    FOR v_next IN SELECT * FROM jsonb_array_elements(COALESCE(v_step -> 'next', '[]'::JSONB))
+    LOOP
+      INSERT INTO public.quiz_definition_step_edges (
+        quiz_variant, from_step_id, to_step_id, edge_index, on_value
+      ) VALUES (
+        p_quiz_variant,
+        v_step ->> 'step_id',
+        v_next ->> 'to_step_id',
+        v_index,
+        v_next ->> 'on_value'
+      )
+      ON CONFLICT DO NOTHING;
+      v_index := v_index + 1;
+    END LOOP;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'result', 'published',
+    'quiz_variant', p_quiz_variant,
+    'config_hash', p_config_hash,
+    'steps', jsonb_array_length(p_steps)
+  );
+END;
+$$;
+
+
+-- Merge one per-save step-activity DELTA into a session's step_activity.
+--
+-- INTERNAL: revoked from service_role too. Reachable only from inside
+-- create_quiz_session and save_quiz_session_progress, both SECURITY DEFINER.
+--
+-- The delta is {"viewed":[ids],"answered":[ids],"skipped":[ids]} — step IDS
+-- ONLY. The client never sends a timestamp, so a skewed or hostile clock
+-- cannot move any of these. `viewed` is a MULTISET (one entry per forward
+-- entry, which is the view counter); the other two are sets.
+--
+-- Semantics, which the SQL tests pin:
+--   viewed_at   COALESCE -> FIRST view, never moves
+--   answered_at COALESCE -> FIRST answer. A visitor who navigates back and
+--                           edits does NOT reset it: this is "when did they
+--                           first get past this step", not "last changed".
+--   skipped     answering clears it; skipping never un-answers
+--   views       +1 per forward entry, capped so a looping client cannot
+--               inflate it without bound
+--
+-- It deliberately does NOT validate ids against quiz_definition_steps: that
+-- would make every save depend on the catalog being seeded, breaking the
+-- soft-reference rule. Unknown ids surface as in_catalog = false in
+-- cro_step_funnel(), which is the drift detector.
+CREATE OR REPLACE FUNCTION public.quiz_merge_step_activity(
+  p_existing JSONB,
+  p_delta    JSONB,
+  p_now      TIMESTAMPTZ
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_result    JSONB := COALESCE(p_existing, '{}'::JSONB);
+  v_now_json  JSONB := to_jsonb(p_now);
+  v_viewed    JSONB;
+  v_answered  JSONB;
+  v_skipped   JSONB;
+  v_step      TEXT;
+  v_is_view   BOOLEAN;
+  v_is_answer BOOLEAN;
+  v_is_skip   BOOLEAN;
+  v_view_n    INTEGER;
+  v_entry     JSONB;
+  v_views     INTEGER;
+BEGIN
+  IF p_delta IS NULL OR jsonb_typeof(p_delta) <> 'object' THEN
+    RETURN v_result;
+  END IF;
+
+  v_viewed   := CASE WHEN jsonb_typeof(p_delta -> 'viewed')   = 'array'
+                     THEN p_delta -> 'viewed'   ELSE '[]'::JSONB END;
+  v_answered := CASE WHEN jsonb_typeof(p_delta -> 'answered') = 'array'
+                     THEN p_delta -> 'answered' ELSE '[]'::JSONB END;
+  v_skipped  := CASE WHEN jsonb_typeof(p_delta -> 'skipped')  = 'array'
+                     THEN p_delta -> 'skipped'  ELSE '[]'::JSONB END;
+
+  -- One pass per distinct step id. view_n counts REPEATS within this delta, so
+  -- two forward entries in one save increment views by two.
+  FOR v_step, v_is_view, v_is_answer, v_is_skip, v_view_n IN
+    SELECT d.step_id,
+           bool_or(d.kind = 'v'),
+           bool_or(d.kind = 'a'),
+           bool_or(d.kind = 's'),
+           count(*) FILTER (WHERE d.kind = 'v')::INTEGER
+    FROM (
+      SELECT 'v'::TEXT AS kind, t.value AS step_id
+        FROM jsonb_array_elements_text(v_viewed) AS t(value)
+      UNION ALL
+      SELECT 'a', t.value FROM jsonb_array_elements_text(v_answered) AS t(value)
+      UNION ALL
+      SELECT 's', t.value FROM jsonb_array_elements_text(v_skipped) AS t(value)
+    ) AS d
+    WHERE d.step_id IS NOT NULL
+    GROUP BY d.step_id
+  LOOP
+    IF char_length(v_step) NOT BETWEEN 1 AND 100 THEN
+      RAISE EXCEPTION USING
+        ERRCODE = 'P0001', MESSAGE = 'QUIZ_STEP_ACTIVITY_INVALID';
+    END IF;
+
+    v_entry := COALESCE(v_result -> v_step, '{}'::JSONB);
+    v_views := COALESCE((v_entry ->> 'views')::INTEGER, 0);
+
+    IF v_is_view THEN
+      v_views := LEAST(v_views + v_view_n, 250);
+    ELSE
+      -- Answering or skipping without an explicit view still implies one.
+      v_views := GREATEST(v_views, 1);
+    END IF;
+
+    v_result := v_result || jsonb_build_object(
+      v_step,
+      jsonb_build_object(
+        'viewed_at',
+          COALESCE(v_entry -> 'viewed_at', v_now_json),
+        'answered_at',
+          CASE
+            WHEN v_entry ->> 'answered_at' IS NOT NULL THEN v_entry -> 'answered_at'
+            WHEN v_is_answer THEN v_now_json
+            ELSE 'null'::JSONB
+          END,
+        'skipped',
+          CASE
+            WHEN v_is_answer THEN 'false'::JSONB
+            WHEN v_entry ->> 'answered_at' IS NOT NULL THEN 'false'::JSONB
+            WHEN v_is_skip THEN 'true'::JSONB
+            ELSE COALESCE(v_entry -> 'skipped', 'false'::JSONB)
+          END,
+        'views', to_jsonb(v_views)
+      )
+    );
+  END LOOP;
+
+  -- Bound the RESULT. The column CHECK is a shape guard only; this raises a
+  -- sentinel the API route turns into a 413 instead of a bare 23514.
+  IF pg_column_size(v_result) > 16384
+     OR (SELECT count(*) FROM jsonb_object_keys(v_result)) > 200 THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0001', MESSAGE = 'QUIZ_STEP_ACTIVITY_TOO_LARGE';
+  END IF;
+
+  RETURN v_result;
+END;
+$$;
+-- ── quiz backend atomic operations ─────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.create_quiz_session(
+  p_session_id UUID,
+  p_email TEXT,
+  p_visitor_id TEXT,
+  p_quiz_variant TEXT,
+  p_funnel_variant TEXT,
+  p_locale TEXT,
+  p_source TEXT,
+  p_attribution JSONB,
+  p_client_context JSONB,
+  p_event_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_session public.sessions%ROWTYPE;
+BEGIN
+  INSERT INTO public.sessions (
+    id,
+    email,
+    visitor_id,
+    quiz_variant,
+    funnel_variant,
+    locale,
+    source,
+    attribution,
+    client_context,
+    step_activity
+  ) VALUES (
+    p_session_id,
+    p_email,
+    p_visitor_id,
+    p_quiz_variant,
+    p_funnel_variant,
+    p_locale,
+    p_source,
+    COALESCE(p_attribution, '{}'::JSONB),
+    COALESCE(p_client_context, '{}'::JSONB),
+    -- Stamp the landing step as viewed. Nobody ever advances INTO the first
+    -- step, so without this its viewed_at stays null forever and
+    -- "rendered step 1 and bounced" is indistinguishable from "row exists,
+    -- screen never rendered" -- which DATA_MODEL.md calls the whole point of
+    -- creating this row before any click.
+    --
+    -- SOFT catalog reference: no FK, no join in the INSERT's WHERE, no failure
+    -- path. An unpublished quiz_variant yields NULL and the session is created
+    -- with an empty step_activity. Session creation is on the revenue path and
+    -- must never fail because a deploy forgot to seed the catalog.
+    COALESCE(
+      (
+        SELECT public.quiz_merge_step_activity(
+                 '{}'::JSONB,
+                 jsonb_build_object('viewed', jsonb_build_array(d.first_step_id)),
+                 now()
+               )
+        FROM public.quiz_definitions d
+        WHERE d.quiz_variant = p_quiz_variant
+      ),
+      '{}'::JSONB
+    )
+  )
+  RETURNING * INTO v_session;
+
+  INSERT INTO public.funnel_events (
+    event_id,
+    session_id,
+    event_type,
+    step_number,
+    metadata,
+    occurred_at
+  ) VALUES (
+    p_event_id,
+    p_session_id,
+    'quiz_started',
+    1,
+    '{}'::JSONB,
+    now()
+  )
+  ON CONFLICT DO NOTHING;
+
+  RETURN jsonb_build_object(
+    'id', v_session.id,
+    'status', v_session.status,
+    'revision', v_session.revision,
+    'current_step_id', v_session.current_step_id
+  );
+END;
+$$;
+
+-- ORDER BELOW IS LOAD-BEARING.
+--
+-- 1) Adding a parameter does NOT replace this function. CREATE OR REPLACE with
+--    a different argument count creates an OVERLOAD, and PostgREST then sees
+--    two candidates for POST /rpc/save_quiz_session_progress and fails EVERY
+--    call with PGRST203. The 13-argument signature must be dropped explicitly.
+-- 2) IF EXISTS keeps the re-run safe: on a second run only the 14-argument
+--    form is present and the DROP is a no-op.
+-- 3) p_step_activity is LAST and has DEFAULT NULL, so every existing
+--    13-argument POSITIONAL call stays valid (supabase/tests/quiz_backend.sql)
+--    and a deploy is safe while PostgREST's schema cache is still stale.
+DROP FUNCTION IF EXISTS public.save_quiz_session_progress(
+  UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, BOOLEAN,
+  UUID, TEXT, INTEGER, JSONB
+);
+
+CREATE OR REPLACE FUNCTION public.save_quiz_session_progress(
+  p_session_id UUID,
+  p_expected_revision INTEGER,
+  p_quiz_answers JSONB,
+  p_current_step_id TEXT,
+  p_email TEXT,
+  p_locale TEXT,
+  p_consent_given_at TIMESTAMPTZ,
+  p_consent_version TEXT,
+  p_marketing_consent BOOLEAN,
+  p_event_id UUID,
+  p_event_type TEXT,
+  p_event_step_number INTEGER,
+  p_event_metadata JSONB,
+  -- {"viewed":[ids],"answered":[ids],"skipped":[ids]} -- step ids only, never
+  -- client timestamps. See quiz_merge_step_activity() for the merge contract.
+  p_step_activity JSONB DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_session public.sessions%ROWTYPE;
+  v_existing public.sessions%ROWTYPE;
+  v_now TIMESTAMPTZ := now();   -- one stamp for the whole call
+BEGIN
+  UPDATE public.sessions
+  SET
+    quiz_answers = p_quiz_answers,
+    current_step_id = COALESCE(p_current_step_id, current_step_id),
+    email = COALESCE(p_email, email),
+    locale = COALESCE(p_locale, locale),
+    consent_given_at = COALESCE(p_consent_given_at, consent_given_at),
+    consent_version = COALESCE(p_consent_version, consent_version),
+    marketing_consent = COALESCE(p_marketing_consent, marketing_consent),
+    -- step_activity on the RIGHT-hand side is the PRE-update value, so the
+    -- first-view COALESCE and the view increment both see the stored entry.
+    -- Keeping the merge inside this same revision-guarded UPDATE is what
+    -- removes the read-modify-write window; do not lift it into a second
+    -- statement.
+    step_activity = public.quiz_merge_step_activity(
+      step_activity, p_step_activity, v_now
+    ),
+    welcome_email_pending = CASE
+      WHEN p_email IS NOT NULL THEN true
+      ELSE welcome_email_pending
+    END,
+    revision = revision + 1,
+    updated_at = v_now
+  WHERE id = p_session_id
+    AND status = 'active'
+    AND revision = p_expected_revision
+  RETURNING * INTO v_session;
+
+  IF NOT FOUND THEN
+    SELECT * INTO v_existing
+    FROM public.sessions
+    WHERE id = p_session_id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION USING
+        ERRCODE = 'P0002',
+        MESSAGE = 'QUIZ_SESSION_NOT_FOUND';
+    END IF;
+
+    IF v_existing.status <> 'active' THEN
+      RAISE EXCEPTION USING
+        ERRCODE = 'P0001',
+        MESSAGE = 'QUIZ_SESSION_TERMINAL';
+    END IF;
+
+    RAISE EXCEPTION USING
+      ERRCODE = '40001',
+      MESSAGE = 'QUIZ_STALE_REVISION:' || v_existing.revision::TEXT;
+  END IF;
+
+  IF p_event_id IS NOT NULL AND p_event_type IS NOT NULL THEN
+    INSERT INTO public.funnel_events (
+      event_id,
+      session_id,
+      event_type,
+      step_number,
+      metadata,
+      occurred_at
+    ) VALUES (
+      p_event_id,
+      p_session_id,
+      p_event_type,
+      p_event_step_number,
+      COALESCE(p_event_metadata, '{}'::JSONB),
+      v_now
+    )
+    ON CONFLICT DO NOTHING;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'id', v_session.id,
+    'status', v_session.status,
+    'revision', v_session.revision,
+    'current_step_id', v_session.current_step_id
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.complete_quiz_session(
+  p_session_id UUID,
+  p_expected_revision INTEGER,
+  p_quiz_result JSONB,
+  p_result_segment TEXT,
+  p_event_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_session public.sessions%ROWTYPE;
+BEGIN
+  SELECT * INTO v_session
+  FROM public.sessions
+  WHERE id = p_session_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0002',
+      MESSAGE = 'QUIZ_SESSION_NOT_FOUND';
+  END IF;
+
+  IF v_session.status = 'completed' THEN
+    RETURN jsonb_build_object(
+      'id', v_session.id,
+      'status', v_session.status,
+      'revision', v_session.revision,
+      'quiz_result', v_session.quiz_result,
+      'result_segment', v_session.result_segment,
+      'completed_at', v_session.completed_at
+    );
+  END IF;
+
+  IF v_session.status <> 'active' THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0001',
+      MESSAGE = 'QUIZ_SESSION_TERMINAL';
+  END IF;
+
+  IF v_session.revision <> p_expected_revision THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '40001',
+      MESSAGE = 'QUIZ_STALE_REVISION:' || v_session.revision::TEXT;
+  END IF;
+
+  UPDATE public.sessions
+  SET
+    quiz_result = p_quiz_result,
+    result_segment = p_result_segment,
+    status = 'completed',
+    current_step_id = 'results',
+    completed_at = now(),
+    updated_at = now(),
+    revision = revision + 1
+  WHERE id = p_session_id
+  RETURNING * INTO v_session;
+
+  INSERT INTO public.funnel_events (
+    event_id,
+    session_id,
+    event_type,
+    metadata,
+    occurred_at
+  ) VALUES (
+    p_event_id,
+    p_session_id,
+    'quiz_completed',
+    jsonb_build_object('result_segment', p_result_segment),
+    now()
+  )
+  ON CONFLICT DO NOTHING;
+
+  RETURN jsonb_build_object(
+    'id', v_session.id,
+    'status', v_session.status,
+    'revision', v_session.revision,
+    'quiz_result', v_session.quiz_result,
+    'result_segment', v_session.result_segment,
+    'completed_at', v_session.completed_at
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.record_funnel_event(
+  p_event_id UUID,
+  p_session_id UUID,
+  p_event_type TEXT,
+  p_step_number INTEGER,
+  p_metadata JSONB,
+  p_occurred_at TIMESTAMPTZ
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_id UUID;
+BEGIN
+  INSERT INTO public.funnel_events (
+    event_id,
+    session_id,
+    event_type,
+    step_number,
+    metadata,
+    occurred_at
+  ) VALUES (
+    p_event_id,
+    p_session_id,
+    p_event_type,
+    p_step_number,
+    COALESCE(p_metadata, '{}'::JSONB),
+    COALESCE(p_occurred_at, now())
+  )
+  ON CONFLICT DO NOTHING
+  RETURNING id INTO v_id;
+
+  IF v_id IS NULL THEN
+    SELECT id INTO v_id
+    FROM public.funnel_events
+    WHERE event_id = p_event_id;
+  END IF;
+
+  RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.link_quiz_session_user(
+  p_session_id UUID,
+  p_user_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_session public.sessions%ROWTYPE;
+BEGIN
+  SELECT * INTO v_session
+  FROM public.sessions
+  WHERE id = p_session_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0002',
+      MESSAGE = 'QUIZ_SESSION_NOT_FOUND';
+  END IF;
+
+  IF v_session.user_id IS NOT NULL AND v_session.user_id <> p_user_id THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0001',
+      MESSAGE = 'QUIZ_SESSION_OWNERSHIP_MISMATCH';
+  END IF;
+
+  IF v_session.user_id IS NULL THEN
+    UPDATE public.sessions
+    SET user_id = p_user_id, updated_at = now()
+    WHERE id = p_session_id
+    RETURNING * INTO v_session;
+  END IF;
+
+  RETURN jsonb_build_object('id', v_session.id, 'user_id', v_session.user_id);
+END;
+$$;
+
+-- Per-step CRO aggregate for the external dashboard.
+--
+-- This is a FUNCTION rather than a view because PostgREST's .select() cannot
+-- aggregate over jsonb_each, and the admin _queries "one COUNT per step"
+-- pattern cannot reach inside step_activity at all.
+--
+-- BRANCH vs DROP, which is the entire point of the catalog:
+--   * BRANCH -- two steps share a `position`. A visitor traverses one arm, so
+--     the other arm simply has no entry for that session. Read it against
+--     position_cohort: the arms' `viewed` sum to roughly that number and
+--     nothing was lost.
+--   * DROP -- `dropped` counts sessions that viewed this step, viewed NONE of
+--     its successors in quiz_definition_step_edges, and did not complete. That
+--     is a real exit no matter which arm they were on.
+--
+-- Returns COUNTS ONLY. No session ids, no emails, no answers, so this is safe
+-- to expose to a narrower analytics role later without granting table SELECT.
+--
+-- EVERY column reference below is alias-qualified and GROUP BY / ORDER BY use
+-- ordinals: in a RETURNS TABLE function the output column names are parameters,
+-- and a bare `quiz_variant` in the body is ambiguous (42702).
+-- ═════════════════════════════════════════════════════════════════════════════
+-- CRO DASHBOARD READ API
+--
+-- apps/cro holds ONLY the anon key. It never sees SUPABASE_SERVICE_ROLE_KEY,
+-- and apps/cro/src/lib/no-service-role.test.ts fails the build if it ever does.
+-- So every read it performs goes through a SECURITY DEFINER function below,
+-- granted to `authenticated` and gated on is_cro_analyst().
+--
+-- WHY THE CHECK IS INSIDE THE FUNCTION rather than left to the GRANT: the role
+-- `authenticated` is every signed-in PWA member, not the analyst team. The
+-- member area and this dashboard share one Supabase auth directory.
+--
+-- WHY NOT RLS: RLS is a row filter; what is needed here is an AGGREGATION
+-- boundary. A policy on public.sessions would hand an analyst whole rows —
+-- email, quiz_answers, client_context.ip_address — and RLS cannot express
+-- "you may see COUNT(*) but not the rows". The catalog tables are revoked at
+-- the GRANT level anyway, so an RLS approach would first have to open them to
+-- every logged-in customer.
+-- ═════════════════════════════════════════════════════════════════════════════
+
+-- ── cro_analysts ────────────────────────────────────────────────────────────
+-- Who may read the dashboard. A table rather than an env allowlist because
+-- membership should be data, not a production deploy.
+--
+-- In practice this holds ONE row: the shared PMC Hub identity seeded below.
+-- Individual access is governed by PMC Hub roles, not here. The table and every
+-- check against it remain exactly as they were — that is the point of the
+-- design, not an oversight. Adding a second row is still supported and is how
+-- you would grant someone direct access without going through the hub.
+CREATE TABLE IF NOT EXISTS public.cro_analysts (
+  -- Lowercased, matching how is_cro_analyst() compares. The second CHECK is not
+  -- decoration: is_cro_analyst() compares against
+  -- lower(COALESCE(auth.jwt() ->> 'email', '')), so a single empty-string row
+  -- would grant the whole dashboard to every JWT carrying no email claim.
+  email      TEXT PRIMARY KEY
+    CHECK (email = lower(email) AND email LIKE '_%@_%'),
+  -- Free text: who this is, who approved them, when to review the access.
+  note       TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.cro_analysts ENABLE ROW LEVEL SECURITY;
+-- RLS on with zero policies denies everything to non-BYPASSRLS roles, and
+-- is_cro_analyst() reads it as the definer. An analyst must not be able to
+-- enumerate colleagues.
+REVOKE ALL ON public.cro_analysts FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.cro_analysts TO service_role;
+
+COMMENT ON TABLE public.cro_analysts IS
+  'Allowlist for the CRO dashboard. Read only by is_cro_analyst(); never exposed to authenticated.';
+
+-- THE ONLY SEEDED ROW IN THIS BASELINE, and it is here rather than in
+-- supabase/seed.sql or the new-product checklist on purpose. seed.sql does not
+-- run on a hosted `db push`, and a checklist step gets missed — either way the
+-- board is an empty screen for everybody, with nothing on it to say why. The
+-- schema is the only place that always runs.
+--
+-- This address is the shared identity PMC Hub mints as. It is not a mailbox
+-- anyone reads day to day, but it IS a real one, and anyone who can read it can
+-- sign in to this board directly with an emailed code. Treat access to that
+-- mailbox as equivalent to access to every product's CRO board.
+--
+-- ON CONFLICT DO NOTHING so re-running the baseline is safe, and so a product
+-- that has edited the note or added its own analysts is never trampled.
+INSERT INTO public.cro_analysts (email, note)
+VALUES ('cro@pmcbaltic.com', 'PMC Hub shared analyst — see docs/cro-dropoff.md')
+ON CONFLICT (email) DO NOTHING;
+
+
+CREATE OR REPLACE FUNCTION public.is_cro_analyst()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.cro_analysts a
+    WHERE a.email = lower(COALESCE(auth.jwt() ->> 'email', ''))
+  );
+$$;
+
+-- Deliberately NOT PARALLEL SAFE: auth.jwt() is not declared parallel-safe, and
+-- neither is anything that calls this.
+REVOKE ALL ON FUNCTION public.is_cro_analyst() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_cro_analyst() TO authenticated, service_role;
+
+
+-- ── anon-side OTP rate limit ────────────────────────────────────────────────
+-- packages/shared/src/auth/otp-rate-limit.ts uses the admin client, so apps/cro
+-- cannot use it. These two wrap the existing otp_attempts ledger for a caller
+-- holding only the anon key.
+--
+-- Both short-circuit on a non-analyst address. Without that, the endpoint is a
+-- team-roster oracle (ask about an address, watch whether it rate-limits) and
+-- anyone could burn a colleague's attempts to lock them out.
+CREATE OR REPLACE FUNCTION public.cro_check_otp_rate_limit(p_email TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_email TEXT := lower(COALESCE(p_email, ''));
+  v_recent INTEGER;
+BEGIN
+  -- Unknown address: report "allowed" and let the caller proceed to a sign-in
+  -- that quietly does nothing. Reporting "blocked" would confirm the address.
+  IF NOT EXISTS (SELECT 1 FROM public.cro_analysts a WHERE a.email = v_email) THEN
+    RETURN true;
+  END IF;
+
+  SELECT count(*) INTO v_recent
+  FROM public.otp_attempts o
+  WHERE o.email = v_email
+    AND o.attempted_at > now() - INTERVAL '15 minutes'
+    AND NOT o.success;
+
+  RETURN v_recent < 5;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.cro_record_otp_attempt(
+  p_email   TEXT,
+  p_success BOOLEAN,
+  p_ip      TEXT DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_email TEXT := lower(COALESCE(p_email, ''));
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.cro_analysts a WHERE a.email = v_email) THEN
+    RETURN;
+  END IF;
+
+  INSERT INTO public.otp_attempts (email, ip_address, success)
+  VALUES (v_email, left(COALESCE(p_ip, ''), 100), COALESCE(p_success, false));
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.cro_check_otp_rate_limit(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.cro_record_otp_attempt(TEXT, BOOLEAN, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.cro_check_otp_rate_limit(TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cro_record_otp_attempt(TEXT, BOOLEAN, TEXT) TO anon, authenticated, service_role;
+-- Which funnels, quiz versions and locales saw traffic in the window.
+--
+-- Drives the dashboard's pickers. The rule the dashboard applies is simply
+-- "render a picker when a list has more than one entry", which is what lets one
+-- dashboard serve a product with many funnels and one version (glp-app) and a
+-- product with one funnel and many versions (carnivore-app) without knowing
+-- which is which.
+--
+-- Deliberately NOT filtered by the current selection: it is the escape hatch
+-- from a filter that selected an empty window.
+CREATE OR REPLACE FUNCTION public.cro_funnel_segments(
+  p_from TIMESTAMPTZ,
+  p_to   TIMESTAMPTZ
+)
+RETURNS TABLE (
+  kind       TEXT,
+  id         TEXT,
+  sessions   BIGINT,
+  first_seen TIMESTAMPTZ,
+  last_seen  TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '30s'
+AS $$
+BEGIN
+  -- The gate. `authenticated` is every signed-in PWA member, so EXECUTE alone
+  -- is not the boundary; this is. 42501 rather than an empty result, because
+  -- apps/cro branches on the SQLSTATE to render "ask for access" instead of a
+  -- board that merely looks like a quiet day.
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN QUERY
+  WITH bounds AS (
+  SELECT COALESCE(p_from, now() - INTERVAL '30 days') AS lo,
+         COALESCE(p_to,   now())                      AS hi
+),
+scoped AS (
+  -- client_context is projected by NAMED KEY only, never whole: it also carries
+  -- ip_address, user_agent and city, and this function is the boundary that
+  -- keeps those away from an analyst holding a valid JWT.
+  SELECT s.funnel_variant, s.quiz_variant, s.locale, s.source, s.created_at,
+         COALESCE(NULLIF(s.client_context ->> 'device_type', ''), 'unknown') AS device,
+         COALESCE(NULLIF(s.client_context ->> 'country', ''), 'unknown')     AS country
+  FROM public.sessions s
+  CROSS JOIN bounds b
+  WHERE s.created_at >= b.lo AND s.created_at < b.hi
+)
+SELECT 'funnel'::TEXT, sc.funnel_variant, count(*), min(sc.created_at), max(sc.created_at)
+FROM scoped sc GROUP BY 2
+UNION ALL
+SELECT 'version'::TEXT, sc.quiz_variant, count(*), min(sc.created_at), max(sc.created_at)
+FROM scoped sc GROUP BY 2
+UNION ALL
+SELECT 'locale'::TEXT, sc.locale, count(*), min(sc.created_at), max(sc.created_at)
+FROM scoped sc GROUP BY 2
+UNION ALL
+SELECT 'device'::TEXT, sc.device, count(*), min(sc.created_at), max(sc.created_at)
+FROM scoped sc GROUP BY 2
+UNION ALL
+SELECT 'country'::TEXT, sc.country, count(*), min(sc.created_at), max(sc.created_at)
+FROM scoped sc GROUP BY 2
+UNION ALL
+SELECT 'source'::TEXT, sc.source, count(*), min(sc.created_at), max(sc.created_at)
+FROM scoped sc GROUP BY 2
+ORDER BY 1, 3 DESC, 2;
+END;
+$$;
+
+
+-- Adding a parameter creates an OVERLOAD; PostgREST then fails every call with
+-- PGRST203. Drop the previous signature explicitly. p_locale is appended LAST
+-- with a default so existing positional calls stay valid.
+DROP FUNCTION IF EXISTS public.cro_step_funnel(
+  TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL
+);
+
+CREATE OR REPLACE FUNCTION public.cro_step_funnel(
+  p_from            TIMESTAMPTZ,
+  p_to              TIMESTAMPTZ,
+  p_quiz_variant    TEXT     DEFAULT NULL,
+  p_funnel_variant  TEXT     DEFAULT NULL,
+  p_source          TEXT     DEFAULT NULL,
+  -- A session that started two minutes ago has not "dropped", it is still being
+  -- taken. Without this any window touching now() overstates drop-off on
+  -- whatever step the newest cohort happens to be sitting on.
+  p_settled_after   INTERVAL DEFAULT INTERVAL '2 hours',
+  p_locale          TEXT     DEFAULT NULL
+)
+RETURNS TABLE (
+  quiz_variant          TEXT,
+  funnel_variant        TEXT,
+  step_id               TEXT,
+  step_position         INTEGER,
+  sort_index            INTEGER,
+  step_type             TEXT,
+  phase_key             TEXT,
+  label                 TEXT,
+  is_question           BOOLEAN,
+  is_terminal           BOOLEAN,
+  is_unconditional      BOOLEAN,
+  entry_skippable       BOOLEAN,
+  in_catalog            BOOLEAN,
+  has_traffic           BOOLEAN,
+  position_cohort       BIGINT,
+  viewed                BIGINT,
+  answered              BIGINT,
+  skipped               BIGINT,
+  advanced              BIGINT,
+  dropped               BIGINT,
+  unsettled             BIGINT,
+  total_views           BIGINT,
+  revisits              BIGINT,
+  p50_seconds_to_answer DOUBLE PRECISION,
+  p90_seconds_to_answer DOUBLE PRECISION
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '60s'
+AS $$
+BEGIN
+  -- The gate. `authenticated` is every signed-in PWA member, so EXECUTE alone
+  -- is not the boundary; this is. 42501 rather than an empty result, because
+  -- apps/cro branches on the SQLSTATE to render "ask for access" instead of a
+  -- board that merely looks like a quiet day.
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN QUERY
+  WITH bounds AS (
+  SELECT COALESCE(p_from, now() - INTERVAL '30 days')  AS lo,
+         COALESCE(p_to,   now())                       AS hi,
+         now() - COALESCE(p_settled_after, INTERVAL '0') AS settled_before
+),
+-- created_at, NOT updated_at: updated_at moves on every save, so a range over
+-- it is not reproducible. The metric is "sessions that STARTED in the window".
+scoped AS (
+  SELECT s.id, s.quiz_variant, s.funnel_variant, s.status,
+         s.updated_at, s.step_activity
+  FROM public.sessions s
+  CROSS JOIN bounds b
+  WHERE s.created_at >= b.lo
+    AND s.created_at <  b.hi
+    AND (p_quiz_variant   IS NULL OR s.quiz_variant   = p_quiz_variant)
+    AND (p_funnel_variant IS NULL OR s.funnel_variant = p_funnel_variant)
+    AND (p_source         IS NULL OR s.source         = p_source)
+    AND (p_locale         IS NULL OR s.locale         = p_locale)
+),
+-- Every (quiz, funnel) pair that saw ANY session, including ones whose
+-- step_activity is still empty. This is what the skeleton hangs off.
+variants AS (
+  SELECT DISTINCT sc.quiz_variant AS v_quiz_variant,
+                  sc.funnel_variant AS v_funnel_variant
+  FROM scoped sc
+),
+activity AS (
+  SELECT sc.id,
+         sc.quiz_variant   AS a_quiz_variant,
+         sc.funnel_variant AS a_funnel_variant,
+         sc.status,
+         sc.updated_at,
+         a.key                                             AS a_step_id,
+         (a.value ->> 'viewed_at')::TIMESTAMPTZ            AS viewed_at,
+         (a.value ->> 'answered_at')::TIMESTAMPTZ          AS answered_at,
+         COALESCE((a.value ->> 'skipped')::BOOLEAN, false) AS was_skipped,
+         COALESCE((a.value ->> 'views')::INTEGER, 1)       AS view_count,
+         -- jsonb `?` tests key existence against the object already in memory:
+         -- no second expansion, no self-join back onto sessions.
+         EXISTS (
+           SELECT 1
+           FROM public.quiz_definition_step_edges e
+           WHERE e.quiz_variant = sc.quiz_variant
+             AND e.from_step_id = a.key
+             AND sc.step_activity ? e.to_step_id
+         ) AS advanced
+  FROM scoped sc
+  CROSS JOIN LATERAL jsonb_each(sc.step_activity) AS a(key, value)
+  WHERE sc.step_activity <> '{}'::JSONB
+),
+agg AS (
+  SELECT ac.a_quiz_variant   AS g_quiz_variant,
+         ac.a_funnel_variant AS g_funnel_variant,
+         ac.a_step_id        AS g_step_id,
+         count(*)                                          AS g_viewed,
+         count(*) FILTER (WHERE ac.answered_at IS NOT NULL) AS g_answered,
+         count(*) FILTER (WHERE ac.was_skipped)             AS g_skipped,
+         count(*) FILTER (WHERE ac.advanced)                AS g_advanced,
+         count(*) FILTER (
+           WHERE NOT ac.advanced
+             AND ac.status <> 'completed'
+             AND ac.updated_at < (SELECT b.settled_before FROM bounds b)
+         )                                                  AS g_dropped_raw,
+         count(*) FILTER (
+           WHERE NOT ac.advanced
+             AND ac.status <> 'completed'
+             AND ac.updated_at >= (SELECT b.settled_before FROM bounds b)
+         )                                                  AS g_unsettled,
+         -- sum(bigint) returns NUMERIC, and RETURN QUERY is strict about the
+         -- declared BIGINT where LANGUAGE sql used to coerce silently.
+         COALESCE(sum(ac.view_count), 0)::BIGINT            AS g_total_views,
+         COALESCE(sum(GREATEST(ac.view_count - 1, 0)), 0)::BIGINT AS g_revisits,
+         -- percentile_cont ignores NULL inputs, so unanswered steps fall out on
+         -- their own. The cast is required: EXTRACT returns numeric on PG14+.
+         percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (ac.answered_at - ac.viewed_at))::DOUBLE PRECISION
+         )                                                  AS g_p50,
+         percentile_cont(0.9) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (ac.answered_at - ac.viewed_at))::DOUBLE PRECISION
+         )                                                  AS g_p90,
+         count(DISTINCT ac.id)                              AS g_sessions
+  FROM activity ac
+  GROUP BY 1, 2, 3
+),
+-- EVERY published step for every variant that saw traffic, so a step nobody
+-- reached still produces a row. Without this the funnel list simply ends at the
+-- deepest step anyone got to, and "nobody reached it" is indistinguishable from
+-- "it does not exist" -- which also hides a routing bug that shows a step to
+-- zero people.
+skeleton AS (
+  SELECT v.v_quiz_variant   AS k_quiz_variant,
+         v.v_funnel_variant AS k_funnel_variant,
+         st.step_id         AS k_step_id
+  FROM variants v
+  JOIN public.quiz_definition_steps st ON st.quiz_variant = v.v_quiz_variant
+),
+keys AS (
+  SELECT sk.k_quiz_variant, sk.k_funnel_variant, sk.k_step_id FROM skeleton sk
+  UNION
+  -- Activity for a step the catalog does not know: surfaced as in_catalog =
+  -- false rather than dropped, because that IS the drift detector.
+  SELECT g.g_quiz_variant, g.g_funnel_variant, g.g_step_id FROM agg g
+),
+joined AS (
+  SELECT k.k_quiz_variant, k.k_funnel_variant, k.k_step_id,
+         st.position, st.sort_index, st.step_type, st.phase_key, st.label,
+         st.is_question, st.is_terminal, st.is_unconditional, st.entry_skippable,
+         (st.step_id IS NOT NULL) AS in_catalog,
+         g.*
+  FROM keys k
+  LEFT JOIN agg g
+    ON  g.g_quiz_variant   = k.k_quiz_variant
+    AND g.g_funnel_variant = k.k_funnel_variant
+    AND g.g_step_id        = k.k_step_id
+  LEFT JOIN public.quiz_definition_steps st
+    ON  st.quiz_variant = k.k_quiz_variant
+    AND st.step_id      = k.k_step_id
+),
+cohort AS (
+  -- Denominator for the branch split: how many sessions reached ANY step at
+  -- this position, within this quiz/funnel pair.
+  SELECT j.k_quiz_variant   AS c_quiz_variant,
+         j.k_funnel_variant AS c_funnel_variant,
+         j.position         AS c_position,
+         COALESCE(sum(j.g_viewed), 0)::BIGINT AS c_cohort
+  FROM joined j
+  WHERE j.position IS NOT NULL
+  GROUP BY 1, 2, 3
+)
+SELECT
+  j.k_quiz_variant,
+  j.k_funnel_variant,
+  j.k_step_id,
+  j.position,
+  j.sort_index,
+  j.step_type,
+  j.phase_key,
+  j.label,
+  COALESCE(j.is_question, false),
+  COALESCE(j.is_terminal, false),
+  COALESCE(j.is_unconditional, false),
+  COALESCE(j.entry_skippable, false),
+  j.in_catalog,
+  (COALESCE(j.g_viewed, 0) > 0)                AS has_traffic,
+  COALESCE(c.c_cohort, 0)                      AS position_cohort,
+  COALESCE(j.g_viewed, 0)                      AS viewed,
+  COALESCE(j.g_answered, 0)                    AS answered,
+  COALESCE(j.g_skipped, 0)                     AS skipped,
+  COALESCE(j.g_advanced, 0)                    AS advanced,
+  -- A terminal step is never "dropped": there is nothing after it to advance to.
+  CASE WHEN COALESCE(j.is_terminal, false) THEN 0
+       ELSE COALESCE(j.g_dropped_raw, 0) END   AS dropped,
+  COALESCE(j.g_unsettled, 0)                   AS unsettled,
+  COALESCE(j.g_total_views, 0)                 AS total_views,
+  COALESCE(j.g_revisits, 0)                    AS revisits,
+  j.g_p50,
+  j.g_p90
+FROM joined j
+LEFT JOIN cohort c
+  ON  c.c_quiz_variant   = j.k_quiz_variant
+  AND c.c_funnel_variant = j.k_funnel_variant
+  AND c.c_position       IS NOT DISTINCT FROM j.position
+ORDER BY 4 NULLS LAST, 5 NULLS LAST, 3;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.create_quiz_session(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, JSONB, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.save_quiz_session_progress(UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, BOOLEAN, UUID, TEXT, INTEGER, JSONB, JSONB) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.complete_quiz_session(UUID, INTEGER, JSONB, TEXT, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.record_funnel_event(UUID, UUID, TEXT, INTEGER, JSONB, TIMESTAMPTZ) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.link_quiz_session_user(UUID, UUID) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.create_quiz_session(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, JSONB, UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION public.save_quiz_session_progress(UUID, INTEGER, JSONB, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, BOOLEAN, UUID, TEXT, INTEGER, JSONB, JSONB) TO service_role;
+GRANT EXECUTE ON FUNCTION public.complete_quiz_session(UUID, INTEGER, JSONB, TEXT, UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION public.record_funnel_event(UUID, UUID, TEXT, INTEGER, JSONB, TIMESTAMPTZ) TO service_role;
+GRANT EXECUTE ON FUNCTION public.link_quiz_session_user(UUID, UUID) TO service_role;
+
+-- CRO definition catalog + step activity.
+--
+-- quiz_merge_step_activity is revoked from service_role TOO: it is internal,
+-- reachable only from inside create_quiz_session and
+-- save_quiz_session_progress, both of which are SECURITY DEFINER. Granting it
+-- would let a caller rewrite a session's telemetry directly.
+REVOKE ALL ON FUNCTION public.quiz_merge_step_activity(JSONB, JSONB, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.guard_quiz_definition_immutable() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.publish_quiz_definition(TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, JSONB) FROM PUBLIC, anon, authenticated;
+-- REWRITTEN, not appended. CREATE OR REPLACE PRESERVES a function's ACL, so
+-- leaving the old "REVOKE ... FROM authenticated" in place would silently strip
+-- the grant below on every `supabase db reset`.
+--
+-- `authenticated` may now EXECUTE these, but that is not the boundary — the
+-- is_cro_analyst() guard inside each function is. apps/cro holds only the anon
+-- key, so a SECURITY DEFINER function is the ONLY way it reads anything.
+REVOKE ALL ON FUNCTION public.cro_step_funnel(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cro_funnel_segments(TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.publish_quiz_definition(TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, JSONB) TO service_role;
+GRANT EXECUTE ON FUNCTION public.cro_step_funnel(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL, TEXT) TO service_role, authenticated;
+GRANT EXECUTE ON FUNCTION public.cro_funnel_segments(TIMESTAMPTZ, TIMESTAMPTZ) TO service_role, authenticated;
+
+
+-- ── cro_quiz_catalog ────────────────────────────────────────────────────────
+-- The published quiz structure, flattened. apps/cro cannot read
+-- quiz_definition_steps directly (revoked from authenticated), yet
+-- assembleFunnelResponse needs config_hash / first_step_id / total_steps /
+-- terminal ids, and the Answers tab needs store_as + answer_keys + option_values
+-- to build its question picker.
+--
+-- Safe to expose whole: it describes the QUIZ, not any visitor. ~18 rows for an
+-- eight-step quiz, and it does not grow with traffic.
+--
+-- Keyed on quiz_variant alone. funnel_variant is the orthogonal presentation
+-- axis and one definition serves many of them.
+CREATE OR REPLACE FUNCTION public.cro_quiz_catalog(
+  p_quiz_variant TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+  quiz_variant     TEXT,
+  app_key          TEXT,
+  funnel_key       TEXT,
+  first_step_id    TEXT,
+  total_steps      INTEGER,
+  config_hash      TEXT,
+  published_at     TIMESTAMPTZ,
+  step_id          TEXT,
+  step_position    INTEGER,
+  sort_index       INTEGER,
+  step_type        TEXT,
+  phase_key        TEXT,
+  store_as         TEXT,
+  label            TEXT,
+  is_question      BOOLEAN,
+  is_terminal      BOOLEAN,
+  is_unconditional BOOLEAN,
+  entry_skippable  BOOLEAN,
+  answer_keys      JSONB,
+  option_values    JSONB,
+  option_labels    JSONB
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '15s'
+AS $$
+BEGIN
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN QUERY
+  SELECT d.quiz_variant, d.app_key, d.funnel_key, d.first_step_id,
+         d.total_steps, d.config_hash, d.published_at,
+         st.step_id, st.position, st.sort_index, st.step_type, st.phase_key,
+         st.store_as, st.label, st.is_question, st.is_terminal,
+         st.is_unconditional, st.entry_skippable, st.answer_keys, st.option_values,
+         st.option_labels
+  FROM public.quiz_definitions d
+  JOIN public.quiz_definition_steps st ON st.quiz_variant = d.quiz_variant
+  WHERE (p_quiz_variant IS NULL OR d.quiz_variant = p_quiz_variant)
+  ORDER BY d.quiz_variant, st.sort_index;
+END;
+$$;
+
+
+-- ── cro_session_totals ──────────────────────────────────────────────────────
+-- Top-line counts for the Overview tab. Parameter order mirrors
+-- cro_step_funnel exactly so the app passes one filter object to both.
+--
+-- NO JSONB EXPANSION AT ALL. `no_activity` is an equality on the whole
+-- document, not a walk of it.
+--
+-- It exists because cro_step_funnel cannot answer one Overview question: its
+-- activity CTE skips `step_activity = '{}'`, so a session that bounced before
+-- the first save, or whose quiz_variant was never published, contributes
+-- nothing. `totals.entered` therefore UNDERCOUNTS starts, and without this
+-- nothing says by how much. A high no_activity ratio is also the "the publisher
+-- never ran for this variant" alarm.
+CREATE OR REPLACE FUNCTION public.cro_session_totals(
+  p_from            TIMESTAMPTZ,
+  p_to              TIMESTAMPTZ,
+  p_quiz_variant    TEXT     DEFAULT NULL,
+  p_funnel_variant  TEXT     DEFAULT NULL,
+  p_source          TEXT     DEFAULT NULL,
+  p_settled_after   INTERVAL DEFAULT INTERVAL '2 hours',
+  p_locale          TEXT     DEFAULT NULL
+)
+RETURNS TABLE (
+  quiz_variant            TEXT,
+  funnel_variant          TEXT,
+  sessions                BIGINT,
+  with_activity           BIGINT,
+  no_activity             BIGINT,
+  completed               BIGINT,
+  abandoned_settled       BIGINT,
+  unsettled               BIGINT,
+  lead_captured           BIGINT,
+  p50_seconds_to_complete DOUBLE PRECISION,
+  p90_seconds_to_complete DOUBLE PRECISION
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '30s'
+AS $$
+BEGIN
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN QUERY
+  WITH bounds AS (
+    SELECT COALESCE(p_from, now() - INTERVAL '30 days')  AS lo,
+           COALESCE(p_to,   now())                       AS hi,
+           now() - COALESCE(p_settled_after, INTERVAL '0') AS settled_before
+  ),
+  scoped AS (
+    SELECT s.quiz_variant, s.funnel_variant, s.status, s.email,
+           s.step_activity, s.created_at, s.completed_at, s.updated_at
+    FROM public.sessions s
+    CROSS JOIN bounds b
+    WHERE s.created_at >= b.lo
+      AND s.created_at <  b.hi
+      AND (p_quiz_variant   IS NULL OR s.quiz_variant   = p_quiz_variant)
+      AND (p_funnel_variant IS NULL OR s.funnel_variant = p_funnel_variant)
+      AND (p_source         IS NULL OR s.source         = p_source)
+      AND (p_locale         IS NULL OR s.locale         = p_locale)
+  )
+  SELECT sc.quiz_variant,
+         sc.funnel_variant,
+         count(*)::BIGINT,
+         count(*) FILTER (WHERE sc.step_activity <> '{}'::JSONB)::BIGINT,
+         count(*) FILTER (WHERE sc.step_activity =  '{}'::JSONB)::BIGINT,
+         count(*) FILTER (WHERE sc.status = 'completed')::BIGINT,
+         count(*) FILTER (
+           WHERE sc.status <> 'completed'
+             AND sc.updated_at < (SELECT b.settled_before FROM bounds b)
+         )::BIGINT,
+         count(*) FILTER (
+           WHERE sc.status <> 'completed'
+             AND sc.updated_at >= (SELECT b.settled_before FROM bounds b)
+         )::BIGINT,
+         -- A COUNT of sessions that captured an address. Never the addresses.
+         count(*) FILTER (WHERE sc.email IS NOT NULL)::BIGINT,
+         -- sessions_completion_check guarantees completed_at is non-null exactly
+         -- when status = 'completed', so percentile_cont's NULL-skipping is the
+         -- filter; no FILTER clause needed.
+         percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (sc.completed_at - sc.created_at))::DOUBLE PRECISION
+         ),
+         percentile_cont(0.9) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (sc.completed_at - sc.created_at))::DOUBLE PRECISION
+         )
+  FROM scoped sc
+  GROUP BY 1, 2
+  ORDER BY 1, 2;
+END;
+$$;
+
+
+-- ── cro_live_sessions ───────────────────────────────────────────────────────
+-- Who is mid-quiz right now, and on which screen.
+--
+-- THE STEP IS RESOLVED THROUGH THREE LEVELS, and the fallback is the whole
+-- design. create_quiz_session does NOT set current_step_id — only
+-- save_quiz_session_progress does — so keying on it alone silently drops every
+-- visitor who landed and never saved. That is the largest bucket and the one
+-- with the worst drop-off. step_basis says which level answered, so the tab can
+-- be honest rather than quietly wrong.
+--
+-- WHAT DWELL MEANS HERE. save_quiz_session_progress sets current_step_id and
+-- updated_at in the SAME update, and the client sends the step it is moving
+-- INTO. So now() - updated_at is genuinely time-on-this-screen — sharper than
+-- carnivore-app's "time since any event", which needs a DISTINCT ON to break
+-- ties within a batch.
+--
+-- WHAT IT CANNOT SEE, and the tab must say so:
+--   * Back-navigation. goBack() does not save, so someone who backed up two
+--     screens still shows on the one they last moved FORWARD into, with a dwell
+--     that keeps climbing. This is the one real regression against carnivore.
+--   * A closed tab. There is no heartbeat and no beforeunload write, so a
+--     12-minute dwell means "no forward move in 12 minutes", not "still here".
+--     Do not label this "people online".
+--   * status never becomes 'abandoned' on its own — nothing writes it. Filtering
+--     status = 'active' means "not completed", not "still present".
+CREATE OR REPLACE FUNCTION public.cro_live_sessions(
+  p_window_minutes INTEGER DEFAULT 15,
+  p_quiz_variant   TEXT DEFAULT NULL,
+  p_funnel_variant TEXT DEFAULT NULL,
+  p_locale         TEXT DEFAULT NULL,
+  p_source         TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+  quiz_variant      TEXT,
+  funnel_variant    TEXT,
+  step_id           TEXT,
+  step_position     INTEGER,
+  sort_index        INTEGER,
+  label             TEXT,
+  is_question       BOOLEAN,
+  in_catalog        BOOLEAN,
+  step_basis        TEXT,
+  active_sessions   BIGINT,
+  p50_dwell_seconds DOUBLE PRECISION,
+  p90_dwell_seconds DOUBLE PRECISION,
+  max_dwell_seconds DOUBLE PRECISION
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '15s'
+AS $$
+BEGIN
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  -- Bounded so "live" can never become a full scan behind an auto-refresh.
+  IF p_window_minutes IS NULL OR p_window_minutes < 1 OR p_window_minutes > 240 THEN
+    RAISE EXCEPTION 'p_window_minutes must be between 1 and 240'
+      USING ERRCODE = '22023';
+  END IF;
+
+  RETURN QUERY
+  WITH live AS (
+    SELECT s.id, s.quiz_variant, s.funnel_variant, s.updated_at,
+           COALESCE(s.current_step_id, lv.step_id, d.first_step_id) AS step_id,
+           CASE
+             WHEN s.current_step_id IS NOT NULL THEN 'current_step_id'
+             WHEN lv.step_id        IS NOT NULL THEN 'last_viewed'
+             ELSE 'landing'
+           END AS step_basis
+    FROM public.sessions s
+    LEFT JOIN public.quiz_definitions d ON d.quiz_variant = s.quiz_variant
+    -- The jsonb expansion is kept off the common path: it runs only for the
+    -- minority whose current_step_id is still null.
+    LEFT JOIN LATERAL (
+      SELECT a.key AS step_id
+      FROM jsonb_each(s.step_activity) AS a(key, value)
+      ORDER BY (a.value ->> 'viewed_at')::TIMESTAMPTZ DESC NULLS LAST
+      LIMIT 1
+    ) lv ON s.current_step_id IS NULL
+    WHERE s.status = 'active'
+      AND s.updated_at >= now() - make_interval(mins => p_window_minutes)
+      AND (p_quiz_variant   IS NULL OR s.quiz_variant   = p_quiz_variant)
+      AND (p_funnel_variant IS NULL OR s.funnel_variant = p_funnel_variant)
+      AND (p_locale         IS NULL OR s.locale         = p_locale)
+      AND (p_source         IS NULL OR s.source         = p_source)
+  )
+  SELECT l.quiz_variant,
+         l.funnel_variant,
+         l.step_id,
+         st.position,
+         st.sort_index,
+         st.label,
+         COALESCE(st.is_question, false),
+         (st.step_id IS NOT NULL),
+         l.step_basis,
+         count(*)::BIGINT,
+         percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (now() - l.updated_at))::DOUBLE PRECISION
+         ),
+         percentile_cont(0.9) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (now() - l.updated_at))::DOUBLE PRECISION
+         ),
+         max(EXTRACT(EPOCH FROM (now() - l.updated_at)))::DOUBLE PRECISION
+  FROM live l
+  LEFT JOIN public.quiz_definition_steps st
+    ON st.quiz_variant = l.quiz_variant AND st.step_id = l.step_id
+  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+  ORDER BY 4 NULLS LAST, 5 NULLS LAST, 3;
+END;
+$$;
+
+
+-- ── cro_answer_distribution ─────────────────────────────────────────────────
+-- What people actually answered, per question.
+--
+-- ═══ THE PII BOUNDARY IS AN ALLOWLIST, AND IT HAS TO BE ════════════════════
+-- `email` and `fullName` are DECLARED answer keys — step6.storeAs = 'email',
+-- step5.fields[0].storeAs = 'fullName'. A naive per-value distribution would
+-- publish every buyer's address and full name through the very function built
+-- to keep them in. So values are emitted only for step types whose answers are
+-- a closed vocabulary of codes; everything else returns ONE row with a count
+-- and a NULL value, which still gives the tab a completion rate for the email
+-- gate without a single address.
+--
+-- An allowlist rather than a denylist of ('email','fullName') because this is a
+-- template: a denylist breaks silently the first time a product adds `phone`.
+--
+-- DRIVEN FROM THE CATALOG, never from jsonb_object_keys(quiz_answers).
+-- Expanding the session document would walk every key a visitor ever wrote —
+-- including free text and keys belonging to other steps — and would surface
+-- answers the catalog never declared. Driving from answer_keys makes an
+-- undeclared key invisible rather than wrong, and `undeclared_keys` counts them
+-- so drift is still visible.
+CREATE OR REPLACE FUNCTION public.cro_answer_distribution(
+  p_from           TIMESTAMPTZ,
+  p_to             TIMESTAMPTZ,
+  p_quiz_variant   TEXT,
+  p_step_id        TEXT    DEFAULT NULL,
+  p_funnel_variant TEXT    DEFAULT NULL,
+  p_source         TEXT    DEFAULT NULL,
+  p_locale         TEXT    DEFAULT NULL,
+  p_min_sessions   INTEGER DEFAULT 1
+)
+RETURNS TABLE (
+  step_id           TEXT,
+  step_position     INTEGER,
+  sort_index        INTEGER,
+  label             TEXT,
+  step_type         TEXT,
+  answer_key        TEXT,
+  value_kind        TEXT,
+  answer_value      TEXT,
+  -- Resolved English copy for answer_value, or NULL when the option has none.
+  -- NULL is the interesting case: an answer recorded under a code the published
+  -- step no longer offers, which in_option_set also reports.
+  answer_label      TEXT,
+  in_option_set     BOOLEAN,
+  sessions          BIGINT,
+  answered_sessions BIGINT
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '60s'
+AS $$
+BEGIN
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  -- REQUIRED, not defaulted. answer_keys and the option vocabulary are
+  -- per-variant, so blending two versions blends two vocabularies under one key
+  -- name. cro_step_funnel can default this because it RETURNS quiz_variant and
+  -- the assembler merges only within one; a distribution has no such escape.
+  IF p_quiz_variant IS NULL THEN
+    RAISE EXCEPTION 'p_quiz_variant is required: blending quiz versions blends answer vocabularies'
+      USING ERRCODE = '22023';
+  END IF;
+
+  RETURN QUERY
+  WITH bounds AS (
+    SELECT COALESCE(p_from, now() - INTERVAL '30 days') AS lo,
+           COALESCE(p_to,   now())                      AS hi
+  ),
+  scoped AS (
+    SELECT s.id, s.quiz_answers
+    FROM public.sessions s
+    CROSS JOIN bounds b
+    WHERE s.created_at >= b.lo
+      AND s.created_at <  b.hi
+      AND s.quiz_variant = p_quiz_variant
+      AND (p_funnel_variant IS NULL OR s.funnel_variant = p_funnel_variant)
+      AND (p_source         IS NULL OR s.source         = p_source)
+      AND (p_locale         IS NULL OR s.locale         = p_locale)
+      AND s.quiz_answers <> '{}'::JSONB
+  ),
+  keys AS (
+    SELECT st.step_id, st.position, st.sort_index, st.label, st.step_type,
+           st.option_values, st.option_labels,
+           -- The allowlist. Closed-vocabulary types only.
+           (st.step_type IN ('radio','picture_select','text_select','chip_select',
+                             'multi_select','likert','slider','trial_price')) AS emits_values,
+           k.value AS answer_key
+    FROM public.quiz_definition_steps st
+    CROSS JOIN LATERAL jsonb_array_elements_text(
+      CASE WHEN jsonb_array_length(st.answer_keys) > 0 THEN st.answer_keys
+           WHEN st.store_as IS NOT NULL THEN jsonb_build_array(st.store_as)
+           ELSE '[]'::JSONB END
+    ) AS k(value)
+    WHERE st.quiz_variant = p_quiz_variant
+      AND st.is_question
+      AND (p_step_id IS NULL OR st.step_id = p_step_id)
+  ),
+  raw AS (
+    SELECT k.step_id, k.position, k.sort_index, k.label, k.step_type,
+           k.answer_key, k.emits_values, k.option_values, k.option_labels,
+           sc.id, sc.quiz_answers -> k.answer_key AS v
+    FROM keys k
+    JOIN scoped sc ON sc.quiz_answers ? k.answer_key
+  ),
+  exploded AS (
+    -- multi_select and friends: one row per chosen code.
+    SELECT r.step_id, r.position, r.sort_index, r.label, r.step_type, r.answer_key,
+           r.option_values, r.option_labels, r.id, 'array_member'::TEXT AS value_kind, e.value AS answer_value
+    FROM raw r
+    CROSS JOIN LATERAL jsonb_array_elements_text(r.v) AS e(value)
+    WHERE r.emits_values AND jsonb_typeof(r.v) = 'array'
+    UNION ALL
+    -- #>> '{}' unwraps a JSON scalar to text. ::text would keep the quotes and
+    -- every label in the chart would render as "female" rather than female.
+    SELECT r.step_id, r.position, r.sort_index, r.label, r.step_type, r.answer_key,
+           r.option_values, r.option_labels, r.id, 'scalar'::TEXT, r.v #>> '{}'
+    FROM raw r
+    WHERE r.emits_values AND jsonb_typeof(r.v) IN ('string','number','boolean')
+    UNION ALL
+    -- The PII path: counted, never read.
+    SELECT r.step_id, r.position, r.sort_index, r.label, r.step_type, r.answer_key,
+           r.option_values, r.option_labels, r.id, 'freeform'::TEXT, NULL
+    FROM raw r
+    WHERE NOT r.emits_values
+  ),
+  per_key AS (
+    SELECT e.step_id, e.answer_key, count(DISTINCT e.id) AS answered_sessions
+    FROM exploded e GROUP BY 1, 2
+  )
+  SELECT x.step_id, x.position, x.sort_index, x.label, x.step_type, x.answer_key,
+         x.value_kind,
+         x.answer_value,
+         -- ->> on a missing key is NULL, which is exactly what an option
+         -- published before this column existed should render as.
+         CASE WHEN x.answer_value IS NULL THEN NULL
+              ELSE x.option_labels ->> x.answer_value END,
+         CASE WHEN x.answer_value IS NULL THEN NULL
+              ELSE x.option_values ? x.answer_value END,
+         count(DISTINCT x.id)::BIGINT,
+         -- Per KEY, not per value: choosing three options is three value rows
+         -- but one answered session. Getting this denominator wrong is the
+         -- easiest way to publish percentages over 100.
+         max(pk.answered_sessions)::BIGINT
+  FROM exploded x
+  JOIN per_key pk ON pk.step_id = x.step_id AND pk.answer_key = x.answer_key
+  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+  HAVING count(DISTINCT x.id) >= GREATEST(COALESCE(p_min_sessions, 1), 1)
+  ORDER BY 3, 6, 11 DESC, 8;
+END;
+$$;
+
+
+-- ── cro_segment_breakdown ───────────────────────────────────────────────────
+-- How far each market / device / country gets through the quiz.
+--
+-- ONE DIMENSION PER CALL, not a wide cross product. 15 locales x 4 devices x 40
+-- countries is thousands of one-session cells — each a quasi-identifier, none a
+-- readable chart. The tab makes a few cheap calls instead.
+--
+-- locale and client_context are NOT the same quality of data, and the tab
+-- should not imply they are. sessions.locale is last-write-wins
+-- (`locale = COALESCE(p_locale, locale)` on every save), so it means "the
+-- language the session ENDED in". client_context is written once at create and
+-- never updated, so device / country / browser are exact.
+CREATE OR REPLACE FUNCTION public.cro_segment_breakdown(
+  p_from           TIMESTAMPTZ,
+  p_to             TIMESTAMPTZ,
+  p_quiz_variant   TEXT    DEFAULT NULL,
+  p_funnel_variant TEXT    DEFAULT NULL,
+  p_source         TEXT    DEFAULT NULL,
+  p_dimension      TEXT    DEFAULT 'locale',
+  p_min_sessions   INTEGER DEFAULT 1
+)
+RETURNS TABLE (
+  dimension           TEXT,
+  bucket              TEXT,
+  sessions            BIGINT,
+  with_activity       BIGINT,
+  completed           BIGINT,
+  completion_pct      DOUBLE PRECISION,
+  median_max_position DOUBLE PRECISION,
+  p90_max_position    DOUBLE PRECISION,
+  max_position_reached INTEGER
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET statement_timeout = '45s'
+AS $$
+BEGIN
+  IF NOT public.is_cro_analyst() THEN
+    RAISE EXCEPTION 'not authorized' USING ERRCODE = '42501';
+  END IF;
+
+  IF COALESCE(p_dimension, '') NOT IN ('locale','device','country','browser','platform','source') THEN
+    RAISE EXCEPTION 'p_dimension must be one of locale, device, country, browser, platform, source'
+      USING ERRCODE = '22023';
+  END IF;
+
+  RETURN QUERY
+  WITH bounds AS (
+    SELECT COALESCE(p_from, now() - INTERVAL '30 days') AS lo,
+           COALESCE(p_to,   now())                      AS hi
+  ),
+  scoped AS (
+    -- client_context is read by NAMED KEY only. The document also holds
+    -- ip_address, user_agent and city, and this function is the boundary that
+    -- keeps them from an analyst with a valid JWT.
+    --
+    -- COALESCE(NULLIF(...)) buckets a missing value as 'unknown' rather than
+    -- dropping the row: country is null on any deployment not behind Vercel or
+    -- Cloudflare, and losing those sessions would read as "that market has no
+    -- data" instead of "we cannot geolocate".
+    SELECT s.id, s.status, s.quiz_variant, s.step_activity,
+           CASE p_dimension
+             WHEN 'locale'   THEN COALESCE(NULLIF(s.locale, ''), 'unknown')
+             WHEN 'source'   THEN COALESCE(NULLIF(s.source, ''), 'unknown')
+             WHEN 'device'   THEN COALESCE(NULLIF(s.client_context ->> 'device_type', ''), 'unknown')
+             WHEN 'country'  THEN COALESCE(NULLIF(s.client_context ->> 'country', ''), 'unknown')
+             WHEN 'browser'  THEN COALESCE(NULLIF(s.client_context ->> 'browser', ''), 'unknown')
+             WHEN 'platform' THEN COALESCE(NULLIF(s.client_context ->> 'platform', ''), 'unknown')
+           END AS bucket
+    FROM public.sessions s
+    CROSS JOIN bounds b
+    WHERE s.created_at >= b.lo
+      AND s.created_at <  b.hi
+      AND (p_quiz_variant   IS NULL OR s.quiz_variant   = p_quiz_variant)
+      AND (p_funnel_variant IS NULL OR s.funnel_variant = p_funnel_variant)
+      AND (p_source         IS NULL OR s.source         = p_source)
+  ),
+  depth AS (
+    -- jsonb_object_keys, not jsonb_each: depth needs the keys only, and
+    -- jsonb_each would materialise every value document for nothing.
+    --
+    -- LEFT JOIN LATERAL ... ON true, not CROSS JOIN: a session with
+    -- step_activity = '{}' survives with max_position 0 instead of vanishing.
+    -- That is the difference between "37% of Safari users never got past the
+    -- landing" and "Safari has no data".
+    SELECT sc.id, sc.bucket, sc.status, sc.step_activity,
+           COALESCE(max(st.position), 0) AS max_position
+    FROM scoped sc
+    LEFT JOIN LATERAL jsonb_object_keys(sc.step_activity) AS a(step_id) ON true
+    LEFT JOIN public.quiz_definition_steps st
+      ON st.quiz_variant = sc.quiz_variant AND st.step_id = a.step_id
+    GROUP BY 1, 2, 3, 4
+  )
+  SELECT p_dimension,
+         d.bucket,
+         count(*)::BIGINT,
+         count(*) FILTER (WHERE d.step_activity <> '{}'::JSONB)::BIGINT,
+         count(*) FILTER (WHERE d.status = 'completed')::BIGINT,
+         CASE WHEN count(*) > 0
+              THEN round((count(*) FILTER (WHERE d.status = 'completed')::NUMERIC
+                          / count(*)::NUMERIC) * 100, 1)::DOUBLE PRECISION
+              ELSE 0 END,
+         -- DOUBLE PRECISION, not ::INTEGER. percentile_cont interpolates, so a
+         -- group stopping at positions 3 and 4 has a true median of 3.5 —
+         -- carnivore-app casts to INTEGER and silently reports 3, which across
+         -- seven positions is 14% of the funnel.
+         percentile_cont(0.5) WITHIN GROUP (ORDER BY d.max_position::DOUBLE PRECISION),
+         percentile_cont(0.9) WITHIN GROUP (ORDER BY d.max_position::DOUBLE PRECISION),
+         max(d.max_position)::INTEGER
+  FROM depth d
+  GROUP BY 1, 2
+  HAVING count(*) >= GREATEST(COALESCE(p_min_sessions, 1), 1)
+  ORDER BY 3 DESC, 2;
+END;
+$$;
+
+
+-- The live tab polls; idx_sessions_quiz_reporting leads on created_at and is no
+-- help. Without this an auto-refreshing board seq-scans sessions every few
+-- seconds, which is the single largest cost in the dashboard.
+CREATE INDEX IF NOT EXISTS idx_sessions_cro_live
+  ON public.sessions (updated_at DESC) WHERE status = 'active';
+
+
+-- Grants for the five. Same shape as the two above: EXECUTE to authenticated is
+-- not the boundary, the is_cro_analyst() guard inside each one is.
+REVOKE ALL ON FUNCTION public.cro_quiz_catalog(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cro_session_totals(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cro_live_sessions(INTEGER, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cro_answer_distribution(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cro_segment_breakdown(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, TEXT, INTEGER) FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.cro_quiz_catalog(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cro_session_totals(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTERVAL, TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cro_live_sessions(INTEGER, TEXT, TEXT, TEXT, TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cro_answer_distribution(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.cro_segment_breakdown(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated, service_role;
 -- ── otp_attempts ────────────────────────────────────────────────────────────
 -- Brute-force rate-limit ledger for verify-otp. service_role only.
 CREATE TABLE IF NOT EXISTS public.otp_attempts (

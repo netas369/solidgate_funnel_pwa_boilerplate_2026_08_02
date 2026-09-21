@@ -51,6 +51,18 @@ export function captureFbclidToCookie(): void {
 }
 
 /**
+ * Ensure CAPI has a stable first-party browser identifier even when the Pixel
+ * script is delayed or blocked before it can create `_fbp` itself.
+ */
+export function ensureFbpCookie(): void {
+  if (typeof window === 'undefined' || readCookie(FBP_COOKIE)) return;
+  const random = new Uint32Array(2);
+  window.crypto.getRandomValues(random);
+  const browserId = `${random[0]}${random[1]}`;
+  writeCookie(FBP_COOKIE, `fb.1.${Date.now()}.${browserId}`, NINETY_DAYS_SECONDS);
+}
+
+/**
  * Read the `_fbc` cookie (set by fbevents.js or captureFbclidToCookie).
  * Returns null if not present.
  */

@@ -35,7 +35,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    setupFiles: ["./vitest.setup.ts"],
+    setupFiles: ["../../test-setup/webstorage.ts", "./vitest.setup.ts"],
     server: {
       deps: {
         inline: ["next-intl"],

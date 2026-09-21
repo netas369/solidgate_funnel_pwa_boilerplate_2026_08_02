@@ -6,36 +6,52 @@ import { useQuizNavigation } from '../use-quiz-navigation';
 const {
   mockGoToStep,
   mockGoBack,
-  mockSetStepAnswer,
   mockTrack,
   mockState,
-  mockTrackFunnelEvent,
-  mockPersistSessionSnapshot,
+  mockRecordStepActivity,
+  mockSaveQuizProgress,
 } = vi.hoisted(() => {
   const mockGoToStep = vi.fn();
   const mockGoBack = vi.fn();
   const mockSetStepAnswer = vi.fn();
   const mockTrack = vi.fn();
-  const mockTrackFunnelEvent = vi.fn();
-  const mockPersistSessionSnapshot = vi.fn();
+  const mockSaveQuizProgress = vi
+    .fn<
+      (
+        sessionId: string,
+        currentStepId: string,
+        answers: Record<string, unknown>,
+        options?: Record<string, unknown>,
+      ) => Promise<{ ok: boolean }>
+    >()
+    .mockResolvedValue({ ok: true });
+  const mockRecordStepActivity =
+    vi.fn<
+      (delta: { viewed?: string[]; answered?: string[]; skipped?: string[] }) => void
+    >();
   const mockState = {
     currentStepId: 'step-a',
     history: [] as string[],
     answers: {} as Record<string, string | string[] | number>,
     answerLabels: {} as Record<string, string | string[]>,
-    sessionId: 'test-session-123',
+    sessionId: 'test-session-123' as string | null,
+    pendingStepActivity: { viewed: [], answered: [], skipped: [] } as {
+      viewed: string[];
+      answered: string[];
+      skipped: string[];
+    },
     goToStep: mockGoToStep,
     goBack: mockGoBack,
     setStepAnswer: mockSetStepAnswer,
+    recordStepActivity: mockRecordStepActivity,
   };
   return {
     mockGoToStep,
     mockGoBack,
-    mockSetStepAnswer,
     mockTrack,
     mockState,
-    mockTrackFunnelEvent,
-    mockPersistSessionSnapshot,
+    mockSaveQuizProgress,
+    mockRecordStepActivity,
   };
 });
 
@@ -55,14 +71,7 @@ vi.mock('@/features/analytics/hooks/use-analytics', () => ({
 
 // ─── Mock persistence ────────────────────────────────────────────────────────
 vi.mock('../use-quiz-persistence', () => ({
-  persistSessionSnapshot: mockPersistSessionSnapshot,
-}));
-
-// ─── Mock the shared funnel-event tracker ────────────────────────────────────
-// trackFunnelEvent now lives in its own lib module (it was previously an inline
-// Supabase insert). The hook fires it for step_completed analytics.
-vi.mock('@/features/quiz/lib/track-funnel-event', () => ({
-  trackFunnelEvent: mockTrackFunnelEvent,
+  saveQuizProgress: mockSaveQuizProgress,
 }));
 
 // ─── Mock quiz config with minimal test steps ──────────────────────────────────
@@ -222,7 +231,7 @@ describe('useQuizNavigation', () => {
     expect(result.current.resolvedCopy('{{unknown}}')).toBe('unknown');
   });
 
-  it('on goToStep, records step_completed analytics + funnel event for the answered step', () => {
+  it('on goToStep, records step_completed analytics for the answered step', () => {
     mockState.currentStepId = 'step-d';
 
     const { result } = renderHook(() => useQuizNavigation());
@@ -237,16 +246,9 @@ describe('useQuizNavigation', () => {
       step_number: 4,
       session_id: 'test-session-123',
     });
-    // Supabase funnel_events insert, now routed through the shared lib module.
-    expect(mockTrackFunnelEvent).toHaveBeenCalledWith(
-      'test-session-123',
-      'step_completed',
-      4,
-      { step_id: 'step-d' },
-    );
   });
 
-  it('fires a session snapshot for the answered step on goToStep', () => {
+  it('saves the complete answer state for the answered step on goToStep', () => {
     mockState.currentStepId = 'step-d';
     mockState.answers = { goal: 'opt1' };
 
@@ -256,11 +258,18 @@ describe('useQuizNavigation', () => {
       result.current.goToStep('step-e');
     });
 
-    expect(mockPersistSessionSnapshot).toHaveBeenCalledWith(
+    expect(mockSaveQuizProgress).toHaveBeenCalledWith(
       'test-session-123',
-      'step-d',
+      'step-e',
       { goal: 'opt1' },
-      'lt',
+      {
+        locale: 'lt',
+        event: {
+          type: 'step_completed',
+          stepNumber: 4,
+          metadata: { step_id: 'step-d' },
+        },
+      },
     );
   });
 
@@ -276,14 +285,15 @@ describe('useQuizNavigation', () => {
       result.current.goToStep('step-e');
     });
 
-    // completedSteps de-dupes by stepId — track/trackFunnelEvent fire once.
+    // completedSteps de-dupes the durable event while both progress states save.
     const stepDCompletions = mockTrack.mock.calls.filter(
       ([event, payload]) =>
         event === 'step_completed' &&
         (payload as { step_id?: string }).step_id === 'step-d',
     );
     expect(stepDCompletions).toHaveLength(1);
-    expect(mockTrackFunnelEvent).toHaveBeenCalledTimes(1);
+    expect(mockSaveQuizProgress).toHaveBeenCalledTimes(2);
+    expect(mockSaveQuizProgress.mock.calls[1]?.[3]).not.toHaveProperty('event');
   });
 
   it('skips analytics entirely when there is no sessionId', () => {
@@ -297,7 +307,100 @@ describe('useQuizNavigation', () => {
     });
 
     expect(mockTrack).not.toHaveBeenCalled();
-    expect(mockTrackFunnelEvent).not.toHaveBeenCalled();
-    expect(mockPersistSessionSnapshot).not.toHaveBeenCalled();
+    expect(mockSaveQuizProgress).not.toHaveBeenCalled();
+  });
+});
+
+describe('useQuizNavigation — CRO step activity', () => {
+  beforeEach(() => {
+    mockState.currentStepId = 'step-a';
+    mockState.history = [];
+    mockState.answers = {};
+    mockState.answerLabels = {};
+    mockState.sessionId = 'test-session-123';
+    vi.clearAllMocks();
+  });
+
+  it('stamps the landing step as viewed on mount', () => {
+    renderHook(() => useQuizNavigation());
+    expect(mockRecordStepActivity).toHaveBeenCalledWith({ viewed: ['step-a'] });
+  });
+
+  it('records the entered step as viewed and the answered step as answered', () => {
+    mockState.answers = { goal: 'opt1' };
+    const { result } = renderHook(() => useQuizNavigation());
+    mockRecordStepActivity.mockClear();
+
+    act(() => result.current.goToStep('step-b'));
+
+    expect(mockRecordStepActivity).toHaveBeenCalledWith({
+      viewed: ['step-b'],
+      answered: ['step-a'],
+      skipped: [],
+    });
+  });
+
+  it('never buffers an extra request — activity rides along on the same save', () => {
+    mockState.answers = { goal: 'opt1' };
+    const { result } = renderHook(() => useQuizNavigation());
+    mockSaveQuizProgress.mockClear();
+
+    act(() => result.current.goToStep('step-b'));
+
+    expect(mockSaveQuizProgress).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a presentational step as viewed-not-answered', () => {
+    // step-b is an info_box: no storeAs, so allowedKeysForStep returns [].
+    // This is the case step_completed alone cannot distinguish.
+    mockState.currentStepId = 'step-b';
+    const { result } = renderHook(() => useQuizNavigation());
+    mockRecordStepActivity.mockClear();
+
+    act(() => result.current.goToStep('step-c'));
+
+    expect(mockRecordStepActivity).toHaveBeenCalledWith({
+      viewed: ['step-c'],
+      answered: [],
+      skipped: [],
+    });
+  });
+
+  it('reports a question left with no stored answer as not answered', () => {
+    mockState.answers = {};
+    const { result } = renderHook(() => useQuizNavigation());
+    mockRecordStepActivity.mockClear();
+
+    act(() => result.current.goToStep('step-b'));
+
+    expect(mockRecordStepActivity).toHaveBeenCalledWith({
+      viewed: ['step-b'],
+      answered: [],
+      skipped: [],
+    });
+  });
+
+  it('marks an explicit skip as skipped and never as answered', () => {
+    mockState.answers = { goal: 'opt1' };
+    const { result } = renderHook(() => useQuizNavigation());
+    mockRecordStepActivity.mockClear();
+
+    act(() => result.current.goToStep('step-b', { skipped: true }));
+
+    expect(mockRecordStepActivity).toHaveBeenCalledWith({
+      viewed: ['step-b'],
+      answered: [],
+      skipped: ['step-a'],
+    });
+  });
+
+  it('records nothing beyond the mount stamp when there is no session', () => {
+    mockState.sessionId = null;
+    const { result } = renderHook(() => useQuizNavigation());
+    mockRecordStepActivity.mockClear();
+
+    act(() => result.current.goToStep('step-b'));
+
+    expect(mockRecordStepActivity).not.toHaveBeenCalled();
   });
 });
