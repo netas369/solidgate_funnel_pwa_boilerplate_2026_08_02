@@ -279,6 +279,7 @@ export type Database = {
         Row: {
           amount_cents: number
           analytics_captured_at: string | null
+          auth_verified_at: string | null
           claimed_at: string | null
           created_at: string
           currency: string
@@ -316,6 +317,7 @@ export type Database = {
         Insert: {
           amount_cents: number
           analytics_captured_at?: string | null
+          auth_verified_at?: string | null
           claimed_at?: string | null
           created_at?: string
           currency?: string
@@ -353,6 +355,7 @@ export type Database = {
         Update: {
           amount_cents?: number
           analytics_captured_at?: string | null
+          auth_verified_at?: string | null
           claimed_at?: string | null
           created_at?: string
           currency?: string
@@ -795,6 +798,47 @@ export type Database = {
         }
         Relationships: []
       }
+      solidgate_capture_transactions: {
+        Row: {
+          amount_cents: number
+          currency: string
+          environment: string
+          occurred_at: string
+          occurred_at_source: string
+          provider_transaction_id: string
+          recorded_at: string
+          solidgate_order_id: string
+        }
+        Insert: {
+          amount_cents: number
+          currency: string
+          environment: string
+          occurred_at: string
+          occurred_at_source: string
+          provider_transaction_id: string
+          recorded_at?: string
+          solidgate_order_id: string
+        }
+        Update: {
+          amount_cents?: number
+          currency?: string
+          environment?: string
+          occurred_at?: string
+          occurred_at_source?: string
+          provider_transaction_id?: string
+          recorded_at?: string
+          solidgate_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_capture_transaction_environment_solidgate_order__fkey"
+            columns: ["environment", "solidgate_order_id"]
+            isOneToOne: false
+            referencedRelation: "solidgate_payment_balances"
+            referencedColumns: ["environment", "solidgate_order_id"]
+          },
+        ]
+      }
       solidgate_card_update_attempts: {
         Row: {
           apply_started_at: string | null
@@ -890,6 +934,92 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      solidgate_financial_movements: {
+        Row: {
+          captured_delta_cents: number
+          chargeback_delta_cents: number
+          currency: string
+          environment: string
+          event_key: string
+          evidence_source: string
+          facts: Json
+          id: string
+          net_delta_cents: number
+          occurred_at: string
+          occurred_at_source: string
+          order_id: string
+          provider_transaction_ids: Json
+          recorded_at: string
+          refunded_delta_cents: number
+          resulting_captured_amount_cents: number
+          resulting_chargeback_amount_cents: number
+          resulting_net_amount_cents: number
+          resulting_refunded_amount_cents: number
+          solidgate_invoice_id: string | null
+          solidgate_order_id: string
+          solidgate_subscription_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          captured_delta_cents: number
+          chargeback_delta_cents: number
+          currency: string
+          environment: string
+          event_key: string
+          evidence_source?: string
+          facts: Json
+          id?: string
+          net_delta_cents: number
+          occurred_at: string
+          occurred_at_source: string
+          order_id: string
+          provider_transaction_ids?: Json
+          recorded_at?: string
+          refunded_delta_cents: number
+          resulting_captured_amount_cents: number
+          resulting_chargeback_amount_cents: number
+          resulting_net_amount_cents: number
+          resulting_refunded_amount_cents: number
+          solidgate_invoice_id?: string | null
+          solidgate_order_id: string
+          solidgate_subscription_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          captured_delta_cents?: number
+          chargeback_delta_cents?: number
+          currency?: string
+          environment?: string
+          event_key?: string
+          evidence_source?: string
+          facts?: Json
+          id?: string
+          net_delta_cents?: number
+          occurred_at?: string
+          occurred_at_source?: string
+          order_id?: string
+          provider_transaction_ids?: Json
+          recorded_at?: string
+          refunded_delta_cents?: number
+          resulting_captured_amount_cents?: number
+          resulting_chargeback_amount_cents?: number
+          resulting_net_amount_cents?: number
+          resulting_refunded_amount_cents?: number
+          solidgate_invoice_id?: string | null
+          solidgate_order_id?: string
+          solidgate_subscription_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_financial_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       solidgate_fulfillment_outbox: {
         Row: {
@@ -1118,6 +1248,104 @@ export type Database = {
           },
         ]
       }
+      solidgate_payment_balances: {
+        Row: {
+          capture_evidence_source: string
+          captured_amount_cents: number
+          chargeback_amount_cents: number
+          chargeback_id: string | null
+          chargeback_occurred_at: string | null
+          chargeback_status: string | null
+          currency: string
+          environment: string
+          first_captured_at: string | null
+          first_captured_at_source: string | null
+          invoice_created_at: string | null
+          needs_reconciliation: boolean
+          net_amount_cents: number
+          order_id: string
+          payment_status: string | null
+          payment_status_at: string | null
+          period_end_at: string | null
+          period_start_at: string | null
+          product_key: string | null
+          quoted_amount_cents: number | null
+          refunded_amount_cents: number
+          solidgate_invoice_id: string | null
+          solidgate_order_id: string
+          solidgate_subscription_id: string | null
+          subscription_term_number: number | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          capture_evidence_source?: string
+          captured_amount_cents?: number
+          chargeback_amount_cents?: number
+          chargeback_id?: string | null
+          chargeback_occurred_at?: string | null
+          chargeback_status?: string | null
+          currency: string
+          environment: string
+          first_captured_at?: string | null
+          first_captured_at_source?: string | null
+          invoice_created_at?: string | null
+          needs_reconciliation?: boolean
+          net_amount_cents?: number
+          order_id: string
+          payment_status?: string | null
+          payment_status_at?: string | null
+          period_end_at?: string | null
+          period_start_at?: string | null
+          product_key?: string | null
+          quoted_amount_cents?: number | null
+          refunded_amount_cents?: number
+          solidgate_invoice_id?: string | null
+          solidgate_order_id: string
+          solidgate_subscription_id?: string | null
+          subscription_term_number?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          capture_evidence_source?: string
+          captured_amount_cents?: number
+          chargeback_amount_cents?: number
+          chargeback_id?: string | null
+          chargeback_occurred_at?: string | null
+          chargeback_status?: string | null
+          currency?: string
+          environment?: string
+          first_captured_at?: string | null
+          first_captured_at_source?: string | null
+          invoice_created_at?: string | null
+          needs_reconciliation?: boolean
+          net_amount_cents?: number
+          order_id?: string
+          payment_status?: string | null
+          payment_status_at?: string | null
+          period_end_at?: string | null
+          period_start_at?: string | null
+          product_key?: string | null
+          quoted_amount_cents?: number | null
+          refunded_amount_cents?: number
+          solidgate_invoice_id?: string | null
+          solidgate_order_id?: string
+          solidgate_subscription_id?: string | null
+          subscription_term_number?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_payment_balances_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       solidgate_pwa_purchase_states: {
         Row: {
           claim_kind: string | null
@@ -1242,6 +1470,124 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solidgate_subscription_history: {
+        Row: {
+          environment: string
+          event_created_at: string
+          event_key: string
+          event_type: string
+          facts: Json
+          id: string
+          order_id: string
+          recorded_at: string
+          solidgate_subscription_id: string
+          user_id: string | null
+        }
+        Insert: {
+          environment: string
+          event_created_at: string
+          event_key: string
+          event_type: string
+          facts: Json
+          id?: string
+          order_id: string
+          recorded_at?: string
+          solidgate_subscription_id: string
+          user_id?: string | null
+        }
+        Update: {
+          environment?: string
+          event_created_at?: string
+          event_key?: string
+          event_type?: string
+          facts?: Json
+          id?: string
+          order_id?: string
+          recorded_at?: string
+          solidgate_subscription_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_subscription_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solidgate_subscription_snapshots: {
+        Row: {
+          cancelled_at: string | null
+          environment: string
+          last_cancelled_event_at: string | null
+          latest_event_created_at: string
+          latest_event_key: string
+          latest_event_type: string
+          next_charge_at: string | null
+          order_id: string
+          period_end_at: string | null
+          period_start_at: string | null
+          solidgate_subscription_id: string
+          started_at: string | null
+          status: string | null
+          trial: boolean | null
+          trial_ends_at: string | null
+          trial_started_at: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          cancelled_at?: string | null
+          environment: string
+          last_cancelled_event_at?: string | null
+          latest_event_created_at: string
+          latest_event_key: string
+          latest_event_type: string
+          next_charge_at?: string | null
+          order_id: string
+          period_end_at?: string | null
+          period_start_at?: string | null
+          solidgate_subscription_id: string
+          started_at?: string | null
+          status?: string | null
+          trial?: boolean | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          cancelled_at?: string | null
+          environment?: string
+          last_cancelled_event_at?: string | null
+          latest_event_created_at?: string
+          latest_event_key?: string
+          latest_event_type?: string
+          next_charge_at?: string | null
+          order_id?: string
+          period_end_at?: string | null
+          period_start_at?: string | null
+          solidgate_subscription_id?: string
+          started_at?: string | null
+          status?: string | null
+          trial?: boolean | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidgate_subscription_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -1489,6 +1835,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      solidgate_reconciliation_issues: {
+        Row: {
+          environment: string | null
+          issue: string | null
+          observed_at: string | null
+          order_id: string | null
+          solidgate_invoice_id: string | null
+          solidgate_order_id: string | null
+          solidgate_subscription_id: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -1769,6 +2127,16 @@ export type Database = {
           persisted_step: number
         }[]
       }
+      apply_solidgate_financial_event: {
+        Args: {
+          p_analytics?: Json
+          p_environment: string
+          p_event_key: string
+          p_facts: Json
+          p_solidgate_order_id: string
+        }
+        Returns: Json
+      }
       apply_solidgate_subscription_entitlement_lifecycle: {
         Args: {
           p_access_level: string
@@ -2002,6 +2370,7 @@ export type Database = {
         }
         Returns: string
       }
+      dearmor: { Args: { "": string }; Returns: string }
       enqueue_solidgate_subscription_token_sync: {
         Args: { p_payment_environment: string; p_user_id: string }
         Returns: number
@@ -2115,6 +2484,9 @@ export type Database = {
         Returns: Json
       }
       find_auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
+      fips_mode: { Args: never; Returns: boolean }
+      gen_random_uuid: { Args: never; Returns: string }
+      gen_salt: { Args: { "": string }; Returns: string }
       get_solidgate_card_update_attempt: {
         Args: {
           p_payment_environment: string
@@ -2149,6 +2521,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_solidgate_purchase_counts: {
+        Args: {
+          p_environment: string
+          p_from: string
+          p_products: string[]
+          p_to: string
+        }
+        Returns: Json
+      }
       get_solidgate_pwa_checkout_identity: {
         Args: {
           p_payment_environment: string
@@ -2167,6 +2548,20 @@ export type Database = {
           solidgate_product_id: string
           tracking_metadata: Json
         }[]
+      }
+      get_solidgate_revenue_report: {
+        Args: { p_environment: string; p_from: string; p_to: string }
+        Returns: Json
+      }
+      get_solidgate_subscription_report: {
+        Args: {
+          p_addon_product: string
+          p_environment: string
+          p_from: string
+          p_main_product: string
+          p_to: string
+        }
+        Returns: Json
       }
       grant_solidgate_main_entitlement: {
         Args: {
@@ -2205,6 +2600,13 @@ export type Database = {
           p_user_id: string
         }
         Returns: boolean
+      }
+      list_due_solidgate_card_update_attempts: {
+        Args: { p_limit?: number; p_payment_environment: string }
+        Returns: {
+          solidgate_order_id: string
+          user_id: string
+        }[]
       }
       open_solidgate_card_update_attempt: {
         Args: {
@@ -2430,6 +2832,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      pgp_armor_headers: {
+        Args: { "": string }
+        Returns: Record<string, unknown>[]
+      }
       promote_solidgate_session_vault_monotonic: {
         Args: {
           p_payment_environment: string
@@ -2523,6 +2929,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_solidgate_subscription_snapshot: {
+        Args: {
+          p_environment: string
+          p_event_created_at: string
+          p_event_key: string
+          p_event_type: string
+          p_facts: Json
+          p_order_db_id: string
+          p_subscription_id: string
+        }
+        Returns: Json
+      }
       release_solidgate_card_update_attempt: {
         Args: {
           p_apply_token: string
@@ -2536,6 +2954,20 @@ export type Database = {
       release_solidgate_entity_event: {
         Args: { p_entity_id: string; p_entity_type: string; p_event_id: string }
         Returns: undefined
+      }
+      restore_solidgate_subscription_entitlement: {
+        Args: {
+          p_access_level: string
+          p_event_created_at: string
+          p_event_key: string
+          p_expires_at: string
+          p_order_db_id: string
+          p_payment_environment: string
+          p_product_slug: string
+          p_solidgate_subscription_id: string
+          p_user_id: string
+        }
+        Returns: string
       }
       resume_solidgate_oto_order_after_absent_reconcile: {
         Args: {

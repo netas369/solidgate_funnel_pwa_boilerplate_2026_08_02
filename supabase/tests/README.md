@@ -7,9 +7,8 @@ run on any branch without touching real data.
 Every assertion is a `DO $$ ... ASSERT ... $$` — the script aborts loudly on the
 first failure and prints a `... PASSED` banner when it does not.
 
-These ten scripts cover the PL/pgSQL money logic and the atomic quiz backend.
-The application-level test suites cannot reach it: the behaviour lives entirely
-inside the database.
+These scripts cover the PL/pgSQL money logic. The application-level test
+suites cannot reach it: the behaviour lives entirely inside the database.
 
 ## Running them
 
@@ -104,8 +103,10 @@ what proves its cleanup is retry-safe.
 
 ## Changing the schema
 
-`00001_baseline.sql` is the whole schema. Extend the relevant script here
-_before_ changing any of the functions it covers — the behaviour these scripts
+`00001_baseline.sql` is the fresh-install schema; additive migrations upgrade
+existing installations. Verify both a fresh baseline and the full migration
+chain. Extend the relevant script here
+*before* changing any of the functions it covers — the behaviour these scripts
 pin is not visible from the application layer, and a regression surfaces as a
 buyer being charged twice, not as a failing unit test.
 
@@ -262,3 +263,60 @@ owner, environment mismatches cannot change access, and refunds and revocation
 tombstones still block grants. All fixtures roll back. Provider invoice
 validation and period-end calculation are covered separately by the webhook
 tests; this suite checks that the resulting access is actually persisted.
+
+
+## 2026-09-14 financial audit regressions
+
+`solidgate_financial_events.sql` exercises the immutable movement reducer,
+monotonic cumulative refunds, overlapping chargebacks, outbox rollback,
+capture transaction deduplication, browser capture publication, checked restore,
+and restricted table/function access. `solidgate_financial_reporting.sql`
+verifies 1101 payments are aggregated without Data API truncation, native
+currencies remain separate, refunds retain their event dates, and canceled
+subscribers remain historical paid conversions.
+
+The baseline includes the financial and reporting migrations. Also test a fresh
+installation by applying both dated migrations after the baseline: the repeated
+schema setup must succeed. For an existing installation, apply the dated
+migrations in order, preserving the original pre-migration database for rollback
+and provider reconciliation. No production mutation is part of these tests.
+
+
+## `solidgate_financial_events.sql`
+
+Exercises the atomic financial reducer against real PostgreSQL: late capture
+following a refund, equal-time decreasing refund snapshots, chargeback/refund
+interleavings and reversals, exact outbox rollback, individual settlement
+transaction deduplication, actual undercapture, and refunded renewals. It also
+checks provider-confirmed restoration of cancellation, financial barriers inside
+the entitlement RPC, partial-refund fulfillment, and the browser capture bridge.
+History and mutation RPC grants are checked for public/client roles. Fixtures
+roll back.
+
+## `solidgate_financial_concurrency.sql`
+
+Uses two independent `dblink` transactions to prove that capture/refund and
+competing cumulative refunds serialize on the same order, keep monotonic amounts,
+and conserve ledger deltas. Run twice to verify fixture cleanup. Committed
+concurrency fixtures use `helpers/clear_financial_test_orders.sql` to explicitly
+remove their own immutable test history before deleting parents. That helper is
+only for a throwaway database; production history remains protected.
+
+
+`payment_captured` analytics events are diagnostic observations and deliberately
+omit `revenue`; they retain captured totals and movement deltas in cents. The
+canonical purchase/subscription event reports the full collected amount once,
+using the shared browser/server deduplication key. Refund and chargeback events
+report their reversal deltas. Compute financial totals from
+`solidgate_financial_movements` (or the reporting RPC), not by summing arbitrary
+analytics event families. A partial 1200-cent capture followed by a completed
+1767-cent purchase must expose 1767 cents of canonical revenue, never 2967.
+
+Account card promotion additionally requires `orders.auth_verified_at` for the
+exact main checkout source. Checkout email matching, automatic `user_id`
+assignment and historical `claimed_at` values do not satisfy that requirement.
+The token provenance suite proves a verified claim permits promotion; the card
+state suite proves an unverified newer checkout cannot overwrite an existing
+account card or fence its in-flight subscription token update, with or without
+a new card token. Existing rows remain unverified until an actual authenticated
+claim is completed.

@@ -31,6 +31,11 @@ verify each finding against this boilerplate before changing code. API v1 / Bill
 is the selected direction. Proposed schema changes are not applied migrations, and
 the source project's product examples must not become this boilerplate's configuration.
 
+All products use the static statement descriptor configured on the Solidgate
+channel/connector. Never send `dynamic_descriptor` or maintain product suffixes for
+main, OTO, PWA, trials or renewals. Keep locale product codes and `order_description`
+separate from the statement label.
+
 ## Stack
 
 Next.js App Router · React · TypeScript · Tailwind · Zustand · next-intl · Supabase ·

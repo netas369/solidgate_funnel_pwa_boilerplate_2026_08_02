@@ -7,9 +7,8 @@
 // inclusive "to" maps to the exclusive upper bound used by DateRange in
 // _queries/_shared.ts.
 //
-// Apply is disabled until both inputs are set and from < to (mirrors the
-// server-side RangeSchema.refine to give immediate UX feedback before the
-// network round trip).
+// Apply is disabled until both inputs are set and from <= to. The inclusive end date becomes the
+// following UTC midnight, satisfying the server-side exclusive range.
 
 import { useState } from 'react';
 
@@ -28,7 +27,7 @@ export function DateRangePicker({
 }: DateRangePickerProps) {
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
-  const canApply = Boolean(from) && Boolean(to) && from < to;
+  const canApply = Boolean(from) && Boolean(to) && from <= to;
 
   return (
     <div className="flex items-center gap-2">

@@ -1,0 +1,17 @@
+CREATE FUNCTION
+DELETE 0
+DELETE 0
+DELETE 0
+DELETE 0
+INSERT 0 1
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 3
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T072859Z/inputs/supabase/tests/solidgate_financial_concurrency.sql:148: NOTICE:  FINANCIAL CAPTURE/REFUND CONCURRENCY PASSED
+DO
+DELETE 3
+DELETE 3
+DELETE 2
+DELETE 1
+FINANCIAL CONCURRENCY CLEANUP PASSED

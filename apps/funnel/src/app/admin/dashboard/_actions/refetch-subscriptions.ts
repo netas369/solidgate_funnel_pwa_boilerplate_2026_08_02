@@ -6,13 +6,7 @@
 
 import { createClient } from '@repo/shared/supabase/server';
 import { isAdminEmail } from '../../_queries/_shared';
-import {
-  paidConversionsCohort,
-  paidConversionsRolling,
-  recurringOtoSnapshot,
-  subscriptionStatusBreakdown,
-  subscriptionVariantBreakdown,
-} from '../../_queries/subscriptions';
+import { subscriptionsSummaryInRange } from '../../_queries/subscriptions';
 import { RangeSchema } from './_range-schema';
 
 export async function refetchSubscriptions(input: unknown) {
@@ -24,12 +18,5 @@ export async function refetchSubscriptions(input: unknown) {
     throw new Error('Forbidden');
   }
   const range = RangeSchema.parse(input);
-  const [cohort, rolling, recurringOto, statusBreakdown, variantBreakdown] = await Promise.all([
-    paidConversionsCohort(range),
-    paidConversionsRolling(range),
-    recurringOtoSnapshot(range),
-    subscriptionStatusBreakdown(range),
-    subscriptionVariantBreakdown(range),
-  ]);
-  return { cohort, rolling, recurringOto, statusBreakdown, variantBreakdown };
+  return subscriptionsSummaryInRange(range);
 }

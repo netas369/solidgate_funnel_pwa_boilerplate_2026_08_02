@@ -6,6 +6,7 @@ import {
   type ProductId,
 } from '@repo/shared/price-map';
 import {
+  ADDON_TRIAL_INTRO_AMOUNTS,
   PRODUCT_ID_TO_CODE,
   PRODUCT_ID_TO_DISPLAY_NAME,
   SOLIDGATE_PRODUCTS,
@@ -156,7 +157,7 @@ export function otoProductContext(
     solidgate_price_id: solidgatePriceId,
     // A subscription OTO's own order is the (possibly €0) intro; PRICE_MAP
     // holds the RECURRING amount, which rides along separately.
-    amount_cents: actual?.amountCents ?? (isSubscription ? 0 : price.amountCents),
+    amount_cents: actual?.amountCents ?? (isSubscription ? ADDON_TRIAL_INTRO_AMOUNTS[currency] : price.amountCents),
     ...(isSubscription ? { recurring_amount_cents: price.amountCents } : {}),
     currency: (actual?.currency ?? currency).toUpperCase(),
   };

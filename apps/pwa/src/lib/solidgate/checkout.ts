@@ -17,6 +17,7 @@ export type MerchantData = InitConfig["merchantData"];
 export type PurchaseOutcome =
   | { kind: "granted"; payment?: ConfirmedPurchase }
   | { kind: "already_owned" }
+  | { kind: "recovery_required" }
   /** Mount the form: we hold no card for this buyer (or theirs just died). */
   | { kind: "needs_card"; merchantData: MerchantData; orderId: string }
   /** 3DS on a saved card is a redirect, not a modal. */
@@ -37,6 +38,7 @@ export type PurchaseOutcome =
 interface PurchaseResponse {
   ok?: boolean;
   alreadyOwned?: boolean;
+  recoveryRequired?: boolean;
   needsCard?: boolean;
   needsNewCard?: boolean;
   pending?: boolean;
@@ -152,6 +154,7 @@ export async function startPurchase(
   // safely resolve it on a later retry.
   if (!data) return pendingOutcome();
 
+  if (data.recoveryRequired === true) return { kind: "recovery_required" };
   if (res.ok && data.alreadyOwned) return { kind: "already_owned" };
 
   // One-click charge went through: nothing is granted until the server re-reads
@@ -199,6 +202,7 @@ export async function startPurchase(
     ) {
       return { kind: "needs_card", merchantData: retryData.merchantData, orderId: retryData.orderId };
     }
+    if (retryData?.recoveryRequired === true) return { kind: "recovery_required" };
     if (retryResult.res.ok && retryData?.alreadyOwned) return { kind: "already_owned" };
     return terminalFailure;
   }

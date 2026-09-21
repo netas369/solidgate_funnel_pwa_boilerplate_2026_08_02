@@ -6,7 +6,7 @@ import {
 } from "./payment-event";
 
 describe("PWA confirmed purchase analytics contract", () => {
-  it("builds Stripe-compatible product fields without duplicating webhook revenue", async () => {
+  it("builds the shared purchase analytics product fields without duplicating webhook revenue", async () => {
     const payment = buildConfirmedPurchase({
       orderId: "u-11111111-1111-1111-1111-111111111111:oto3_bundle_all:1",
       productCode: "BRANDBUNDLE_000000_PDF",

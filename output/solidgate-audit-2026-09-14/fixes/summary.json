@@ -1,0 +1,49 @@
+{
+  "verified_at_utc": "2026-09-14T07:38:45.032139+00:00",
+  "scope": "local boilerplate only; no production mutations or paid external operations",
+  "javascript_suites": {
+    "funnel": {
+      "tests": 1032,
+      "files": 90,
+      "status": "passed",
+      "log": "funnel-tests.log"
+    },
+    "pwa": {
+      "tests": 249,
+      "files": 14,
+      "status": "passed",
+      "log": "pwa-tests.log"
+    },
+    "shared": {
+      "tests": 361,
+      "files": 30,
+      "status": "passed",
+      "log": "shared-tests.log"
+    }
+  },
+  "javascript_total": 1642,
+  "typechecks": {
+    "funnel": "passed",
+    "pwa": "passed",
+    "deno_webhook": "passed"
+  },
+  "sql_suites": 11,
+  "sql_executions": 13,
+  "fresh_schema_and_migrations": "passed",
+  "populated_legacy_upgrade_and_replay": "passed",
+  "sql_evidence": "local-sql-20260914T073604Z/summary.json",
+  "upgrade_evidence": "legacy-upgrade-20260914T073603Z/summary.json",
+  "generated_types": "Supabase postgres-meta v0.99.0 against final verified local schema",
+  "known_rollout_requirements": [
+    "Deploy dated DB migrations, matching Edge Function and both apps",
+    "Apply hosted Supabase email confirmation and OTP templates",
+    "Review previously auto-confirmed users, sessions, account cards and token-sync jobs",
+    "Reconcile legacy monetary estimates/dates using provider transaction evidence"
+  ],
+  "feature_gap": "Main full-price resubscription after cancellation remains product work; UI directs to support instead of misleading card-only restoration.",
+  "schema_sha256": {
+    "supabase/migrations/00001_baseline.sql": "773461483e7f9652a1ef508055df81279efe838161a390b8f013e46472eb7d62",
+    "supabase/migrations/20260914070652_financial_event_ledger.sql": "a4f1bbf39558394f4ce1d6bbdeab3616558427f7d76f7ca247d0af3113b6e9ac",
+    "supabase/migrations/20260914070819_solidgate_financial_reporting.sql": "bda7a66fc266ab37c57caae415ca8511734dd2a5c9daab048771b20308ec99e0"
+  }
+}

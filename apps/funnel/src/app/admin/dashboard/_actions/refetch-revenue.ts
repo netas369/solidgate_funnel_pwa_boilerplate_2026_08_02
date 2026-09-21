@@ -6,12 +6,7 @@
 
 import { createClient } from '@repo/shared/supabase/server';
 import { isAdminEmail } from '../../_queries/_shared';
-import {
-  grossRevenueInEurInRange,
-  revenueByCurrencyInRange,
-  renewalRevenueInEur,
-  revenueTimeSeriesInEur,
-} from '../../_queries/revenue';
+import { revenueSummaryInRange } from '../../_queries/revenue';
 import { RangeSchema } from './_range-schema';
 
 export async function refetchRevenue(input: unknown) {
@@ -23,11 +18,5 @@ export async function refetchRevenue(input: unknown) {
     throw new Error('Forbidden');
   }
   const range = RangeSchema.parse(input);
-  const [oneTimeEur, renewalEur, byCurrency, timeSeries] = await Promise.all([
-    grossRevenueInEurInRange(range),
-    renewalRevenueInEur(range),
-    revenueByCurrencyInRange(range),
-    revenueTimeSeriesInEur(range),
-  ]);
-  return { oneTimeEur, renewalEur, byCurrency, timeSeries };
+  return revenueSummaryInRange(range);
 }

@@ -670,7 +670,7 @@
             "Trial pricing, one-time initial payment: $5, $9, $13, or $17.67.",
             "After the trial period, the monthly ACME subscription is $59 every 30 days.",
             "The exact price, billing cycle, trial period, renewal terms, and cancellation terms will be shown at checkout before payment is completed.",
-            "Your payment may appear on your bank statement as “ACME” or a similar descriptor provided by our payment processor; one-time purchases may additionally show a product code such as “LIFETIME” or “BUNDLE.”"
+            "Your payments use the same static bank statement descriptor configured for our payment channel, such as “ACME” or the name provided by our payment processor, for subscriptions and one-time purchases."
           ]
         },
         {

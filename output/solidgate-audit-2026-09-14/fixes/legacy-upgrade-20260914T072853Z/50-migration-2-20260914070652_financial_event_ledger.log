@@ -1,0 +1,75 @@
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:35: NOTICE:  relation "solidgate_payment_balances" already exists, skipping
+CREATE TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:36: NOTICE:  column "first_captured_at_source" of relation "solidgate_payment_balances" already exists, skipping
+ALTER TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:37: NOTICE:  column "capture_evidence_source" of relation "solidgate_payment_balances" already exists, skipping
+ALTER TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:39: NOTICE:  relation "solidgate_payment_balances_subscription_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:41: NOTICE:  relation "solidgate_payment_balances_order_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:67: NOTICE:  relation "solidgate_financial_movements" already exists, skipping
+CREATE TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:69: NOTICE:  relation "solidgate_financial_movements_time_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:71: NOTICE:  relation "solidgate_financial_movements_order_idx" already exists, skipping
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+DROP TRIGGER
+CREATE TRIGGER
+REVOKE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:100: NOTICE:  relation "solidgate_capture_transactions" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+DROP TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+GRANT
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:426: NOTICE:  relation "solidgate_subscription_snapshots" already exists, skipping
+CREATE TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:439: NOTICE:  relation "solidgate_subscription_history" already exists, skipping
+CREATE TABLE
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T072853Z/20260914070652_financial_event_ledger.sql:441: NOTICE:  relation "solidgate_subscription_history_order_idx" already exists, skipping
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+REVOKE
+GRANT
+GRANT
+DROP TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+INSERT 0 0
+INSERT 0 0
+INSERT 0 0
+CREATE FUNCTION
+REVOKE
+GRANT
+DROP TRIGGER
+CREATE TRIGGER
+CREATE VIEW
+REVOKE
+GRANT
+CREATE FUNCTION

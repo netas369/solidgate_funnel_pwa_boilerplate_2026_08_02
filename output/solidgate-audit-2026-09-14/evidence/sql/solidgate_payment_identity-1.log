@@ -1,0 +1,14 @@
+You are now connected to database "postgres" as user "supabase_admin".
+BEGIN
+INSERT 0 2
+INSERT 0 2
+psql:supabase/tests/solidgate_payment_identity.sql:646: NOTICE:  SOLIDGATE PAYMENT IDENTITY SCENARIOS PASSED
+DO
+INSERT 0 1
+UPDATE 1
+INSERT 0 1
+INSERT 0 1
+psql:supabase/tests/solidgate_payment_identity.sql:749: NOTICE:  SOLIDGATE EQUAL-TIME LIFECYCLE SCENARIO PASSED
+DO
+ROLLBACK
+SOLIDGATE PAYMENT IDENTITY TESTS PASSED

@@ -1,0 +1,10 @@
+CREATE SCHEMA
+INSERT 0 4
+INSERT 0 4
+INSERT 0 4
+UPDATE 4
+INSERT 0 4
+SELECT 8
+SELECT 8
+psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/legacy-upgrade-20260914T073603Z/legacy-upgrade-seed.sql:90: NOTICE:  LEGACY UPGRADE SEED PASSED: four initials and four renewals, strict checkout identities
+DO

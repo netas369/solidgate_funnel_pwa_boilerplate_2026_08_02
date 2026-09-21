@@ -17,6 +17,12 @@
     #solidgate-full-analysis .full-toc h2 { font-size: 24px; margin: 0 0 12px; }
     #solidgate-full-analysis .full-toc-note { font-size: 14px; color: var(--muted-foreground, #67716b); margin-bottom: 28px; }
     #solidgate-full-analysis .full-toc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 48px; }
+    #solidgate-full-analysis .full-toc-block { margin: 0 0 40px; padding-top: 22px; border-top: 1px solid var(--border, #dce2dd); }
+    #solidgate-full-analysis .full-toc-block-title { font-size: 21px; margin: 0 0 8px; }
+    #solidgate-full-analysis .full-toc-block-title a { text-decoration: none; }
+    #solidgate-full-analysis .full-block { padding-top: 64px; margin-top: 40px; border-top: 4px solid var(--foreground, #202522); }
+    #solidgate-full-analysis .full-block-title { font-size: 34px; line-height: 1.2; font-weight: 600; letter-spacing: -.03em; margin: 10px 0 12px; }
+    #solidgate-full-analysis .full-block-lead { max-width: 780px; font-size: 18px; color: var(--muted-foreground, #67716b); margin: 0; }
     #solidgate-full-analysis .full-toc-group { min-width: 0; }
     #solidgate-full-analysis .full-toc-group h3 { font-size: 18px; line-height: 1.4; margin: 0 0 12px; }
     #solidgate-full-analysis .full-toc-group ul { list-style: none; padding: 0; margin: 0; }
@@ -76,21 +82,21 @@
     }
   </style>
   <header id="full-top" class="full-hero">
-    <div class="full-eyebrow">Mokėjimų modulis · Visa analizė</div>
+    <div class="full-eyebrow">Mokėjimų modulis · Dokumentacija ir analizė</div>
     <h1>Solidgate boilerplate</h1>
-    <p class="full-lead">Šaltinio sistemos architektūra, visų lentelių ir stulpelių paaiškinimai, kainodara ir tolesni modulio darbai šiame boilerplate.</p>
-    <div class="full-meta"><span>API v1 / Billing 1.0</span><span><!--FULL_DOCUMENT_COUNT--> dokumentai</span><span>22 šaltinio lentelės</span><span>307 stulpeliai</span><span>Peržiūrėta 2026-09-09</span></div>
+    <p class="full-lead">Dabartinės mokėjimų sistemos dokumentacija: 24 lentelės ir 313 stulpelių, 76 DB funkcijos, visi srautai ir produktų katalogas. Antrame bloke — pirminis auditas, peržiūros ir Stripe išvalymas.</p>
+    <div class="full-meta"><span>API v1 / Billing 1.0</span><span><!--FULL_DOCUMENT_COUNT--> dokumentai</span><span>24 lentelės · 313 stulpelių</span><span>76 funkcijos · 15 trigger'ių</span><span>Atnaujinta 2026-09-11</span></div>
   </header>
   <nav class="full-quick-nav" aria-label="Greitas perėjimas prie temos">
     <!--FULL_QUICK_NAV-->
   </nav>
   <nav id="full-toc" class="full-toc" aria-label="Visos analizės turinys">
     <h2>Skaityti pagal temą</h2>
-    <p class="full-toc-note">Visa analizė pateikta žemiau viename ištisiniame puslapyje. Spausk temą arba skaityk iš eilės. Lentelės ar stulpelio ieškok su ⌘F / Ctrl+F.</p>
-    <div class="full-toc-grid"><!--FULL_TOC--></div>
+    <p class="full-toc-note">Visa dokumentacija pateikta žemiau viename ištisiniame puslapyje, dviem blokais. Pirmas blokas aprašo dabartinę šio boilerplate mokėjimų sistemą; antras saugo pirminį auditą ir peržiūras. Spausk temą arba skaityk iš eilės. Lentelės ar stulpelio ieškok su ⌘F / Ctrl+F.</p>
+    <!--FULL_TOC-->
   </nav>
   <main><!--FULL_CONTENT--></main>
-  <footer class="full-footer">Visos analizės pabaiga · <!--FULL_DOCUMENT_COUNT--> dokumentai · 22 šaltinio lentelės · 307 stulpeliai. <a href="#full-top">Grįžti į pradžią ↑</a></footer>
+  <footer class="full-footer">Dokumentacijos pabaiga · <!--FULL_DOCUMENT_COUNT--> dokumentai · 24 lentelės · 313 stulpelių · 76 funkcijos. <a href="#full-top">Grįžti į pradžią ↑</a></footer>
   <dialog id="full-source-dialog" class="full-source" aria-labelledby="full-source-title">
     <h2 id="full-source-title">Kodo šaltinis</h2>
     <p>Failas ir eilutė, kuriais remiasi ši analizės vieta:</p>

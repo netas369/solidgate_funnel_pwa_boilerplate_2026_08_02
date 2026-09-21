@@ -1,0 +1,14 @@
+You are now connected to database "postgres" as user "supabase_admin".
+BEGIN
+INSERT 0 1
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 3
+SET
+psql:supabase/tests/solidgate_subscription_renewals.sql:297: NOTICE:  SOLIDGATE SUBSCRIPTION RENEWAL SCENARIOS PASSED
+DO
+psql:supabase/tests/solidgate_subscription_renewals.sql:336: NOTICE:  SOLIDGATE RENEWAL LEDGER ARBITER INDEX PASSED
+DO
+ROLLBACK
+SOLIDGATE SUBSCRIPTION RENEWAL TESTS PASSED

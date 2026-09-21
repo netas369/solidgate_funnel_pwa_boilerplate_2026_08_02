@@ -144,25 +144,12 @@ export const APP_ACCESS_PRODUCT_SLUGS = new Set([
   'oto1_lifetime',
 ]);
 
-export type AppAccessState = 'active' | 'revoked' | 'none';
+export type AppAccessState = 'active' | 'revoked' | 'none' | 'pending' | 'unavailable';
 
-/**
- * Solidgate UAT item 8: a hard cancel must actually end member-area access.
- *
- * 'active'  — a live (or past_due+grace) app-access entitlement exists.
- * 'revoked' — the newest app-access row is an EXPLICIT tombstone (revoked_at
- *             set or status canceled) and nothing live remains; the shell
- *             must lock.
- * 'none'    — nothing live, but no explicit tombstone governs either.
- *             Deliberately NOT treated as locked, for two races: a fresh
- *             buyer can reach the PWA while the capture webhook is still
- *             writing their first entitlement, and a paying subscriber's
- *             expires_at is written as the provider's next_charge_at with
- *             ZERO slack — between the billing instant and the renew/dunning
- *             callback their active row is momentarily lapsed. Cancel/expire
- *             always write the explicit tombstone, so hard cancels still
- *             lock. Login alone already gates the rest.
- */
+/** A delayed renewal may be reconciled for 15 minutes, without opening paid content. */
+export const APP_ACCESS_PENDING_WINDOW_MS = 15 * 60 * 1000;
+
+/** Access requires a current entitlement; errors and expired rows never grant it. */
 export async function appAccessEntitlementState(
   userId: string,
   paymentEnvironment: PaymentEnvironment = currentPaymentEnvironment(),
@@ -174,10 +161,8 @@ export async function appAccessEntitlementState(
     .eq('payment_environment', paymentEnvironment)
     .eq('user_id', userId);
   if (error) {
-    // Fail open: this gate exists to lock cancelled buyers out, and a read
-    // outage must not lock the paying ones out instead.
     console.error('[entitlements] app-access read failed:', error.message);
-    return 'active';
+    return 'unavailable';
   }
   const appRows = (data ?? []).filter((row) => {
     const slug = PRODUCT_NAME_TO_SLUG[row.product_slug ?? ''] ?? row.product_slug;
@@ -190,7 +175,9 @@ export async function appAccessEntitlementState(
       row.revoked_at == null &&
       (row.status === 'active' ||
         (row.status === 'past_due' && row.access_level === 'grace')) &&
-      (row.expires_at == null || Date.parse(row.expires_at) > now),
+      (row.expires_at != null
+        ? Date.parse(row.expires_at) > now
+        : row.status === 'active' && (PRODUCT_NAME_TO_SLUG[row.product_slug ?? ''] ?? row.product_slug) === 'oto1_lifetime'),
   );
   if (live) return 'active';
   // The NEWEST row decides, so a long-dead tombstone (an old cancelled trial)
@@ -198,7 +185,11 @@ export async function appAccessEntitlementState(
   const newest = appRows.reduce((a, b) =>
     (Date.parse(a.granted_at ?? '') || 0) >= (Date.parse(b.granted_at ?? '') || 0) ? a : b,
   );
-  return newest.revoked_at != null || newest.status === 'canceled' ? 'revoked' : 'none';
+  if (newest.revoked_at != null || newest.status === 'canceled') return 'revoked';
+  const expiredAt = Date.parse(newest.expires_at ?? '');
+  if (newest.status === 'active' && Number.isFinite(expiredAt)
+    && expiredAt <= now && now - expiredAt < APP_ACCESS_PENDING_WINDOW_MS) return 'pending';
+  return 'none';
 }
 
 // ─── Get all active entitlements for a user ──────────────────────────────────

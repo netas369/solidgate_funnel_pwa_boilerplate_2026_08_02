@@ -13,7 +13,6 @@ import {
   type IntroOfferClaimResult,
 } from '@repo/shared/solidgate';
 import { PRODUCT_ID_TO_CODE, SOLIDGATE_PRODUCT_CODES } from '@repo/shared/solidgate/catalog';
-import { solidgateDynamicDescriptor } from '@repo/shared/solidgate/descriptor';
 import { solidgateOrderDescription } from '@repo/shared/locale-prefixes';
 import { BOILERPLATE_BRAND } from '@repo/shared/boilerplate-brand';
 import { localePathSegment } from '@repo/i18n/routing';
@@ -346,16 +345,11 @@ export async function POST(request: Request) {
     if (!sessionLocale || !(sessionLocale in LOCALE_CURRENCY_MAP)) {
       return NextResponse.json({ error: 'Session locale missing' }, { status: 500 });
     }
-    const effectiveLocale: Locale = existingIdentity
-      ? sessionLocale as Locale
-      : enabledLocales.includes(sessionLocale)
-        ? sessionLocale as Locale
-        : 'en';
-    if (!existingIdentity && effectiveLocale !== sessionLocale) {
-      console.warn('[solidgate/create-session] locale not checkout-enabled, falling back to en', {
-        sessionLocale,
-      });
+    if (!existingIdentity && !enabledLocales.includes(sessionLocale)) {
+      return NextResponse.json({ error: 'Checkout is unavailable for this locale', code: 'checkout_locale_disabled' }, { status: 409 });
     }
+    // Locale controls currency; never silently substitute a different quote.
+    const effectiveLocale = sessionLocale as Locale;
 
     const ip = resolveClientIp(request);
     if (!ip) {
@@ -655,9 +649,8 @@ export async function POST(request: Request) {
       order_id: orderId,
       // Data-team grammar ({PREFIX}_{code}); locale also rides in metadata.
       order_description: solidgateOrderDescription(effectiveLocale, productCode),
-      // Statement shows base descriptor + this suffix (e.g. APP/:*ACME).
-      // undefined drops out at JSON.stringify time inside the encryptor.
-      dynamic_descriptor: solidgateDynamicDescriptor(productCode),
+      // Every product uses the static statement descriptor configured on the
+      // Solidgate channel / connector; payment requests never override it.
       // The intro price is what the customer pays now; the product's own
       // product_price is what rebills after its trial period.
       amount: amountCents,

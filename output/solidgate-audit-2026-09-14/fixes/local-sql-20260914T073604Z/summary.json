@@ -1,0 +1,204 @@
+{
+  "database": "solidgate_final_verify_20260914_073604_e6c770",
+  "host": "127.0.0.1",
+  "port": 5432,
+  "started_at": "2026-09-14T07:36:04.538449+00:00",
+  "stages": [
+    {
+      "stage": "00-create-database",
+      "exit_code": 0,
+      "seconds": 0.127879,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/00-create-database.log",
+      "banners": []
+    },
+    {
+      "stage": "01-scaffold",
+      "exit_code": 0,
+      "seconds": 0.073552,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/01-scaffold.log",
+      "banners": []
+    },
+    {
+      "stage": "02-00001_baseline",
+      "exit_code": 0,
+      "seconds": 0.345662,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/02-00001_baseline.log",
+      "banners": []
+    },
+    {
+      "stage": "03-20260914070652_financial_event_ledger",
+      "exit_code": 0,
+      "seconds": 0.129194,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/03-20260914070652_financial_event_ledger.log",
+      "banners": []
+    },
+    {
+      "stage": "04-20260914070819_solidgate_financial_reporting",
+      "exit_code": 0,
+      "seconds": 0.079185,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/04-20260914070819_solidgate_financial_reporting.log",
+      "banners": []
+    },
+    {
+      "stage": "10-solidgate_card_update_state-1",
+      "exit_code": 0,
+      "seconds": 0.130674,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/10-solidgate_card_update_state-1.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_card_update_state.sql:478: NOTICE:  SOLIDGATE CARD-UPDATE STATE SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_card_update_state.sql:1034: NOTICE:  UNVERIFIED MAIN CHECKOUT ACCOUNT VAULT ISOLATION PASSED"
+      ]
+    },
+    {
+      "stage": "11-solidgate_financial_concurrency-1",
+      "exit_code": 0,
+      "seconds": 0.236906,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/11-solidgate_financial_concurrency-1.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_financial_concurrency.sql:148: NOTICE:  FINANCIAL CAPTURE/REFUND CONCURRENCY PASSED",
+        "FINANCIAL CONCURRENCY CLEANUP PASSED"
+      ]
+    },
+    {
+      "stage": "11-solidgate_financial_concurrency-2",
+      "exit_code": 0,
+      "seconds": 0.241352,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/11-solidgate_financial_concurrency-2.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_financial_concurrency.sql:148: NOTICE:  FINANCIAL CAPTURE/REFUND CONCURRENCY PASSED",
+        "FINANCIAL CONCURRENCY CLEANUP PASSED"
+      ]
+    },
+    {
+      "stage": "12-solidgate_financial_events-1",
+      "exit_code": 0,
+      "seconds": 0.130978,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/12-solidgate_financial_events-1.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_financial_events.sql:189: NOTICE:  FINANCIAL EVENT PERMUTATIONS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_financial_events.sql:246: NOTICE:  FINANCIAL RESTORE AND LIFECYCLE PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_financial_events.sql:262: NOTICE:  FINANCIAL SECURITY PASSED"
+      ]
+    },
+    {
+      "stage": "13-solidgate_financial_reporting-1",
+      "exit_code": 0,
+      "seconds": 0.130298,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/13-solidgate_financial_reporting-1.log",
+      "banners": [
+        "solidgate_financial_reporting PASSED"
+      ]
+    },
+    {
+      "stage": "14-solidgate_intro_claims-1",
+      "exit_code": 0,
+      "seconds": 0.076339,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/14-solidgate_intro_claims-1.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_intro_claims.sql:137: NOTICE:  ALL SCENARIOS PASSED"
+      ]
+    },
+    {
+      "stage": "15-solidgate_oto_progress-1",
+      "exit_code": 0,
+      "seconds": 0.078413,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/15-solidgate_oto_progress-1.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_oto_progress.sql:95: NOTICE:  SOLIDGATE OTO PROGRESS SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_oto_progress.sql:208: NOTICE:  SOLIDGATE OTO PAYABLE/SKIP INTERLOCK SCENARIOS PASSED"
+      ]
+    },
+    {
+      "stage": "16-solidgate_payment_identity-1",
+      "exit_code": 0,
+      "seconds": 0.12958,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/16-solidgate_payment_identity-1.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_payment_identity.sql:646: NOTICE:  SOLIDGATE PAYMENT IDENTITY SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_payment_identity.sql:749: NOTICE:  SOLIDGATE EQUAL-TIME LIFECYCLE SCENARIO PASSED",
+        "SOLIDGATE PAYMENT IDENTITY TESTS PASSED"
+      ]
+    },
+    {
+      "stage": "17-solidgate_pwa_3ds_alias_conflict-1",
+      "exit_code": 0,
+      "seconds": 0.077086,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/17-solidgate_pwa_3ds_alias_conflict-1.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_pwa_3ds_alias_conflict.sql:95: NOTICE:  SOLIDGATE PWA 3DS ALIAS-CONFLICT SCENARIO PASSED"
+      ]
+    },
+    {
+      "stage": "18-solidgate_round2_concurrency-1",
+      "exit_code": 0,
+      "seconds": 1.788956,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/18-solidgate_round2_concurrency-1.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:44: NOTICE:  WEBHOOK CLAIM RPC ACL SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:255: NOTICE:  WEBHOOK CLAIM CONCURRENCY SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:292: NOTICE:  ENTITY EQUAL-TIMESTAMP ORDERING SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:656: NOTICE:  OTO OPEN/SUBMISSION CONCURRENCY SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:930: NOTICE:  OTO3 MUTUALLY-EXCLUSIVE VARIANT SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:1688: NOTICE:  MAIN CHECKOUT IDENTITY/BUILDER CONCURRENCY SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:2818: NOTICE:  PWA OPEN/MODE/FORM/SUBMISSION CONCURRENCY SCENARIOS PASSED",
+        "ALL ROUND-2 SOLIDGATE CONCURRENCY SCENARIOS PASSED"
+      ]
+    },
+    {
+      "stage": "18-solidgate_round2_concurrency-2",
+      "exit_code": 0,
+      "seconds": 1.798332,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/18-solidgate_round2_concurrency-2.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:44: NOTICE:  WEBHOOK CLAIM RPC ACL SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:255: NOTICE:  WEBHOOK CLAIM CONCURRENCY SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:292: NOTICE:  ENTITY EQUAL-TIMESTAMP ORDERING SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:656: NOTICE:  OTO OPEN/SUBMISSION CONCURRENCY SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:930: NOTICE:  OTO3 MUTUALLY-EXCLUSIVE VARIANT SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:1688: NOTICE:  MAIN CHECKOUT IDENTITY/BUILDER CONCURRENCY SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_round2_concurrency.sql:2818: NOTICE:  PWA OPEN/MODE/FORM/SUBMISSION CONCURRENCY SCENARIOS PASSED",
+        "ALL ROUND-2 SOLIDGATE CONCURRENCY SCENARIOS PASSED"
+      ]
+    },
+    {
+      "stage": "19-solidgate_subscription_renewals-1",
+      "exit_code": 0,
+      "seconds": 0.131978,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/19-solidgate_subscription_renewals-1.log",
+      "banners": [
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_subscription_renewals.sql:297: NOTICE:  SOLIDGATE SUBSCRIPTION RENEWAL SCENARIOS PASSED",
+        "psql:/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/inputs/supabase/tests/solidgate_subscription_renewals.sql:336: NOTICE:  SOLIDGATE RENEWAL LEDGER ARBITER INDEX PASSED",
+        "SOLIDGATE SUBSCRIPTION RENEWAL TESTS PASSED"
+      ]
+    },
+    {
+      "stage": "20-solidgate_token_origin_payment_type-1",
+      "exit_code": 0,
+      "seconds": 0.074298,
+      "log": "/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/output/solidgate-audit-2026-09-14/fixes/local-sql-20260914T073604Z/20-solidgate_token_origin_payment_type-1.log",
+      "banners": [
+        "SOLIDGATE TOKEN ORIGIN PAYMENT TYPE SCENARIOS PASSED"
+      ]
+    }
+  ],
+  "input_hashes": {
+    "supabase/migrations/00001_baseline.sql": "773461483e7f9652a1ef508055df81279efe838161a390b8f013e46472eb7d62",
+    "supabase/migrations/20260914070652_financial_event_ledger.sql": "a4f1bbf39558394f4ce1d6bbdeab3616558427f7d76f7ca247d0af3113b6e9ac",
+    "supabase/migrations/20260914070819_solidgate_financial_reporting.sql": "bda7a66fc266ab37c57caae415ca8511734dd2a5c9daab048771b20308ec99e0",
+    "supabase/tests/helpers/clear_financial_test_orders.sql": "e9345a224c20e27d3ef3f455ce6d9427056b9ae9158cbde69007dc6fde4c4b0d",
+    "supabase/tests/solidgate_card_update_state.sql": "8b8925c89e334ceba054108e5cb88f42f9dcb43918edcab50c897a31bb4c0ced",
+    "supabase/tests/solidgate_financial_concurrency.sql": "b6c10e0c9c73bf3633939ce34d669f23fc763f895e9b55888063dbc1123456ed",
+    "supabase/tests/solidgate_financial_events.sql": "520212ab5824f62726c7187185e2f4f7600e9fd5cbc59110bd15a2b2eccb8be2",
+    "supabase/tests/solidgate_financial_reporting.sql": "cf753cd122e8afea7fc6bb7939f6c99f4e1f86719644d5ce6348e95f59e4406b",
+    "supabase/tests/solidgate_intro_claims.sql": "53855268fc92e491d8a27afc97dddb387461262f87acfd9581b8dd9f72e2137a",
+    "supabase/tests/solidgate_oto_progress.sql": "062924ee59040111de7d09559550bfd8aaf592d704eac4c4b6ea892222627db3",
+    "supabase/tests/solidgate_payment_identity.sql": "169917bf3c4745318df115fc755ce87ce464b6826e774c7cc03768c71b720703",
+    "supabase/tests/solidgate_pwa_3ds_alias_conflict.sql": "f49a9072d3852558bdcbf07d9dfb286c18d87e5573059ea86631a14222d864b8",
+    "supabase/tests/solidgate_round2_concurrency.sql": "6d66c8ea37d06a834d6299843d7cf61da7539465431b46f984e09f3ad1e4fbea",
+    "supabase/tests/solidgate_subscription_renewals.sql": "770db5c2c52a2e2931f2917e3d54a078499968e40de38e8b06e082b3b814693f",
+    "supabase/tests/solidgate_token_origin_payment_type.sql": "1cd91567aefdb3e78a75550f5453fea18e58ed3a056489c5a759b18d7847df5a"
+  },
+  "changed_inputs_during_run": [],
+  "finished_at": "2026-09-14T07:36:10.352241+00:00",
+  "status": "passed"
+}

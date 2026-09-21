@@ -20,6 +20,8 @@ import {
   introOfferConsumeNeedsRefund,
   parseSolidgateOrderId,
   paymentEnvironmentForVercel,
+  persistSolidgatePartialCapture,
+  solidgateCapturedAmount,
   solidgateDeclineReasonFromStatusError,
   solidgateGrantBlockReason,
   type IntroOfferConsumeResult,
@@ -864,6 +866,17 @@ export async function POST(request: Request) {
       return providerMismatchResponse();
     }
     const paymentDecision = mainPaymentDecision(status, pendingPurchase);
+    if (order.status === 'partial_settled') {
+      await persistSolidgatePartialCapture(supabase, {
+        environment: paymentEnvironment, orderDbId: pendingPurchase.orderDbId, orderId,
+        quotedAmountCents: pendingPurchase.amountCents,
+        capturedAmountCents: financialSettlementTransactions(status) === null
+          ? null : solidgateCapturedAmount(status, pendingPurchase.amountCents),
+        currency: pendingPurchase.currency, providerStatus: order.status,
+        sessionId, userId: pendingOrder.user_id, productCode: pendingPurchase.productCode,
+      });
+    }
+
     // Exactly one provider read per request. The browser owns the bounded retry
     // cadence; nested server sleeps multiply latency and request volume without
     // adding any payment truth.
@@ -1449,11 +1462,11 @@ export async function POST(request: Request) {
       authLinked = link.linked;
       userId = link.userId;
 
-      // The member area bills the ACCOUNT, the funnel vaulted the card against
-      // the SESSION. Promote it now or the buyer's first PWA purchase would ask
-      // for a card they already gave us.
-      if (userId) {
-        await promoteSessionVaultToAccount(supabase, { userId, sessionId });
+      // A checkout email resolves purchase ownership but proves no account
+      // authority. The anonymous session keeps its card for OTOs; promotion is
+      // allowed only after the matching mailbox owner authenticates.
+      if (userId && authLinked) {
+        await promoteSessionVaultToAccount(supabase, { userId, sessionId, paymentEnvironment });
       }
     }
 

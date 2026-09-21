@@ -1,0 +1,15 @@
+
+> test
+> vitest run src/__tests__/solidgate-account-vault.test.ts src/__tests__/solidgate-rpc-binding.test.ts
+
+
+ RUN  v3.2.4 /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/packages/shared
+
+ ✓ src/__tests__/solidgate-account-vault.test.ts (8 tests) 5ms
+ ✓ src/__tests__/solidgate-rpc-binding.test.ts (3 tests) 4ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  10:35:52
+   Duration  1.12s (transform 87ms, setup 0ms, collect 169ms, tests 9ms, environment 1.37s, prepare 120ms)
+

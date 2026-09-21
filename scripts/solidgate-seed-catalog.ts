@@ -1,7 +1,8 @@
 // ─── Solidgate catalog seeder ───────────────────────────────────────────────
 // Creates/reconciles the Solidgate products + per-currency prices defined in
-// packages/shared/src/solidgate/catalog.ts, replacing the eleven per-locale
-// Stripe seeders (~168 products) with one config-driven run over 8 products.
+// packages/shared/src/solidgate/catalog.ts in one config-driven run over the
+// 8 catalog products. Per-locale pricing lives on the Solidgate price, not on
+// separate per-locale products, which is why the catalog stays this small.
 //
 //   npx tsx scripts/solidgate-seed-catalog.ts             # dry run (default)
 //   npx tsx scripts/solidgate-seed-catalog.ts --apply     # write to Solidgate
@@ -318,7 +319,7 @@ async function main() {
 
   writeFileSync(OUT_PATH, JSON.stringify(ids, null, 2) + '\n');
   console.log(`\nWrote ${OUT_PATH} (${Object.keys(ids).length} products).`);
-  console.log('Product/price ids are not secrets — commit this file; it replaces the STRIPE_PRICES env blob.');
+  console.log('Product/price ids are not secrets — commit this file; it is the only place the provider ids live.');
 }
 
 main().catch((err) => {

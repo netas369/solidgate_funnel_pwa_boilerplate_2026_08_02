@@ -1,0 +1,557 @@
+// Audit reproductions only. Uses unchanged current handler and original repository write-spy fixtures.
+
+// Supabase calls are mocked; no network/payment/production database operations occur.
+
+import { describe, expect, it, beforeEach, vi } from 'vitest';
+
+import { isRecurringAddon, isMainSubscription } from '/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/supabase/functions/solidgate-webhooks/_codes';
+
+import { configureWebhookRuntime, handleEvent } from '/Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/supabase/functions/solidgate-webhooks/index';
+
+const posthogCapture = vi.fn();
+
+vi.mock('npm:posthog-node', () => ({
+  PostHog: class {
+    capture = posthogCapture;
+    shutdown() {
+      return Promise.resolve();
+    }
+  },
+}));
+
+const WH_PUBLIC = 'wh_pk_test_public';
+
+const WH_SECRET = 'wh_sk_test_secret_0123456789abcdefghij';
+
+interface Row {
+  [k: string]: unknown;
+}
+
+const PRODUCT_IDS: Record<string, string> = {
+  trial1: 'product-id-trial1',
+  trial2: 'product-id-trial2',
+  trial3: 'product-id-trial3',
+  trial4: 'product-id-trial4',
+  special_1eur: 'product-id-special-1eur',
+  special_free: 'product-id-special-free',
+  addon_trial: 'product-id-addon-trial',
+  addon_direct: 'product-id-addon-direct',
+};
+
+function checkoutIdentityFixture(
+  source: Row,
+  sessions: Row[],
+  extras: Record<string, Row[]>,
+): Row {
+  const row = { ...source };
+  if (row.psp !== 'solidgate') return row;
+
+  const metadata = row.tracking_metadata && typeof row.tracking_metadata === 'object'
+    && !Array.isArray(row.tracking_metadata)
+    ? row.tracking_metadata as Record<string, unknown>
+    : {};
+  const productCode = String(row.product_slug ?? '');
+  const amount = Number(row.solidgate_original_amount_cents ?? row.amount_cents);
+  const session = sessions.find((candidate) => candidate.id === row.session_id);
+  const authUser = (extras.auth_users ?? []).find((candidate) => candidate.id === row.user_id);
+  const subscriptionProduct = isMainSubscription(productCode) || isRecurringAddon(productCode);
+  const expectedProductId = isMainSubscription(productCode)
+    ? PRODUCT_IDS[String(metadata.product_slug ?? '')]
+    : isRecurringAddon(productCode)
+      ? PRODUCT_IDS[metadata.funnel_code === 'PWA' ? 'addon_direct' : 'addon_trial']
+      : null;
+
+  return {
+    solidgate_customer_email: String(
+      row.solidgate_customer_email
+        ?? session?.email
+        ?? authUser?.email
+        ?? (row.session_id ? 'buyer@example.com' : 'member@example.com'),
+    ).trim().toLowerCase(),
+    solidgate_checkout_locale: String(
+      row.solidgate_checkout_locale ?? metadata.locale ?? session?.locale ?? 'en',
+    ),
+    solidgate_product_id: subscriptionProduct
+      ? (row.solidgate_product_id ?? expectedProductId ?? null)
+      : null,
+    solidgate_payment_action: row.solidgate_payment_action
+      ?? (isMainSubscription(productCode) && amount === 0 ? 'auth_0_amount' : 'auth_settle'),
+    solidgate_checkout_identity_legacy: row.solidgate_checkout_identity_legacy ?? false,
+    solidgate_card_source_sequence: row.solidgate_card_source_sequence ?? 1,
+    ...row,
+  };
+}
+
+interface DbFailures {
+  reads?: Record<string, string>;
+  writes?: Record<string, string>;
+  rpc?: Record<string, string>;
+  authCreate?: { userId?: string; code?: string; message?: string };
+  emptyUpdateSelect?: Record<string, boolean>;
+  emptyUpdateSelectOn?: Record<string, number[]>;
+  updateRaceWinner?: Record<string, Row>;
+  readRaceWinner?: Record<string, { onMaybeSingle: number; patch: Row }>;
+}
+
+function makeDb(
+  orders: Row[],
+  sessions: Row[] = [{ id: 'sess-1', email: 'buyer@example.com', locale: 'en', user_id: 'user-1' }],
+  extras: Record<string, Row[]> = {},
+  rpcResults: Record<string, unknown> = {},
+  failures: DbFailures = {},
+) {
+  const rpcAlias: Record<string, string> = {
+    write_solidgate_session_vault_monotonic: 'write_solidgate_session_vault_with_method',
+    write_solidgate_account_vault_monotonic: 'write_solidgate_account_vault_with_method',
+    promote_solidgate_session_vault_monotonic: 'promote_solidgate_session_vault_with_method',
+  };
+  const legacyRpcName = (name: string) => Object.entries(rpcAlias)
+    .find(([, current]) => current === name)?.[0];
+  const writes: Array<{
+    table: string;
+    op: string;
+    payload: Row;
+    filters: Array<{ column: string; value: unknown }>;
+  }> = [];
+  const tables: Record<string, Row[]> = { orders, sessions, ...extras };
+  tables.orders = (tables.orders ?? []).map((row) => checkoutIdentityFixture(row, sessions, extras));
+  const rpcCalls: Array<{ name: string; args: Row }> = [];
+  const maybeSingleReads: Record<string, number> = {};
+  const updateMaybeSingleReads: Record<string, number> = {};
+  const createUser = vi.fn(({ email }: { email: string }) => {
+    const configured = failures.authCreate;
+    if (configured?.userId) {
+      return Promise.resolve({
+        data: { user: { id: configured.userId, email } },
+        error: null,
+      });
+    }
+    return Promise.resolve({
+      data: { user: null },
+      error: {
+        code: configured?.code ?? 'email_exists',
+        message: configured?.message ?? 'A user with this email already exists',
+      },
+    });
+  });
+
+  const builder = (table: string) => {
+    let rows = [...(tables[table] ?? [])];
+    let pendingWrite: (typeof writes)[number] | null = null;
+    let operation: 'read' | 'update' | 'upsert' | 'insert' | 'delete' = 'read';
+    const chain: Record<string, unknown> = {};
+    chain.select = () => chain;
+    chain.eq = (col: string, val: unknown) => {
+      pendingWrite?.filters.push({ column: col, value: val });
+      rows = rows.filter((r) => {
+        const actual = r[col] ??
+          ((col === 'payment_environment' || col === 'environment') ? 'production' : undefined);
+        return actual === val;
+      });
+      return chain;
+    };
+    chain.in = (col: string, values: unknown[]) => {
+      pendingWrite?.filters.push({ column: col, value: values });
+      const set = new Set(values);
+      rows = rows.filter((r) => set.has(r[col]));
+      return chain;
+    };
+    chain.ilike = (col: string, pattern: string) => {
+      const needle = pattern.replaceAll('%', '').toLowerCase();
+      rows = rows.filter((r) => String(r[col] ?? '').toLowerCase().includes(needle));
+      return chain;
+    };
+    chain.order = () => chain;
+    chain.limit = (limit: number) => {
+      rows = rows.slice(0, limit);
+      return chain;
+    };
+    const resultError = () => {
+      const message = operation === 'read'
+        ? failures.reads?.[table]
+        : failures.writes?.[table];
+      return message ? { message } : null;
+    };
+    chain.maybeSingle = () => {
+      const error = resultError();
+      if (!error && operation === 'read') {
+        const readNumber = (maybeSingleReads[table] ?? 0) + 1;
+        maybeSingleReads[table] = readNumber;
+        const winner = failures.readRaceWinner?.[table];
+        if (winner?.onMaybeSingle === readNumber && rows[0]) {
+          Object.assign(rows[0], winner.patch);
+        }
+      }
+      if (!error && operation === 'update') {
+        const updateNumber = (updateMaybeSingleReads[table] ?? 0) + 1;
+        updateMaybeSingleReads[table] = updateNumber;
+        const winner = failures.updateRaceWinner?.[table];
+        const selected = rows[0];
+        if (winner && selected) {
+          const durable = (tables[table] ?? []).find((row) => row.id === selected.id);
+          if (durable) Object.assign(durable, winner);
+          Object.assign(selected, winner);
+        }
+        const forceEmpty = failures.emptyUpdateSelect?.[table]
+          || failures.emptyUpdateSelectOn?.[table]?.includes(updateNumber);
+        if (forceEmpty) {
+          return Promise.resolve({ data: null, error: null });
+        }
+      }
+      return Promise.resolve({ data: error ? null : (rows[0] ?? null), error });
+    };
+    chain.update = (payload: Row) => {
+      operation = 'update';
+      pendingWrite = { table, op: 'update', payload, filters: [] };
+      writes.push(pendingWrite);
+      return chain;
+    };
+    // IS NULL filter + thenable resolution, for the analytics-claim chain
+    // update(...).eq(...).is('analytics_captured_at', null).select('id').
+    chain.is = (col: string, val: unknown) => {
+      rows = rows.filter((r) => (r[col] ?? null) === val);
+      return chain;
+    };
+    chain.then = (
+      res: (v: { data: Row[] | null; error: { message: string } | null }) => unknown,
+      rej?: (e: unknown) => unknown,
+    ) => {
+      const error = resultError();
+      return Promise.resolve({ data: error ? null : rows, error }).then(res, rej);
+    };
+    chain.upsert = (payload: Row) => {
+      operation = 'upsert';
+      writes.push({ table, op: 'upsert', payload, filters: [] });
+      return Promise.resolve({ error: resultError() });
+    };
+    chain.insert = (payload: Row) => {
+      operation = 'insert';
+      writes.push({ table, op: 'insert', payload, filters: [] });
+      return Promise.resolve({ error: resultError() });
+    };
+    chain.delete = () => {
+      operation = 'delete';
+      return chain;
+    };
+    return chain;
+  };
+
+  return {
+    db: {
+      from: (table: string) => builder(table),
+      auth: {
+        admin: {
+          createUser,
+          getUserById: (userId: string) => {
+            const user = (tables.auth_users ?? []).find((candidate) => candidate.id === userId) ?? {
+              id: userId,
+              email: 'member@example.com',
+            };
+            return Promise.resolve({ data: { user }, error: null });
+          },
+        },
+      },
+      rpc: (name: string, args: Row) => {
+        rpcCalls.push({ name, args });
+        const defaults: Record<string, unknown> = {
+          consume_solidgate_intro_offer: 'consumed',
+          persist_user_acquisition_attribution: true,
+          grant_solidgate_main_entitlement: true,
+          grant_solidgate_oto_entitlement: true,
+          grant_solidgate_pwa_entitlement: true,
+          solidgate_special_free_card_ready: true,
+          apply_solidgate_subscription_entitlement_lifecycle: 'applied',
+          write_solidgate_session_vault_with_method: 'written',
+          record_solidgate_pwa_confirmed_capture: 'hosted_form',
+          write_solidgate_account_vault_with_method: 'written',
+          promote_solidgate_session_vault_with_method: 'written',
+          claim_solidgate_webhook_event_v2: [{
+            claim_state: 'claimed',
+            claim_token: '11111111-1111-4111-8111-111111111111',
+            claim_generation: 1,
+          }],
+          complete_solidgate_webhook_event_v2: true,
+          fail_solidgate_webhook_event_v2: true,
+          claim_solidgate_entity_event: 'claimed',
+        };
+        const legacyName = legacyRpcName(name);
+        const failure = failures.rpc?.[name]
+          ?? (legacyName ? failures.rpc?.[legacyName] : undefined);
+        const data = failure
+          ? null
+          : Object.prototype.hasOwnProperty.call(rpcResults, name)
+          ? rpcResults[name]
+          : legacyName && Object.prototype.hasOwnProperty.call(rpcResults, legacyName)
+          ? rpcResults[legacyName]
+          : (defaults[name] ?? null);
+        const claim = name === 'claim_solidgate_webhook_event_v2'
+          ? (Array.isArray(data) ? data[0] : data) as Row | null
+          : null;
+        if (claim?.claim_state === 'claimed') {
+          (tables.solidgate_webhook_events ??= []).push({
+            environment: args.p_environment,
+            event_id: args.p_event_id,
+            status: 'processing',
+            claim_token: claim.claim_token,
+            claim_generation: claim.claim_generation,
+          });
+        }
+        if (name === 'complete_solidgate_webhook_event_v2' && data === true) {
+          writes.push({
+            table: 'solidgate_webhook_events',
+            op: 'update',
+            payload: { status: 'completed', claim_token: null },
+            filters: [
+              { column: 'environment', value: args.p_environment },
+              { column: 'event_id', value: args.p_event_id },
+              { column: 'claim_token', value: args.p_claim_token },
+              { column: 'claim_generation', value: args.p_claim_generation },
+            ],
+          });
+        }
+        if (name === 'fail_solidgate_webhook_event_v2' && data === true) {
+          writes.push({
+            table: 'solidgate_webhook_events',
+            op: 'update',
+            payload: {
+              status: 'failed',
+              claim_token: null,
+              last_error: args.p_last_error,
+            },
+            filters: [
+              { column: 'environment', value: args.p_environment },
+              { column: 'event_id', value: args.p_event_id },
+              { column: 'claim_token', value: args.p_claim_token },
+              { column: 'claim_generation', value: args.p_claim_generation },
+            ],
+          });
+        }
+        return Promise.resolve({
+          data,
+          error: failure ? { message: failure } : null,
+        });
+      },
+    } as never,
+    writes,
+    rpcCalls,
+    createUser,
+    updatesTo: (table: string) => writes.filter((w) => w.table === table && w.op === 'update').map((w) => w.payload),
+    upsertsTo: (table: string) => writes.filter((w) => w.table === table && w.op === 'upsert').map((w) => w.payload),
+    rpcsTo: (name: string) => {
+      const canonicalName = rpcAlias[name] ?? name;
+      return rpcCalls.filter((call) => call.name === canonicalName).map((call) => call.args);
+    },
+  };
+}
+
+const ORDER_ROW = {
+  id: 'order-1',
+  psp: 'solidgate',
+  product_name: 'BRAND_000000_SUB',
+  session_id: 'sess-1',
+  user_id: 'user-1',
+  status: 'pending',
+  product_slug: 'BRAND_000000_SUB',
+  currency: 'usd',
+  amount_cents: 1767,
+  solidgate_order_id: 'sess-1:trial4:1',
+  solidgate_subscription_id: 'sub-uuid-1',
+  payment_environment: 'production',
+  created_at: '2026-07-16T08:50:00.000Z',
+  tracking_metadata: {
+    funnel_code: 'BRAND',
+    funnel_variant: 'main',
+    session_id: 'sess-1',
+    product_slug: 'trial4',
+    price_id: 'ef09864f-5a27-4b96-bd1e-61c9ea49c1de',
+  },
+};
+
+function capturedSubscriptionOrder(overrides: Row = {}): Row {
+  const merged = { ...ORDER_ROW, status: 'active', ...overrides };
+  return {
+    ...merged,
+    solidgate_original_amount_cents: merged.amount_cents,
+    solidgate_payment_status: 'settle_ok',
+    ...overrides,
+  };
+}
+
+function subscriptionEntitlement(row: Row, overrides: Row = {}): Row {
+  return {
+    order_id: row.id,
+    payment_environment: row.payment_environment ?? 'production',
+    user_id: row.user_id,
+    product_slug: row.product_slug,
+    solidgate_subscription_id: row.solidgate_subscription_id,
+    status: 'active',
+    revoked_at: null,
+    ...overrides,
+  };
+}
+
+interface InitialSubscriptionPayloadOptions {
+  callbackType?: string;
+  subscriptionId?: string;
+  subscription?: Row;
+  product?: Row;
+  customer?: Row;
+  invoice?: Row;
+  invoiceOrder?: Row;
+  metadata?: Record<string, string>;
+}
+
+function initialSubscriptionPayload(
+  row: Row,
+  options: InitialSubscriptionPayloadOptions = {},
+) {
+  const metadata = options.metadata ?? { ...(row.tracking_metadata as Record<string, string>) };
+  const productCode = String(row.product_slug);
+  const productId = isMainSubscription(productCode)
+    ? PRODUCT_IDS[metadata.product_slug]
+    : PRODUCT_IDS[metadata.funnel_code === 'PWA' ? 'addon_direct' : 'addon_trial'];
+  const amount = Number(row.solidgate_original_amount_cents ?? row.amount_cents);
+  const subscriptionId = options.subscriptionId ?? String(row.solidgate_subscription_id ?? 'sub-new');
+  return {
+    callback_type: options.callbackType ?? 'active',
+    subscription: {
+      id: subscriptionId,
+      status: 'active',
+      next_charge_at: '2026-07-28 08:50:00',
+      trial: true,
+      ...options.subscription,
+    },
+    product: {
+      product_id: productId,
+      amount: 5900,
+      currency: String(row.currency).toUpperCase(),
+      ...options.product,
+    },
+    customer: {
+      customer_account_id: row.session_id ?? row.user_id,
+      customer_email: row.session_id ? 'buyer@example.com' : 'member@example.com',
+      ...options.customer,
+    },
+    invoices: {
+      initial: {
+        id: 'inv-initial',
+        status: 'success',
+        amount,
+        product_price_id: metadata.price_id,
+        subscription_term_number: 0,
+        order_metadata: { ...metadata },
+        orders: {
+          initial: {
+            id: row.solidgate_order_id,
+            status: 'settle_ok',
+            amount,
+            ...options.invoiceOrder,
+          },
+        },
+        ...options.invoice,
+      },
+    },
+  };
+}
+
+beforeEach(() => {
+  posthogCapture.mockClear();
+  configureWebhookRuntime({
+    environment: 'production',
+    webhookPublicKey: WH_PUBLIC,
+    webhookSecretKey: WH_SECRET,
+    analyticsEnabled: true,
+    customerSideEffectsEnabled: true,
+    fulfillmentWorkerUrl: '',
+    fulfillmentWorkerSecret: '',
+  });
+  vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+});
+
+describe('AUDIT renewal ledger invariants', () => {
+  beforeEach(() => configureWebhookRuntime({ customerSideEffectsEnabled: false, analyticsEnabled: false, slackWebhookUrl: '' }));
+  function paidRenewal(row: Row, overrides: InitialSubscriptionPayloadOptions = {}) {
+    return initialSubscriptionPayload(row, {
+      callbackType: 'renew',
+      subscription: { status: 'active', trial: false, next_charge_at: '2026-09-30 10:00:00' },
+      invoice: {
+        id: 'inv-audit', status: 'success', amount: 5900, subscription_term_number: 1,
+        created_at: '2026-08-31 10:00:00', updated_at: '2026-08-31 10:00:00',
+        billing_period_started_at: '2026-08-31 10:00:00', billing_period_ended_at: '2026-09-30 10:00:00',
+        orders: { recurring: { id: 'provider-recurring-audit', status: 'settle_ok', amount: 5900 } },
+      },
+      ...overrides,
+    });
+  }
+  it('preserves money from a genuinely paid renewal after local cancellation', async () => {
+    const row = capturedSubscriptionOrder({status: 'canceled'});
+    const attempt = makeDb([row], undefined, {entitlements: [subscriptionEntitlement(row, {status:'canceled',revoked_at:'2026-08-30T10:00:00Z'})]});
+    await handleEvent(attempt.db, 'subscription.updated.v2', paidRenewal(row));
+    expect(attempt.upsertsTo('renewal_events')).toContainEqual(expect.objectContaining({solidgate_invoice_id:'inv-audit',amount_cents:5900}));
+  });
+  it('never recreates full paid revenue when refund arrived before the renewal projection', async () => {
+    const row=capturedSubscriptionOrder();
+    const attempt=makeDb([row],undefined,{
+      entitlements:[subscriptionEntitlement(row)],
+      solidgate_invoice_orders:[{environment:'production',solidgate_order_id:'provider-recurring-audit',solidgate_invoice_id:'inv-audit',solidgate_subscription_id:row.solidgate_subscription_id,subscription_term_number:1,status:'refunded',amount_cents:5900,currency:'usd',refunded_amount_cents:5900}],
+    });
+    await handleEvent(attempt.db,'subscription.updated.v2',paidRenewal(row));
+    expect(attempt.upsertsTo('renewal_events')).not.toContainEqual(expect.objectContaining({status:'paid',amount_cents:5900,refunded_amount_cents:0}));
+  });
+  it('does not grant the refunded paid period again when the ledger already says refunded', async () => {
+    const row=capturedSubscriptionOrder();
+    const attempt=makeDb([row],undefined,{
+      entitlements:[subscriptionEntitlement(row)],
+      renewal_events:[{payment_environment:'production',solidgate_invoice_id:'inv-audit',solidgate_subscription_id:row.solidgate_subscription_id,status:'refunded',amount_cents:0,gross_amount_cents:5900,refunded_amount_cents:5900}],
+    });
+    await handleEvent(attempt.db,'subscription.updated.v2',paidRenewal(row));
+    expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toHaveLength(0);
+  });
+  it('does not silently acknowledge a renewal chargeback while its invoice mapping is missing', async () => {
+    const row=capturedSubscriptionOrder();
+    const attempt=makeDb([row],undefined,{entitlements:[subscriptionEntitlement(row)]});
+    await expect(handleEvent(attempt.db,'card_gate.chargeback.received',{
+      order:{order_id:'provider-recurring-audit',subscription_id:row.solidgate_subscription_id,amount:5900,currency:'USD'},
+      chargeback:{id:'cb-audit',status:'in_progress',amount:5900,currency:'USD'},
+    })).rejects.toThrow();
+  });
+  it('preserves paid invoice history even when a newer pause snapshot overtakes renewal', async () => {
+    const row=capturedSubscriptionOrder();
+    const attempt=makeDb([row],undefined,{entitlements:[subscriptionEntitlement(row)]});
+    await handleEvent(attempt.db,'subscription.updated.v2',paidRenewal(row,{callbackType:'pause',subscription:{status:'paused',trial:false}}),{eventId:'later-pause',eventCreatedAt:'2026-08-31T10:01:00Z',environment:'production'});
+    expect(attempt.upsertsTo('renewal_events')).toContainEqual(expect.objectContaining({solidgate_invoice_id:'inv-audit',amount_cents:5900}));
+  });
+});
+
+describe('AUDIT lifecycle fact selection', () => {
+  beforeEach(() => configureWebhookRuntime({ customerSideEffectsEnabled: false, analyticsEnabled: false, slackWebhookUrl: '' }));
+  it('restores a legitimately canceled provider subscription when a newer paid restore arrives', async () => {
+    const row=capturedSubscriptionOrder({status:'canceled'});
+    const attempt=makeDb([row],undefined,{entitlements:[subscriptionEntitlement(row,{status:'canceled',revoked_at:'2026-08-30T10:00:00Z'})]});
+    await handleEvent(attempt.db,'subscription.updated.v2',initialSubscriptionPayload(row,{
+      callbackType:'restore',subscription:{status:'active',trial:false,next_charge_at:'2026-09-30 10:00:00'},
+      invoice:{id:'invoice-restored',status:'success',amount:5900,subscription_term_number:1,created_at:'2026-08-31 10:00:00',billing_period_started_at:'2026-08-31 10:00:00',billing_period_ended_at:'2026-09-30 10:00:00',orders:{rebill:{id:'restored-paid-order',status:'settle_ok',amount:5900}}},
+    }),{eventId:'provider-restore',eventCreatedAt:'2026-08-31T10:00:00Z',environment:'production'});
+    expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toContainEqual(expect.objectContaining({p_status:'active',p_expires_at:'2026-09-30T10:00:00.000Z'}));
+  });
+  it('uses the current paid billing term even if an old invoice was modified later',async()=>{
+    const row=capturedSubscriptionOrder();
+    const attempt=makeDb([row],undefined,{entitlements:[subscriptionEntitlement(row)]});
+    const payload=initialSubscriptionPayload(row,{
+      callbackType:'renew',subscription:{status:'active',trial:false,next_charge_at:'2026-09-30 10:00:00'},
+      invoice:{id:'inv-old',status:'success',subscription_term_number:0,created_at:'2026-08-24 10:00:00',updated_at:'2026-08-31 10:00:05',billing_period_started_at:'2026-08-24 10:00:00',billing_period_ended_at:'2026-08-31 10:00:00'},
+    });
+    Object.assign(payload.invoices,{current:{id:'inv-current',status:'success',amount:5900,subscription_term_number:1,created_at:'2026-08-31 10:00:00',updated_at:'2026-08-31 10:00:00',billing_period_started_at:'2026-08-31 10:00:00',billing_period_ended_at:'2026-09-30 10:00:00',orders:{rebill:{id:'paid-current-order',status:'settle_ok',amount:5900}}}});
+    await handleEvent(attempt.db,'subscription.updated.v2',payload);
+    expect(attempt.rpcsTo('apply_solidgate_subscription_entitlement_lifecycle')).toContainEqual(expect.objectContaining({p_expires_at:'2026-09-30T10:00:00.000Z'}));
+  });
+  it('does not double-count the initial paid invoice when a bound callback omits its term',async()=>{
+    const row=capturedSubscriptionOrder();
+    const attempt=makeDb([row],undefined,{entitlements:[subscriptionEntitlement(row)]});
+    const payload=initialSubscriptionPayload(row);
+    delete (payload.invoices.initial as Row).subscription_term_number;
+    await handleEvent(attempt.db,'subscription.updated.v2',payload);
+    expect(attempt.upsertsTo('renewal_events')).toHaveLength(0);
+  });
+});

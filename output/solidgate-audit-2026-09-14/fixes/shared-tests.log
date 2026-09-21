@@ -1,0 +1,51 @@
+
+ RUN  v3.2.4 /Users/Netas/Projects/solidgate_funnel_pwa_boilerplate_2026_08_02/packages/shared
+
+ ✓ src/__tests__/solidgate-main-accepted-cookie.test.ts (14 tests) 60ms
+ ✓ src/__tests__/oto3-pdf-email.test.ts (4 tests) 27ms
+ ✓ src/__tests__/solidgate-catalog.test.ts (16 tests) 20ms
+ ✓ src/__tests__/price-map.test.ts (62 tests) 53ms
+ ✓ src/__tests__/format-price.test.ts (11 tests) 38ms
+ ✓ src/__tests__/entitlements.test.ts (43 tests) 27ms
+ ✓ src/__tests__/solidgate-oto.test.ts (21 tests) 30ms
+ ✓ src/__tests__/payment-cookie.test.ts (17 tests) 36ms
+stderr | src/__tests__/app-access.test.ts > paid app access boundary > does not grant content on a database read failure
+[entitlements] app-access read failed: unavailable
+
+ ✓ src/__tests__/app-access.test.ts (8 tests) 9ms
+stdout | src/__tests__/send-welcome-email.test.ts > sendWelcomeEmail deadline > forwards a stable Resend idempotency key
+[welcome-email] sent to buyer@example.com
+
+ ✓ src/__tests__/send-welcome-email.test.ts (6 tests) 13ms
+ ✓ src/__tests__/send-oto3-pdf-email.test.ts (14 tests) 68ms
+ ✓ src/__tests__/solidgate-partial-capture.test.ts (13 tests) 11ms
+ ✓ src/__tests__/grace-period.test.ts (13 tests) 11ms
+ ✓ src/__tests__/solidgate.test.ts (8 tests) 12ms
+ ✓ src/__tests__/solidgate-client-timeout.test.ts (2 tests) 10ms
+stderr | src/__tests__/otp-rate-limit.test.ts > checkOtpRateLimit > returns allowed:true on DB error (fail-open)
+[otp-rate-limit] failed to query otp_attempts: connection refused
+
+ ✓ src/__tests__/otp-rate-limit.test.ts (5 tests) 6ms
+ ✓ src/__tests__/sql-price-grid-parity.test.ts (14 tests) 12ms
+ ✓ src/__tests__/oto-product-label.test.ts (7 tests) 9ms
+ ✓ src/__tests__/solidgate-session-vault.test.ts (14 tests) 6ms
+stderr | src/__tests__/payment-session-access.test.ts > authorizePaymentSessionAccess > returns 500 when auth.getUser() fails with a real error
+[payment-access] auth lookup failed: outage
+
+ ✓ src/__tests__/payment-session-access.test.ts (8 tests) 6ms
+ ✓ src/__tests__/price-map-special-offer.test.ts (13 tests) 6ms
+ ✓ src/__tests__/solidgate-account-vault.test.ts (8 tests) 5ms
+ ✓ src/__tests__/solidgate-subscription-token-sync.test.ts (6 tests) 6ms
+ ✓ src/__tests__/solidgate-intro-offer.test.ts (2 tests) 4ms
+ ✓ src/__tests__/solidgate-grant-replay.test.ts (9 tests) 2ms
+ ✓ src/__tests__/solidgate-client-env.test.ts (5 tests) 4ms
+ ✓ src/__tests__/solidgate-rpc-binding.test.ts (3 tests) 5ms
+ ✓ src/__tests__/solidgate-descriptor.test.ts (4 tests) 3ms
+ ✓ src/__tests__/locale-prefixes.test.ts (4 tests) 2ms
+ ✓ src/__tests__/payment-environment.test.ts (7 tests) 2ms
+
+ Test Files  30 passed (30)
+      Tests  361 passed (361)
+   Start at  10:36:22
+   Duration  11.09s (transform 920ms, setup 0ms, collect 2.13s, tests 504ms, environment 30.14s, prepare 3.84s)
+

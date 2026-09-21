@@ -374,4 +374,12 @@ describe("PWA checkout order identity", () => {
       orderId: "saved-order-1",
     });
   });
+  it('routes a past-due add-on to existing-subscription recovery without another checkout attempt', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ ok: false, recoveryRequired: true }, { status: 409 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(startPurchase({ slug: 'oto2_addon_weekly', locale: 'en' })).resolves.toEqual({ kind: 'recovery_required' });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(captureConfirmedPurchase).not.toHaveBeenCalled();
+  });
+
 });

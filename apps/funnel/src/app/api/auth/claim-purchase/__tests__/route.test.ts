@@ -31,7 +31,8 @@ const sessionsEqForSelect = vi.fn<
 const sessionsSelect = vi.fn(() => ({ eq: sessionsEqForSelect }));
 
 // Chain for sessions.update().eq() (no return needed)
-const sessionsUpdateEq = vi.fn().mockResolvedValue({ error: null });
+const sessionsUpdateIs = vi.fn().mockResolvedValue({ error: null });
+const sessionsUpdateEq = vi.fn(() => ({ is: sessionsUpdateIs }));
 const sessionsUpdate = vi.fn(() => ({ eq: sessionsUpdateEq }));
 
 // Chain for orders.update().eq().is()
@@ -84,19 +85,20 @@ vi.mock('@repo/shared/supabase/admin', () => ({
 
 // ─── Supabase SSR client mock ──────────────────────────────────────────────────
 const mockVerifyOtp = vi.fn();
+const mockGetUser = vi.fn();
 
 vi.mock('@repo/shared/supabase/server', () => ({
   createClient: vi.fn(() => ({
     auth: {
       verifyOtp: mockVerifyOtp,
+      getUser: mockGetUser,
     },
   })),
 }));
 
 // ─── Customer-ownership mock ─────────────────────────────────────────────────
-vi.mock('@repo/shared/solidgate/account-vault', () => ({
-  promoteSessionVaultToAccount: vi.fn(async () => {}),
-}));
+const mockPromote = vi.fn(async () => {});
+vi.mock('@repo/shared/solidgate/account-vault', () => ({ promoteSessionVaultToAccount: mockPromote }));
 
 // ─── Entitlements mock ────────────────────────────────────────────────────────
 vi.mock('@repo/shared/entitlements', () => ({
@@ -156,11 +158,14 @@ describe('POST /api/auth/claim-purchase', () => {
     mockCreateUser.mockReset();
     mockGenerateLink.mockReset();
     mockVerifyOtp.mockReset();
+    mockGetUser.mockReset().mockResolvedValue({ data: { user: { id: 'user-claim-id', email: 'claimer@example.com', email_confirmed_at: '2026-09-01T00:00:00Z' } }, error: null });
     sessionsMaybeSingle.mockReset();
     sessionsEqForSelect.mockClear();
     sessionsSelect.mockClear();
     sessionsUpdate.mockClear();
-    sessionsUpdateEq.mockReset().mockResolvedValue({ error: null });
+    sessionsUpdateEq.mockClear();
+    sessionsUpdateIs.mockReset().mockResolvedValue({ error: null });
+    mockPromote.mockClear();
     ordersUpdate.mockClear();
     ordersUpdateEq.mockClear();
     ordersUpdateEq.mockImplementation(() => ordersUpdateChain);
@@ -208,100 +213,65 @@ describe('POST /api/auth/claim-purchase', () => {
     await expect(res.json()).resolves.toEqual({ error: 'No email on session' });
   });
 
-  it('returns 200 with authLinked: true when session already has user_id', async () => {
-    mockCookieGet.mockReturnValue({ value: 'pi_test123.session-abc.sig' });
-    mockVerifyPaymentCookie.mockResolvedValue({
-      paymentIntentId: 'pi_test123',
-      sessionId: 'session-abc',
-    });
-    sessionsMaybeSingle.mockResolvedValue({
-      data: { email: 'user@example.com', user_id: 'existing-user-id' },
-      error: null,
-    });
 
+  it.each([null, 'existing-user-id'])('does not authenticate from a payment cookie with user_id=%s', async (userId) => {
+    arrangeSolidgateMainClaim();
+    sessionsMaybeSingle.mockResolvedValue({ data: { email: 'victim@example.com', user_id: userId }, error: null });
+    mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
     const res = await postRoute();
-
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ ok: true, authLinked: true });
+    await expect(res.json()).resolves.toMatchObject({ authLinked: false, verificationRequired: true });
+    expect(mockCreateUser).not.toHaveBeenCalled();
+    expect(mockGenerateLink).not.toHaveBeenCalled();
+    expect(mockVerifyOtp).not.toHaveBeenCalled();
+    expect(sessionsUpdate).not.toHaveBeenCalled();
+    expect(ordersUpdate).not.toHaveBeenCalled();
+    expect(mockPromote).not.toHaveBeenCalled();
   });
 
-  it('returns 200 with authLinked: true after full auth linking succeeds', async () => {
-    mockCookieGet.mockReturnValue({ value: 'pi_test123.session-abc.sig' });
-    mockVerifyPaymentCookie.mockResolvedValue({
-      paymentIntentId: 'pi_test123',
-      sessionId: 'session-abc',
-    });
-    sessionsMaybeSingle.mockResolvedValue({
-      data: { email: 'new@example.com', user_id: null },
-      error: null,
-    });
-    mockCreateUser.mockResolvedValue({
-      data: { user: { id: 'new-user-id' } },
-      error: null,
-    });
-    mockGenerateLink.mockResolvedValue({
-      data: {
-        user: { id: 'new-user-id' },
-        properties: { hashed_token: 'token123' },
-      },
-      error: null,
-    });
-    mockVerifyOtp.mockResolvedValue({ error: null });
-
+  it.each([
+    { email: 'attacker@example.com', email_confirmed_at: '2026-09-01T00:00:00Z' },
+    { email: 'claimer@example.com', email_confirmed_at: null },
+  ])('requires a matching confirmed mailbox: %o', async (identity) => {
+    arrangeSolidgateMainClaim();
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-claim-id', ...identity } }, error: null });
     const res = await postRoute();
-
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ ok: true, authLinked: true });
+    await expect(res.json()).resolves.toMatchObject({ authLinked: false, verificationRequired: true });
+    expect(ordersUpdate).not.toHaveBeenCalled();
   });
 
-  it('returns 200 with authLinked: false when createUser fails (non-duplicate error)', async () => {
-    mockCookieGet.mockReturnValue({ value: 'pi_test123.session-abc.sig' });
-    mockVerifyPaymentCookie.mockResolvedValue({
-      paymentIntentId: 'pi_test123',
-      sessionId: 'session-abc',
-    });
-    sessionsMaybeSingle.mockResolvedValue({
-      data: { email: 'fail@example.com', user_id: null },
-      error: null,
-    });
-    mockCreateUser.mockResolvedValue({
-      data: null,
-      error: { message: 'Server error', status: 500 },
-    });
-
+  it('links an already verified matching session without minting an authentication token', async () => {
+    arrangeSolidgateMainClaim();
     const res = await postRoute();
-
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ ok: true, authLinked: false });
+    await expect(res.json()).resolves.toEqual({ ok: true, authLinked: true });
+    expect(mockGenerateLink).not.toHaveBeenCalled();
+    expect(mockVerifyOtp).not.toHaveBeenCalled();
+    expect(ordersUpdate).toHaveBeenCalledWith({
+      claimed_at: expect.any(String), auth_verified_at: expect.any(String),
+    });
+    expect(mockPromote).toHaveBeenCalledWith(expect.anything(), {
+      userId: 'user-claim-id', sessionId: 'session-abc', paymentEnvironment: 'sandbox',
+    });
   });
 
-  it('proceeds via generateLink when createUser returns 422 duplicate error (existing user)', async () => {
-    mockCookieGet.mockReturnValue({ value: 'pi_test123.session-abc.sig' });
-    mockVerifyPaymentCookie.mockResolvedValue({
-      paymentIntentId: 'pi_test123',
-      sessionId: 'session-abc',
-    });
-    sessionsMaybeSingle.mockResolvedValue({
-      data: { email: 'existing@example.com', user_id: null },
-      error: null,
-    });
-    mockCreateUser.mockResolvedValue({
-      data: null,
-      error: { message: 'User already registered', status: 422 },
-    });
-    mockGenerateLink.mockResolvedValue({
-      data: {
-        user: { id: 'existing-user-id' },
-        properties: { hashed_token: 'token456' },
-      },
-      error: null,
-    });
-    mockVerifyOtp.mockResolvedValue({ error: null });
+  it('marks a prelinked matching purchase only after verified authentication', async () => {
+    arrangeSolidgateMainClaim();
+    sessionsMaybeSingle.mockResolvedValue({ data: { email: 'claimer@example.com', user_id: 'user-claim-id' }, error: null });
+    const response = await postRoute();
+    expect(response.status).toBe(200);
+    expect(ordersUpdate).toHaveBeenCalledWith({ claimed_at: expect.any(String), auth_verified_at: expect.any(String) });
+    expect(ordersUpdateEq).toHaveBeenCalledWith('user_id', 'user-claim-id');
+    expect(ordersUpdateEq).toHaveBeenCalledWith('solidgate_customer_email', 'claimer@example.com');
+    expect(ordersUpdateIs).toHaveBeenCalledWith('auth_verified_at', null);
+    expect(mockPromote).toHaveBeenCalledOnce();
+  });
 
+  it('rejects a linked purchase belonging to a different user ID', async () => {
+    arrangeSolidgateMainClaim();
+    sessionsMaybeSingle.mockResolvedValue({ data: { email: 'claimer@example.com', user_id: 'other-user' }, error: null });
     const res = await postRoute();
-
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ ok: true, authLinked: true });
+    expect(res.status).toBe(403);
+    expect(ordersUpdate).not.toHaveBeenCalled();
   });
 
   it('sets claimed_at on orders linked to the current session only (no global email sweep)', async () => {

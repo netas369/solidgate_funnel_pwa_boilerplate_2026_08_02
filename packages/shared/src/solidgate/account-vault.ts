@@ -1,10 +1,9 @@
 // Account-scoped saved card (solidgate_account_vault).
 //
 // The funnel vaults the token against a SESSION (an anonymous buyer has no
-// account yet). The member area charges an ACCOUNT — a returning user has no
-// session. So the token has to be promoted from one to the other the moment the
-// buyer gets an account, or every PWA purchase would ask them to re-enter a card
-// they already gave us.
+// account yet). The member area charges an ACCOUNT. Promotion requires a
+// verified mailbox owner claiming that exact purchase journey; assigning an
+// account from checkout email must never replace its existing saved card.
 //
 // The table key includes the payment environment. Preview can therefore test
 // one-click payments without overwriting the live recurring token.
@@ -99,8 +98,8 @@ export async function upsertAccountVault(
 }
 
 /**
- * Promotes the card saved during the funnel to the account, so the member area
- * can charge it without asking again. Called when a purchase links an auth user.
+ * Promotes the card after verified authentication claims its exact purchase.
+ * The SQL source guard returns unverified until orders.auth_verified_at exists.
  * Idempotent. A tokenless exact session source still promotes its chronology
  * watermark so delayed older evidence cannot restore an obsolete account card.
  */
@@ -123,7 +122,7 @@ export async function promoteSessionVaultToAccount(
     p_session_id: params.sessionId,
   });
   if (error) throw new Error(`promote session vault failed: ${error.message}`);
-  if (!['written', 'same', 'stale'].includes(String(data))) {
+  if (!['written', 'same', 'stale', 'unverified'].includes(String(data))) {
     throw new Error(`promote session vault returned an invalid result: ${String(data)}`);
   }
 }

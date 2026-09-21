@@ -1,7 +1,7 @@
 // D-22: unified-EUR revenue display.
 // ADMIN_FX_RATES env format: COMMA-SEPARATED `CODE:RATE` pairs (e.g. 'USD:0.92,GBP:1.17').
 // RATE is the multiplier from source currency to EUR.
-// Missing currencies fall back to 1.0 with a console.warn (surfaced as a UI warning row in Plan 05).
+// Missing rates return null. A different currency is never silently treated as EUR.
 // Server-only — never imported from 'use client' modules.
 
 function parseRates(raw: string | undefined): Record<string, number> {
@@ -11,8 +11,8 @@ function parseRates(raw: string | undefined): Record<string, number> {
     const idx = pair.indexOf(':');
     if (idx < 0) continue;
     const code = pair.slice(0, idx).trim().toUpperCase();
-    const rate = Number.parseFloat(pair.slice(idx + 1).trim());
-    if (!code || !Number.isFinite(rate)) continue;
+    const rate = Number(pair.slice(idx + 1).trim());
+    if (!/^[A-Z]{3}$/.test(code) || !Number.isFinite(rate) || rate <= 0) continue;
     out[code] = rate;
   }
   return out;
@@ -30,18 +30,21 @@ const ZERO_DECIMAL_CURRENCIES = new Set(['JPY']);
 
 /**
  * Convert a per-row order/invoice amount (in source-currency cents) to EUR cents.
- * EUR rows pass through. Missing rates fall back to 1.0 with a console.warn.
+ * Display estimate at configured rates, not a settlement FX record.
+ * Native-currency amounts remain exact when conversion is unavailable.
  */
-export function convertToEur(amountCents: number, currency: string): number {
+export function convertToEur(amountCents: number, currency: string): number | null {
+  if (!Number.isSafeInteger(amountCents)) throw new Error('Invalid monetary amount');
   const code = (currency ?? '').toUpperCase();
-  if (!code || code === 'EUR') return amountCents;
+  if (code === 'EUR' || amountCents === 0) return amountCents;
   const rate = ADMIN_FX_RATES[code];
   if (rate === undefined) {
-    console.warn(`[admin/fx] missing FX rate for ${code} — falling back to 1.0`);
-    return amountCents;
+    return null;
   }
   const minorUnits = ZERO_DECIMAL_CURRENCIES.has(code)
     ? amountCents * 100
     : amountCents;
-  return Math.round(minorUnits * rate);
+  const converted = Math.round(minorUnits * rate);
+  if (!Number.isSafeInteger(converted)) throw new Error('Converted amount exceeds safe precision');
+  return converted;
 }

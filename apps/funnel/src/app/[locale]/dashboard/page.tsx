@@ -24,10 +24,10 @@ export default async function DashboardRedirect({
 
   if (!user) {
     console.error("[funnel/dashboard] no authenticated user  -  falling back to PWA login");
-  } else if (!user.email) {
+  } else if (!user.email || !user.email_confirmed_at) {
     console.error("[funnel/dashboard] authenticated user has no email", { userId: user.id });
   } else {
-    // Generate a one-time magic link token (same pattern as claim-purchase.ts)
+    // Relay only the already verified authenticated session to the PWA
     const admin = getSupabaseAdminClient();
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
       type: "magiclink",

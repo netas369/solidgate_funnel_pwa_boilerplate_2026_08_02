@@ -219,7 +219,7 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -239,19 +239,10 @@ otp_expiry = 3600
 subject = "Your sign-in code"
 content_path = "./supabase/templates/otp-email.html"
 
-# The SAME template for `confirmation`, and this one is not optional.
-#
-# GoTrue picks the template by whether the address already has an auth user:
-# a returning address gets `magic_link`, a FIRST-TIME one gets `confirmation`.
-# The CRO dashboard calls signInWithOtp with shouldCreateUser: true (an analyst
-# is granted by an INSERT into cro_analysts, which creates no auth user), so
-# every analyst's FIRST login takes this path.
-#
-# Left stock it mails a confirmation LINK rather than the 6-digit code, and the
-# login dies with no error at all — the form waits for a code that was never
-# sent. See apps/cro/src/lib/cro-otp.ts.
+# Paid accounts are created unconfirmed. Their first OTP can use the signup
+# confirmation template, so both auth email types must contain the same code.
 [auth.email.template.confirmation]
-subject = "Your sign-in code"
+subject = "Verify your email"
 content_path = "./supabase/templates/otp-email.html"
 
 # Use a production-ready SMTP server

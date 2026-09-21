@@ -12,6 +12,7 @@ import {
   resolveSolidgateVerifyUrl,
   solidgateGrantBlockReason,
   solidgateCapturedAmount,
+  persistSolidgatePartialCapture,
   type PaymentEnvironment,
   type SolidgateChargeResult,
 } from '@repo/shared/solidgate';
@@ -478,9 +479,8 @@ async function retireFailedOrder(
     .from('orders')
     .update({
       status: 'failed',
-      // Keep solidgate_original_amount_cents as the immutable binding while
-      // releasing only explicit terminal failures for a later OTO attempt.
-      amount_cents: 0,
+      // Lifecycle failure does not reverse money already captured. The atomic
+      // financial reducer owns amount_cents and the immutable original quote.
       solidgate_payment_status: providerStatus ?? 'failed',
       solidgate_verify_url: null,
       solidgate_submission_token: null,
@@ -841,6 +841,15 @@ async function handleObservedProviderOrder(params: {
       { error: 'Provider order does not match this offer', code: 'binding_mismatch' },
       { status: 409 },
     );
+  }
+
+  if (providerStatus === 'partial_settled') {
+    await persistSolidgatePartialCapture(params.supabase, {
+      environment: params.paymentEnvironment, orderDbId: params.bound.id, orderId: params.orderId,
+      quotedAmountCents: params.expectedAmount, capturedAmountCents: params.providerOrder.settled_amount,
+      currency: params.currency, providerStatus, sessionId: params.sessionId,
+      userId: params.userId, productCode: params.productCode,
+    });
   }
 
   if (decision === 'pending') {
@@ -1445,10 +1454,8 @@ export async function POST(request: Request) {
         result = await subscribeSavedCard(client, {
           ...shared,
           productId: boundContext.solidgateProductId!,
-          // The shipped subscription OTO opens with a genuine zero-value
-          // trial; the recurring amount is due only after the trial period
-          // configured on the PSP product.
-          expectedAmount: 0,
+          // Bind the intro capture to the immutable order quote.
+          expectedAmount: boundAmountCents,
           currency: boundCurrency,
         });
       } else {

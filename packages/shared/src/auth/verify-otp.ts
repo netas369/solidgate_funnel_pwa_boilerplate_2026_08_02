@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { PAYMENT_COOKIE_NAME, verifyPaymentCookie } from '../payment-cookie';
+import { claimVerifiedPurchaseSession } from './claim-verified-session';
 import { getSupabaseAdminClient } from '../supabase/admin';
 import { createClient } from '../supabase/server';
-import { promoteSessionVaultToAccount } from '../solidgate/account-vault';
 import { currentPaymentEnvironment } from '../payment-environment';
 import { backfillOrderEntitlement } from './entitlement-backfill';
 
@@ -158,10 +160,10 @@ export async function handleVerifyOtp(
         }
       }
 
-      // Set claimed_at on orders belonging to those sessions
+      // Assign purchase ownership; generic email login does not claim a saved card.
       await admin
         .from('orders')
-        .update({ user_id: authData.user.id, claimed_at: new Date().toISOString() })
+        .update({ user_id: authData.user.id })
         .eq('payment_environment', paymentEnvironment)
         .in('session_id', unlinkedIds)
         .is('user_id', null);
@@ -189,17 +191,18 @@ export async function handleVerifyOtp(
         }
       }
 
-      // Follow the card: each newly linked session may hold a funnel-vaulted
-      // card; promote it before returning so a serverless runtime cannot freeze
-      // the request with the account vault write still pending.
-      for (const s of unlinkedSessions) {
-        await promoteSessionVaultToAccount(admin, {
-          userId: authData.user.id,
-          sessionId: s.id,
-          paymentEnvironment,
-        })
-          .catch((err) => console.error('[auth/verify-otp] vault promote failed:', err));
-      }
+    }
+
+    // The current signed journey plus a successful mailbox challenge authorizes
+    // its saved card. Do not promote every session that happens to use this
+    // email: another anonymous checkout could have supplied the same address.
+    const signedCookie = (await cookies()).get(PAYMENT_COOKIE_NAME)?.value;
+    const payment = signedCookie ? await verifyPaymentCookie(signedCookie) : null;
+    if (payment && authData.user.email?.trim().toLowerCase() === email) {
+      await claimVerifiedPurchaseSession({
+        admin, userId: authData.user.id, email,
+        sessionId: payment.sessionId, paymentEnvironment, source: 'otp_verify',
+      });
     }
 
     const redirectTo = await options.getRedirectUrl(authData.user.id);

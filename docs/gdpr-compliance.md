@@ -51,8 +51,7 @@
 | **Email address** | `email` | Quiz email capture step (`apps/funnel/src/features/quiz/components/steps/email-capture-step.tsx`) | Supabase `sessions.email`; may also be part of the seven-day `quiz-store` recovery state | Indefinite on the server until a product retention policy is configured | Consent (Art. 6(1)(a)) |
 | **Health-related quiz answers** | `quiz_answers` (JSONB) | Quiz step selections (`apps/funnel/src/stores/quiz-store.ts`) | Supabase `sessions.quiz_answers`, localStorage `quiz-store` | Indefinite (no policy) | Explicit consent (Art. 9(2)(a))  -  special category |
 | **Behavioral segment** | `result_segment` | Quiz completion | Supabase `sessions.result_segment` | Indefinite (no policy) | Legitimate interest or consent |
-| **Quiz request context** | public IP, device/browser, approximate country/region/city/timezone | Quiz session creation | Supabase `sessions.client_context` | Indefinite until a product policy is configured | Consent or documented legitimate-interest assessment |
-| **Payment identifiers** | `stripe_customer_id`, `default_payment_method`, `stripe_payment_intent_id` | Stripe checkout | Supabase `sessions`, `stripe_customers`, `orders` | Indefinite (no policy) | Contract (Art. 6(1)(b)) |
+| **Payment identifiers** | `solidgate_order_id`, `solidgate_subscription_id`, `solidgate_customer_email`, saved-card tokens (`solidgate_session_vault`, `solidgate_account_vault`), `solidgate_webhook_events.payload` | Solidgate hosted form + webhooks | Supabase `orders`, `entitlements`, `renewal_events`, `solidgate_*` tables | Indefinite (no policy) | Contract (Art. 6(1)(b)) |
 | **Order history** | `amount_cents`, `currency`, `status`, `product_name` | Purchases | Supabase `orders` | Indefinite (no policy) | Contract + legal obligation (Art. 6(1)(b), (c)) |
 | **Listening progress** | `day_number`, `listen_duration_seconds`, `language` | PWA session player | Supabase `user_progress` | Indefinite (no policy) | Contract (Art. 6(1)(b)) |
 | **OTP login attempts** | `email`, `ip_address`, `success`, `attempted_at` | Login flow | Supabase `otp_attempts` | Indefinite (no policy) | Legitimate interest (Art. 6(1)(f))  -  security |
@@ -80,8 +79,7 @@
 |---------|------|-----------|-----------------|---------|
 | **PostHog** | Processor | Session ID, email (raw), event names, event metadata, page URLs | EU (`eu.i.posthog.com`) | Product analytics, funnel tracking |
 | **Google Tag Manager** | Processor / Controller | Hashed email (SHA-256), session ID, event names, metadata | US (Google) | Retargeting, conversion tracking, audience building |
-| **Meta Pixel / Conversions API** | Processor / Controller | Hashed email, session ID and country; `_fbp`, `_fbc`, IP, User-Agent, source URL, safe campaign/device/location/event/product/revenue context; no quiz answers or result profile | Verify the contracted Meta region/transfers | Attribution, retargeting, conversion optimization |
-| **Stripe** | Processor | Email, payment card (tokenized), amounts, customer ID, metadata | US (Stripe Inc.) | Payment processing |
+| **Solidgate** | Processor | Email, payment card (tokenized by the PSP; the app stores only the token reference), amounts, order metadata (UTM, product, locale) | Verify the contracting entity and data location in your Solidgate agreement | Payment processing, 3DS, subscriptions |
 | **Vercel Analytics** | Processor | Page URLs, Web Vitals, referrer, user agent | US (Vercel Inc.) | Performance monitoring |
 | **Vercel Speed Insights** | Processor | Page load metrics, connection type | US (Vercel Inc.) | Real User Monitoring |
 | **Supabase** | Processor | All database contents (sessions, orders, events, progress, auth) | Check project region | Database, authentication, edge functions |
@@ -144,8 +142,8 @@ GDPR Article 13 requires that at the point of data collection, you provide: your
 2. **What data is collected**  -  Use the data inventory in Section 1 above
 3. **Purpose of each data type**  -  Why you collect it (quiz personalization, payment processing, analytics, retargeting)
 4. **Legal basis for each purpose**  -  Consent, contract performance, legitimate interest, or legal obligation
-5. **Data recipients**  -  List all third parties (PostHog, Stripe, Google/GTM, Vercel, Supabase)
-6. **International transfers**  -  Stripe, Google, Vercel are US-based. Document the transfer mechanism (Standard Contractual Clauses, adequacy decision, etc.)
+5. **Data recipients**  -  List all third parties (PostHog, Solidgate, Google/GTM, Vercel, Supabase)
+6. **International transfers**  -  Google and Vercel are US-based; check where Solidgate's contracting entity processes data. Document the transfer mechanism (Standard Contractual Clauses, adequacy decision, etc.)
 7. **Retention periods**  -  How long each data type is kept (you need to define these  -  see Section 3.3)
 8. **User rights**  -  Right to access, rectification, erasure, restrict processing, data portability, object, withdraw consent
 9. **How to exercise rights**  -  Contact email or form
@@ -312,15 +310,15 @@ You must respond to deletion requests within 30 days. If you have no mechanism, 
    - That active subscriptions will be cancelled
 
 2. **API endpoint** `DELETE /api/user/delete` that:
-   - Cancels any active Stripe subscriptions
-   - Deletes from `user_progress`
-   - Deletes from `entitlements`
+   - Cancels any active Solidgate subscriptions (`POST /subscription/cancel` via `packages/shared/src/solidgate/client.ts`) and waits for the cancellation webhook, or records the request for an operator
+   - Deletes from `user_prefs`
+   - Revokes `entitlements`
    - Anonymizes `sessions` (null out email, quiz_answers, set user_id to null)
-   - Anonymizes `orders` (keep amount/date for accounting, null out user_id, session_id)
+   - Anonymizes `orders` (keep amount/date for accounting, null out user_id and `solidgate_customer_email`; note `orders.session_id` is `ON DELETE CASCADE`, so deleting the session deletes the financial row  -  anonymize, do not delete)
+   - Deletes saved-card token references from `solidgate_session_vault` and `solidgate_account_vault`
    - Deletes from `otp_attempts` where email matches
-   - Deletes from `stripe_customers`
    - Deletes Supabase auth user
-   - Optionally: request deletion from Stripe Customer API
+   - Optionally: request customer-data deletion from Solidgate support (there is no self-service customer-delete API in Billing 1.0; verify with your account manager)
    - Optionally: request deletion from PostHog
 
 3. **Email-based requests**  -  Even without an account, users who only completed the quiz (no purchase) should be able to email you to request deletion. Document this in the privacy policy.
@@ -328,7 +326,7 @@ You must respond to deletion requests within 30 days. If you have no mechanism, 
 **Files to create/modify:**
 - New: `apps/pwa/src/app/api/user/delete/route.ts`
 - `apps/pwa/src/features/settings/components/settings-content.tsx`  -  add delete button
-- New migration: create a `deletion_requests` audit table (who requested, when, what was deleted)
+- `deletion_requests` audit table already exists in `supabase/migrations/00001_baseline.sql` (who requested, when, what was deleted); nothing writes to it until the route exists
 
 ---
 
@@ -452,7 +450,7 @@ GDPR Article 28 requires a written contract (DPA) with every data processor. Thi
 
 **What to do:**
 1. **PostHog**  -  Sign PostHog's standard DPA (available at posthog.com/dpa). Already using EU instance, which is good.
-2. **Stripe**  -  Stripe's DPA is built into their terms of service. Verify it covers your use case.
+2. **Solidgate**  -  Sign or locate Solidgate's DPA under your merchant agreement. Verify which entity contracts with you and where card and order data are processed.
 3. **Vercel**  -  Sign Vercel's DPA (available in account settings or legal page).
 4. **Supabase**  -  Sign Supabase's DPA (available at supabase.com/legal). Confirm your project is in an EU region.
 5. **Google (GTM)**  -  If using GTM with Google Ads or Google Analytics tags, accept Google's data processing terms in Google Ads/Analytics settings.
@@ -519,17 +517,18 @@ GDPR Article 7(1): "Where processing is based on consent, the controller shall b
 
 ---
 
-### 4.5 Missing Stripe Webhook Handlers
+### 4.5 Webhook Coverage of Refunds, Disputes and Cancellations
 
-**What's wrong:**
-The webhook handler (`supabase/functions/stripe-webhooks/index.ts`) only handles `payment_intent.succeeded` and `customer.subscription.created`. Missing handlers for:
-- `payment_intent.payment_failed`
-- `charge.refunded`
-- `charge.dispute.created`
-- `customer.subscription.deleted`
+**Status in this boilerplate:** the predecessor's handler was missing refund, dispute
+and cancellation events. The Solidgate handler (`supabase/functions/solidgate-webhooks/index.ts`)
+covers them: `card_gate.order.updated` carries refunds and voids, chargeback callbacks
+carry disputes, and subscription callbacks carry `cancelled` / `scheduled_for_cancellation`.
+Every raw payload is stored in `solidgate_webhook_events.payload`.
 
-**Why it matters for GDPR:**
-When a user disputes a charge or requests a refund, there may be an implicit data deletion request. When a subscription is cancelled, you need to know when to stop processing their data and when retention periods start.
+**What remains for GDPR:**
+- A dispute or refund may be an implicit deletion request; nothing routes it to a person today.
+- A cancellation marks when processing should stop and retention periods start. Define that policy; the handler only records the state.
+- `solidgate_webhook_events.payload` keeps the full provider payload (email, card metadata) indefinitely. Set a retention window for it.
 
 ---
 
@@ -563,7 +562,7 @@ Disclose this in the privacy policy.
 
 ### 5.5 Cross-Border Data Transfers
 
-Stripe, Google, and Vercel are US-based. Post-Schrems II, EU-to-US transfers require Standard Contractual Clauses (SCCs) or reliance on the EU-US Data Privacy Framework (if the US company is certified). Verify each processor's transfer mechanism and document it in the privacy policy.
+Google and Vercel are US-based; check where Solidgate's contracting entity processes data. Post-Schrems II, EU-to-US transfers require Standard Contractual Clauses (SCCs) or reliance on the EU-US Data Privacy Framework (if the US company is certified). Verify each processor's transfer mechanism and document it in the privacy policy.
 
 ---
 
@@ -574,7 +573,7 @@ Stripe, Google, and Vercel are US-based. Post-Schrems II, EU-to-US transfers req
 | Processor | DPA Status | Action Required |
 |-----------|------------|-----------------|
 | **PostHog** | Not signed | Sign DPA at posthog.com. Verify EU data residency. Configure to respect consent signals. |
-| **Stripe** | Built into ToS | Review Stripe's processing terms. Verify EU entity handles EU payments. |
+| **Solidgate** | Not signed | Locate the DPA in your merchant agreement. Verify which entity handles EU payments and where data is processed. |
 | **Google (GTM)** | Not signed | Accept Google Ads Data Processing Terms. Review what tags fire and what data each tag receives. |
 | **Vercel** | Not signed | Sign DPA in Vercel dashboard. Document which Vercel services process personal data. |
 | **Supabase** | Not signed | Sign DPA at supabase.com. Verify project is hosted in EU region. Enable audit logging. |
@@ -607,7 +606,7 @@ Your privacy policy must list all sub-processors (or link to a maintained list).
 ### Phase 3  -  Hardening (within 90 days of launch)
 1. Remove PII from localStorage (or encrypt + TTL)
 2. Implement purchase confirmation emails
-3. Add missing Stripe webhook handlers
+3. Define retention for `solidgate_webhook_events.payload` and route disputes to a person
 4. Add automated profiling disclosure to privacy policy
 5. Verify cross-border transfer mechanisms
 6. Remove "Unsubscribe anytime" text or implement email system
@@ -639,13 +638,8 @@ Your privacy policy must list all sub-processors (or link to a maintained list).
 | `packages/shared/src/payment-session-access.ts` | 1.2 |
 | `packages/shared/src/auth/request-otp.ts` | 1.1 |
 | `packages/shared/src/auth/verify-otp.ts` | 1.1 |
-| `supabase/migrations/00001_initial_schema.sql` | 1.1 |
-| `supabase/migrations/00009_sessions_stripe_customer.sql` | 1.1 |
-| `supabase/migrations/00014_otp_attempts.sql` | 1.1 |
-| `supabase/migrations/00018_rls_hardening.sql` | 1.1 |
-| `supabase/migrations/00019_entitlements.sql` | 1.1 |
-| `supabase/migrations/00024_user_progress.sql` | 1.1 |
-| `supabase/functions/stripe-webhooks/index.ts` | 4.5 |
+| `supabase/migrations/00001_baseline.sql` (sessions, otp_attempts, orders, entitlements, solidgate_* tables, deletion_requests) | 1.1 |
+| `supabase/functions/solidgate-webhooks/index.ts` | 4.5 |
 
 ## Appendix B: GDPR Articles Referenced
 

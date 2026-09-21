@@ -66,8 +66,9 @@ const cspDirectives = [
   // *.solidgate.com — a 3DS-challenge card is blocked outright without it.
   // selfFrameOrigins() adds the public apex + www (see the note above it).
   //
-  // hooks/js.stripe.com: frame-src governs the frame's POST-REDIRECT url too,
-  // and the acs.charge-auth.com verify iframe hands a real challenge off to
+  // hooks/js.stripe.com: NOT a Stripe integration — this boilerplate is
+  // Solidgate-only. frame-src governs the frame's POST-REDIRECT url too, and
+  // the acs.charge-auth.com verify iframe hands a real challenge off to
   // whatever host the ACQUIRER's ACS uses. On at least one Solidgate acquiring
   // route that host is Stripe's hosted 3DS page. Without these entries every
   // challenged buyer got a blocked grey iframe after paying. Keep them unless

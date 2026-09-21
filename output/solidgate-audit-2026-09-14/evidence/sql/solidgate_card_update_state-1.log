@@ -1,0 +1,10 @@
+BEGIN
+INSERT 0 4
+INSERT 0 2
+psql:supabase/tests/solidgate_card_update_state.sql:478: NOTICE:  SOLIDGATE CARD-UPDATE STATE SCENARIOS PASSED
+DO
+DO
+DO
+DO
+DO
+ROLLBACK
