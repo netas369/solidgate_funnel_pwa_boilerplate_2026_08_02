@@ -1310,7 +1310,7 @@ BEGIN
       '{"merchant":"stale","paymentIntent":"stale","signature":"stale"}'::JSONB
     );
     RAISE EXCEPTION 'displaced main builder finalized merchant data';
-  EXCEPTION WHEN serialization_failure THEN
+  EXCEPTION WHEN SQLSTATE 'PT409' THEN
     ASSERT SQLERRM LIKE '%builder lost ownership%',
       format('unexpected stale main builder rejection: %s', SQLERRM);
   END;
@@ -2198,7 +2198,7 @@ BEGIN
       v_merchant_data
     );
     RAISE EXCEPTION 'stale PWA form builder published merchant data';
-  EXCEPTION WHEN serialization_failure THEN NULL;
+  EXCEPTION WHEN SQLSTATE 'PT409' THEN NULL;
   END;
   ASSERT public.finalize_solidgate_pwa_form(
     'sandbox',

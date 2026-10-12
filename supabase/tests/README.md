@@ -133,6 +133,14 @@ And `cro_answer_distribution` is asserted **positively** to return
 session really does carry an address — `email` and `fullName` are declared
 answer keys, so a naive distribution would publish them.
 
+## `postgrest_retry_codes.sql`
+
+Fails if any `public` function raises SQLSTATE `40001`. PostgREST before v16
+retries a transaction that fails with `40001` and never stops (PostgREST
+#3673), so a permanent conflict such as a stale quiz revision or a displaced
+Solidgate builder would loop inside the database until PostgREST restarts.
+Raise such conflicts as `PT409` (HTTP 409) and match them by message text.
+
 ## `quiz_backend.sql`
 
 Covers the two-table quiz contract: session creation, one-row JSONB snapshots,

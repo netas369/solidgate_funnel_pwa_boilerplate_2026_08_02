@@ -1154,8 +1154,9 @@ BEGIN
         MESSAGE = 'QUIZ_SESSION_TERMINAL';
     END IF;
 
+    -- PT409 (HTTP 409), never 40001: PostgREST < 16 retries 40001 forever.
     RAISE EXCEPTION USING
-      ERRCODE = '40001',
+      ERRCODE = 'PT409',
       MESSAGE = 'QUIZ_STALE_REVISION:' || v_existing.revision::TEXT;
   END IF;
 
@@ -1231,8 +1232,9 @@ BEGIN
   END IF;
 
   IF v_session.revision <> p_expected_revision THEN
+    -- PT409 (HTTP 409), never 40001: PostgREST < 16 retries 40001 forever.
     RAISE EXCEPTION USING
-      ERRCODE = '40001',
+      ERRCODE = 'PT409',
       MESSAGE = 'QUIZ_STALE_REVISION:' || v_session.revision::TEXT;
   END IF;
 
@@ -5901,8 +5903,9 @@ BEGIN
   IF v_state.offer_slug IS DISTINCT FROM p_offer_slug
      OR v_state.order_db_id IS DISTINCT FROM p_order_db_id
      OR v_state.builder_token IS DISTINCT FROM p_builder_token THEN
+    -- PT409 (HTTP 409), never 40001: PostgREST < 16 retries 40001 forever.
     RAISE EXCEPTION 'Solidgate main checkout builder lost ownership'
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   IF v_state.merchant_data IS NULL THEN
@@ -7337,13 +7340,14 @@ BEGIN
   IF v_state.merchant_data IS NOT NULL THEN
     IF v_state.claim_token IS DISTINCT FROM p_claim_token
        OR v_state.merchant_data IS DISTINCT FROM p_merchant_data THEN
+      -- PT409 (HTTP 409), never 40001: PostgREST < 16 retries 40001 forever.
       RAISE EXCEPTION 'Solidgate PWA form builder lost ownership'
-        USING ERRCODE = '40001';
+        USING ERRCODE = 'PT409';
     END IF;
     IF v_order.status IS DISTINCT FROM 'pending'
        OR v_order.solidgate_payment_status IS DISTINCT FROM 'creating' THEN
       RAISE EXCEPTION 'Solidgate PWA form order changed after finalization'
-        USING ERRCODE = '40001';
+        USING ERRCODE = 'PT409';
     END IF;
     RETURN v_state.merchant_data;
   END IF;
@@ -7354,7 +7358,7 @@ BEGIN
      OR v_state.claim_token IS DISTINCT FROM p_claim_token
      OR v_state.claim_kind IS DISTINCT FROM 'build_form' THEN
     RAISE EXCEPTION 'Solidgate PWA form builder lost ownership'
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   UPDATE public.solidgate_pwa_purchase_states AS state
@@ -7373,7 +7377,7 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Solidgate PWA form builder lost ownership'
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   UPDATE public.orders AS candidate
@@ -7386,7 +7390,7 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Solidgate PWA form order changed during finalization'
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   RETURN v_state.merchant_data;
@@ -7685,8 +7689,9 @@ BEGIN
     AND state.claim_kind IN ('submit_card', 'reconcile');
 
   IF NOT FOUND THEN
+    -- PT409 (HTTP 409), never 40001: PostgREST < 16 retries 40001 forever.
     RAISE EXCEPTION 'Solidgate PWA result fence changed during publication'
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   RETURN TRUE;
@@ -7818,8 +7823,9 @@ BEGIN
     AND candidate.solidgate_submission_token = p_claim_token;
 
   IF NOT FOUND THEN
+    -- PT409 (HTTP 409), never 40001: PostgREST < 16 retries 40001 forever.
     RAISE EXCEPTION 'Solidgate PWA reconcile fence changed during resume'
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   RETURN TRUE;

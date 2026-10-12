@@ -253,7 +253,7 @@ async function finalizeMainCheckout(args: Record<string, unknown>) {
       checkout.orderDbId !== args.p_order_db_id ||
       checkout.builderToken !== args.p_builder_token
     ) {
-      return { data: null, error: { code: '40001', message: 'builder lost ownership' } };
+      return { data: null, error: { code: 'PT409', message: 'builder lost ownership' } };
     }
     checkout.merchantData = args.p_merchant_data as MockMerchantData;
     return { data: checkout.merchantData, error: null };

@@ -141,7 +141,7 @@ BEGIN
     );
     RAISE EXCEPTION 'stale revision unexpectedly succeeded';
   EXCEPTION
-    WHEN serialization_failure THEN
+    WHEN SQLSTATE 'PT409' THEN
       ASSERT SQLERRM = 'QUIZ_STALE_REVISION:10';
   END;
 

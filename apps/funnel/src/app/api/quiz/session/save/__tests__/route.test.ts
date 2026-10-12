@@ -101,7 +101,7 @@ describe("POST /api/quiz/session/save", () => {
   it("returns the canonical stale-revision conflict", async () => {
     mockRpc.mockResolvedValue({
       data: null,
-      error: { message: "QUIZ_STALE_REVISION:5", code: "40001" },
+      error: { message: "QUIZ_STALE_REVISION:5", code: "PT409" },
     });
     const response = await post({
       sessionId,
